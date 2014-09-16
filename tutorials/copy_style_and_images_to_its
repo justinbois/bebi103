@@ -1,0 +1,2 @@
+scp styles/jb_custom_ipython.css bebi103@its.caltech.edu:~/public_html/2014/tutorials/styles/ ; 
+scp -r images/ bebi103@its.caltech.edu:~/public_html/2014/tutorials/
