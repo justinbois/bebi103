@@ -3,8 +3,9 @@ body {text-align: center}
 a img {border: none}
 
 p {
-    margin: 0 25px 0 0;
+    margin: 0 35px 0 0;
     font-size: 1.25em;
+    text-align: justify;
   }
 
 
@@ -55,7 +56,7 @@ p {
 }
 
 #navlinks li.current {
-    color: #EDB550;
+    color: #FFCB6F;
 }
 
 #navlinks li.last {
@@ -69,7 +70,7 @@ p {
 
 #navlinks a {
     text-decoration: none;
-    color: #E09818;
+    color: #E2B4FF;
 }
 
 #navlinks a.hover {
@@ -89,7 +90,7 @@ p {
 
 #content {
     width:700px;
-    margin:0px auto;
+    margin: 0px auto;
     text-align:left;
     padding:15px;
 }
@@ -98,11 +99,11 @@ p {
     margin: 1em 0 0.5em 0; 
     padding-bottom: 0.25em;
     padding-right: 2.5em;
-    border-bottom: 1px solid #2E8755;
+    border-bottom: 1px solid #3E5448;
     font-size: 1.75em;
     text-align: left;
     max-width: 600px;
-    color: #2E8755;
+    color: #3E5448;
 }
 
 #content h2 {
@@ -123,7 +124,7 @@ p {
 
 #content a{
     text-decoration: none;
-    color: #2E43C0;
+    color: #D4655B;
 }
 
 #content a.hover{
@@ -160,6 +161,7 @@ p {
 .rightfigure {
     float: right;
     margin: 0.5em;
+    margin-left: 1.0em;
 }
 .rightfigure p {
     color: #4B4B4B;
@@ -206,8 +208,38 @@ ol.alpha > li:before {
 }
 
 
-/* footer styles */
+/* Set up definition lists for schedule */
+#schedule {
+    font-size: 1.25em;
+}
 
+dl {
+    font-size: 1.25em;
+}
+
+#schedule dt {
+    float: left;
+    clear: left;
+    text-align: right;
+    font-weight: bold;
+    width: 7em;
+}
+
+#schedule dt:after {
+    content: ":";
+}
+
+#schedule dd {
+    margin: 0 25px 0 8em;
+    padding: 0 0 0.25em 0;
+}
+
+#schedule dd.break {
+    padding: 0 25px 1.0em 0;
+}
+
+
+/* footer styles */
 #footer {
 	clear: both;
 	margin-top: 1.0em;
