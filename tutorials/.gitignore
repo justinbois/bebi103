@@ -1,5 +1,4 @@
 *.pdf
 *.html
-*.tpl
 .ipynb_checkpoints/
 data/
