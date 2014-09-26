@@ -41,14 +41,37 @@ div#notebook {
 }
 
 @media print {
+h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    page-break-after: avoid; // Prevent headings from being printed at the bottom of the page
+  }
+ 
+  article {
+    page-break-before: always; // Always start new articles on a new page
+  }
+ 
+  img {
+    page-break-inside: avoid; // Prevent images from being split up
+  }
+
+  a:after {
+     display: none !important;
+  }
+
   div.cell {
     display: block;
     page-break-inside: avoid;
   } 
+
   div.output_wrapper { 
     display: block;
     page-break-inside: avoid; 
   }
+
   div.output { 
     display: block;
     page-break-inside: avoid; 
@@ -57,7 +80,7 @@ div#notebook {
 </style>
 
 <!-- Custom stylesheet, it must be in the same directory as the html file -->
-<link rel="stylesheet" href="../styles/jb_custom_ipython.css">
+<link rel="stylesheet" href="styles/jb_custom_ipython.css">
 
 <!-- Loading mathjax macro -->
 <script type="text/x-mathjax-config">
@@ -79,6 +102,19 @@ div#notebook {
 </script>
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 <!-- End of mathjax configuration -->
+
+<!-- Google analytics -->
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+      
+      ga('create', 'UA-54852702-1', 'auto');
+      ga('send', 'pageview');
+      
+    </script>
+<!-- End Google analytics -->
 
 </head>
 {%- endblock header -%}
