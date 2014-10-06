@@ -1735,7 +1735,7 @@ h1,
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><em>This homework was generated from an IPython notebook.  You can download the notebook <a href="http://bebi103.caltech.edu/2014/staff_zone/hw1.ipynb">here</a>.</em></p>
+<p><em>This homework was generated from an IPython notebook.  You can download the notebook <a href="hw1.ipynb">here</a>.</em></p>
 </div>
 </div>
 </div>
@@ -1796,7 +1796,7 @@ y(x) = a x + b,
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">
-In&nbsp;[4]:
+In&nbsp;[1]:
 </div>
 <div class="inner_cell">
     <div class="input_area">
@@ -1825,7 +1825,7 @@ In&nbsp;[4]:
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
 <div class="prompt input_prompt">
-In&nbsp;[5]:
+In&nbsp;[2]:
 </div>
 <div class="inner_cell">
     <div class="input_area">
@@ -2595,7 +2595,7 @@ y = \frac{x^\alpha}{k^\alpha + x^\alpha}.
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Problem-1.3-(Microtubule-castatrophes-I,-50-pts)">Problem 1.3 (Microtubule castatrophes I, 50 pts)<a class="anchor-link" href="#Problem-1.3-(Microtubule-castatrophes-I,-50-pts)">&#182;</a></h3>
+<h3 id="Problem-1.3-(Microtubule-catastrophes-I,-50-pts)">Problem 1.3 (Microtubule catastrophes I, 50 pts)<a class="anchor-link" href="#Problem-1.3-(Microtubule-catastrophes-I,-50-pts)">&#182;</a></h3>
 </div>
 </div>
 </div>
@@ -2605,7 +2605,7 @@ y = \frac{x^\alpha}{k^\alpha + x^\alpha}.
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Throughout the class, we will analyze data from several sources.  We will look at some data sets over and over again because there is plenty of interesting data analysis to be done.  One of these data sets comes from <a href="link to Gardner">this paper</a> by Gardner, Zanic, and coworkers.  The full reference is:
+<p>Throughout the class, we will analyze data from several sources.  We will look at some data sets over and over again because there is plenty of interesting data analysis to be done.  One of these data sets comes from <a href="../protected/papers/gardner_2011.pdf">this paper</a> by Gardner, Zanic, and coworkers.  The full reference is:
 Gardner, Zanic, et al., Depolymerizing kinesins Kip3 and MCAK shape cellular microtubule architecture by differential control of catastrophe, <em>Cell</em>, <strong>147</strong>, 1092-1103, 2011, <a href="http://dx.doi.org/10.1016/j.cell.2011.10.037">10.1016/j.cell.2011.10.037</a>.</p>
 <p>We will discuss the paper more throughout the class, and I encourage you to read it.  Briefly, the authors investigated the dynamics of microtubule catastrophe, the switching of a microtubule from a growing to a shrinking state.  In particular, they were interested in the time between the start of growth of a microtubule and the catastrophe event.  They monitored microtubules by using tubulin (the monomer that comprises a microtubule) that was labeled with a fluorescent marker.  As a control to make sure that fluorescent labels and exposure to laser light did not affect the microtubule dynamics, they performed a similar experiment using differential interference contrast (DIC) microscopy.  They measured the time until catastrophe with labeled and unlabeled tubulin.</p>
 <p>In this problem, we will look at the data used to generate Fig. 2a of their paper.  In the end, we will generate a plot similar to Fig. 2a.</p>
@@ -2617,7 +2617,7 @@ Gardner, Zanic, et al., Depolymerizing kinesins Kip3 and MCAK shape cellular mic
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>a)</strong> If you haven&#39;t already, download the data file <a href="http://bebi103.caltech.edu/data/gardner_et_al_2011_time_to_catastrophe_dic.csv">here</a>.  Read the data from the data file into a convenient form, either a <code>pandas</code> DataFrame or NumPy arrays.</p>
+<p><strong>a)</strong> If you haven&#39;t already, download the data file <a href="../protected/data/gardner_et_al_2011_time_to_catastrophe_dic.csv">here</a>.  Read the data from the data file into a convenient form, either a <code>pandas</code> DataFrame or NumPy arrays.</p>
 <p><strong>b)</strong> Plot histograms of the catastrophe times for the experiments with labeled and unlabeled tubulin.  Try different settings of the plotting parameters to see what works best.  In particular, you might want to experiment with the <code>bins</code>, <code>normed</code>, and <code>histtype</code> keyword arguments.  You can show a few candidates for how you would display the data.  For your &quot;official&quot; histogram(s), discuss the design decisions you made to plot it the way you did.</p>
 <p><strong>c)</strong> Plot cumulative histograms for the labeled and unlabeled experiments using the same binning you used in part (b).  <em>Hint</em>: You might find the <code>cumulative</code> keyword argument of <code>plt.hist</code> useful.</p>
 <p><strong>d)</strong> Plot cumulative histograms as in Fig. 2a of the Gardner, Zanic, et al. paper.  You do not need to plot the inset of that figure.  <em>Hint</em>: Think about how to compute a cumulative histogram with no binning.  The <code>np.arange</code> function might be useful.</p>
