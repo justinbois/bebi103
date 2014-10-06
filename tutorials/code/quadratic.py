@@ -23,8 +23,8 @@ def roots(a, b, c):
     delta = discriminant(a, b, c)
     
     # Uncomment these lines for error checking
-#    if delta < 0.0:
-#        raise ValueError('Imaginary roots!  We only do real roots!')
+    if delta < 0.0:
+        raise ValueError('Imaginary roots!  We only do real roots!')
         
     root_1 = (-b + np.sqrt(delta)) / (2.0 * a)
     root_2 = (-b - np.sqrt(delta)) / (2.0 * a)
