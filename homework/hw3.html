@@ -1744,7 +1744,7 @@ h1,
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Problem-2.1-(Fitting-data-with-error-bars,-80-pts)">Problem 2.1 (Fitting data with error bars, 80 pts)<a class="anchor-link" href="#Problem-2.1-(Fitting-data-with-error-bars,-80-pts)">&#182;</a></h3>
+<h3 id="Problem-3.1-(Fitting-data-with-error-bars,-80-pts)">Problem 3.1 (Fitting data with error bars, 80 pts)<a class="anchor-link" href="#Problem-3.1-(Fitting-data-with-error-bars,-80-pts)">&#182;</a></h3>
 </div>
 </div>
 </div>
@@ -1768,8 +1768,8 @@ l_i = \nu + \zeta d_i + e_i.
 P(D~|~\nu,\zeta,I) = \prod_{i\in D} \frac{1}{\sqrt{2\pi\sigma_i^2}}
 \exp\left\{-\frac{(l_i - (\nu + \zeta d_i))^2}{2\sigma_i^2}\right\}.
 \end{align}</p>
-<p>In problem 2.3, we will think about the prior for this problem, but we will take uniform priors for both $\nu$ and $\gamma$ for now.  Notice that $\sigma$ is no longer a parameter we are estimating because we already &quot;know&quot; all of the $\sigma_i$&#39;s.</p>
-<p>For this problem, we will fit Model 2b from <a href="http://bebi103.caltech.edu/2014/tutorials/t3b_linear_regression.html">Tutorial 3b</a> to the <a href="http://bebi103.caltech.edu/2014/protected/data/invitro_droplet_data.csv">data</a> from the <a href="http://bebi103.caltech.edu/2014/protected/papers/good_2103.pdf">Good, et al. paper</a>.  We will do it in a different way though.  Instead of using all data points, we will bin the data by droplet diameter and then fit the binned data, as in Fig. 1C of the Good, et al. paper.</p>
+<p>In problem 2.3, we will think about the prior for this problem, but we will take uniform priors for both $\nu$ and $\zeta$ for now.  Notice that $\sigma$ is no longer a parameter we are estimating because we already &quot;know&quot; all of the $\sigma_i$&#39;s.</p>
+<p>For this problem, we will fit Model 2b from <a href="http://bebi103.caltech.edu/2014/tutorials/t3b_linear_regression.html">Tutorial 3b</a> to the <a href="http://bebi103.caltech.edu/2014/protected/data/invitro_droplet_data.csv">data</a> from the <a href="http://bebi103.caltech.edu/2014/protected/papers/good_2013.pdf">Good, et al. paper</a>.  We will do it in a different way though.  Instead of using all data points, we will bin the data by droplet diameter and then fit the binned data, as in Fig. 1C of the Good, et al. paper.</p>
 </div>
 </div>
 </div>
@@ -1778,7 +1778,7 @@ P(D~|~\nu,\zeta,I) = \prod_{i\in D} \frac{1}{\sqrt{2\pi\sigma_i^2}}
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>a)</strong> Bin the data similarly as Figure 1C of the Good paper (reproduced below).  As in the figure, we will only use data from droples less than 90 µm in diameter.  Your goal is not necessarily to have your bins be as in the figure in the paper.  Discuss how you chose bin locations and widths.</p>
+<p><strong>a)</strong> Bin the data similarly as Figure 1C of the Good paper (reproduced below).  As in the figure, we will only use data from droplets less than 90 µm in diameter.  Your goal is not necessarily to have your bins be as in the figure in the paper.  Discuss how you chose bin locations and widths.</p>
 </div>
 </div>
 </div>
@@ -2113,7 +2113,7 @@ In&nbsp;[17]:
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Problem-2.2-(Checking-your-model-assumptions,-20-pts)">Problem 2.2 (Checking your model assumptions, 20 pts)<a class="anchor-link" href="#Problem-2.2-(Checking-your-model-assumptions,-20-pts)">&#182;</a></h3>
+<h3 id="Problem-3.2-(Checking-your-model-assumptions,-20-pts)">Problem 3.2 (Checking your model assumptions, 20 pts)<a class="anchor-link" href="#Problem-3.2-(Checking-your-model-assumptions,-20-pts)">&#182;</a></h3>
 </div>
 </div>
 </div>
@@ -2142,7 +2142,7 @@ In&nbsp;[17]:
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Problem-2.3-(Priors-for-linear-regression,-20-pts-extra-credit)">Problem 2.3 (Priors for linear regression, 20 pts extra credit)<a class="anchor-link" href="#Problem-2.3-(Priors-for-linear-regression,-20-pts-extra-credit)">&#182;</a></h3>
+<h3 id="Problem-3.3-(Priors-for-linear-regression,-20-pts-extra-credit)">Problem 3.3 (Priors for linear regression, 20 pts extra credit)<a class="anchor-link" href="#Problem-3.3-(Priors-for-linear-regression,-20-pts-extra-credit)">&#182;</a></h3>
 </div>
 </div>
 </div>
@@ -2162,7 +2162,7 @@ In&nbsp;[17]:
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>a)</strong> To demonstrate why uniform priors are not informative in the case of linear regression, consider a line $y = ax + b$.  Let&#39;s fix $b$ to be zero.  Make 100 lines with $a$ going in evenly-spaced from 0 to 20 and plot the results.  What does this plot tell you about using a uniform prior for $a$ when performing a regression?</p>
+<p><strong>a)</strong> To demonstrate why uniform priors are not uninformative in the case of linear regression, consider a line $y = ax + b$.  Let&#39;s fix $b$ to be zero.  Make 100 lines with $a$ going in evenly-spaced increments from 0 to 20 and plot the results.  What does this plot tell you about using a uniform prior for $a$ when performing a regression?</p>
 </div>
 </div>
 </div>
@@ -2181,7 +2181,7 @@ f(a,b) = f(\alpha,\beta)\begin{vmatrix}
 <p>where the term $|\cdot|$ denotes the determinant of the Jacobian.</p>
 <p>Use this change of variables formula and the fact that we could arbitrarily choose to define a line as $y = a x + b$ or $x = \alpha y + \beta$ to show that</p>
 <p>\begin{align}
-P(a,b) \propto \frac{1}{(1+a^2)^{\frac{3}{2}}}
+P(a,b~|~I) \propto \frac{1}{(1+a^2)^{\frac{3}{2}}}
 \end{align}</p>
 <p>is an uninformative prior.</p>
 </div>

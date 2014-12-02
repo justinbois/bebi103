@@ -62,6 +62,13 @@ h1,
      display: none !important;
   }
 
+  p {
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  }
+
   div.cell {
     display: block;
     page-break-inside: avoid;
