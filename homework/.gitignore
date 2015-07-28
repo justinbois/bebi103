@@ -2,3 +2,6 @@
 *.csv
 *.svg
 *.pdf
+*.npy
+sandbox/
+images/
