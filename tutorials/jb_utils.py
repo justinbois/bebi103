@@ -2,6 +2,8 @@
 Set of utilities written by Justin Bois for use in BE/Bi 103 (2014
 edition) and beyond.
 """
+from __future__ import division, print_function
+
 import os
 import glob
 import warnings
@@ -31,9 +33,9 @@ except:
                   + 'Image processing utils will not work.', ImportWarning)
     
 try:
-    import Image
+    from PIL import Image
 except:
-    warnings.warn('Unable to import PIL.  ' \
+    warnings.warn('Unable to import PIL via Pillow.  ' \
                   + 'Image processing utils will not work.', ImportWarning)
 
 try:
@@ -204,6 +206,32 @@ def norm_cumsum_2d(trace, i=0, j=1, nbins=100, density=True, meshgrid=False):
 
     # Normalized, reshaped cumulative sum
     return count_cumsum[unsort].reshape(shape), x, y
+
+
+# ##########################################################
+def hpd(trace, mass_frac) :
+    """
+    Returns HPD interval containing mass_frac fraction of the total
+    proability for an MCMC trace of a single variable given by trace.
+    """
+    # Get sorted list
+    d = np.sort(np.copy(trace))
+
+    # Number of total samples taken
+    n = len(trace)
+    
+    # Get number of samples that should be included in HPD
+    n_samples = np.floor(mass_frac * n)
+    
+    # Get width (in units of data) 
+    # of all intervals containing n_samples samples
+    int_width = d[n_samples:] - d[:n-n_samples]
+    
+    # Pick out minimal interval
+    min_int = np.argmin(int_width)
+    
+    # Return interval
+    return np.array([d[min_int], d[min_int+n_samples]])
 
 
 # ###############################################
@@ -466,20 +494,14 @@ class XYTStack(object):
 
             # Number of time points
             self.size_t = len(file_list)
-            
+        
             # Get data type and image size
-            f = open(file_list[0], 'rb')
-            im_PIL = Image.open(f)
-            try:
-                self.data_type = PIL_to_np_dtypes[im_PIL.mode]
-            except KeyError:
-                warn_str = 'Unrecognized image data type. Using uint16.'
-                warnings.warn(warn_str, UserWarning)
-                self.data_type = np.uint16
+            im_0 = skimage.io.imread(file_list[0])
+            self.data_type = im_0.dtype
 
-            self.size_x, self.size_y = im_PIL.size
-            f.close()
-
+            # Get shape
+            self.size_y, self.size_x = im_0.shape[:2]
+            
             # Either read in all images or make a list of files
             if conserve_memory:
                 self.im_file_list = file_list
@@ -496,7 +518,7 @@ class XYTStack(object):
             # Open using PIL
             self.im_PIL = Image.open(fname)
 
-            # Get image size
+            # Get image size (PIL goes width then height)
             self.size_x, self.size_y = self.im_PIL.size
             
             # Find out how many frames there are
@@ -533,7 +555,7 @@ class XYTStack(object):
 
                     # Store image in images list
                     self.images.append(im_data)
- 
+
         # Save the time points
         if t is not None:
             if len(t) == self.size_t:
@@ -595,8 +617,7 @@ class XYTStack(object):
                     im_data = im_data.reshape(
                         (self.size_y, self.size_x, im_data.shape[1]))
             else:
-                im_data = im_data[:,0].reshape(
-                    (self.size_y, self.size_x))
+                im_data = im_data.reshape((self.size_y, self.size_x))
             out_im = im_data
 
         # Only return bounding box of ROI
@@ -607,20 +628,36 @@ class XYTStack(object):
             return out_im
 
     # ########################
-    def show_movie(self):
+    def show_movie(self, start_frame=0, end_frame=None, skip=1):
         """
-        Shows a movie of the images
+        Shows a movie of the images.
         """
-        # Set up figure and set axis bounds
-        fig = plt.figure()
 
-        ims = []
-        for i in range(self.size_t):
-            im = plt.imshow(self.im(i), cmap=cm.gray)
-            ims.append([im])
+        # Have to use a hack, described here:
+        # http://stackoverflow.com/a/21116525/1224002, to get it to
+        # work with Canopy.
 
-        # call the animator.
-        anim = animation.ArtistAnimation(fig, ims, interval=50, blit=False)
+        def anim_fun(start_frame, end_frame, skip):
+            # Set up figure and set axis bounds
+            fig = plt.figure()
+
+            # Get end frame
+            if end_frame is None:
+                end_frame = self.size_t - 1
+
+            ims = []
+            for i in range(start_frame, end_frame+1, skip):
+                im = plt.imshow(self.im(i), cmap=cm.gray)
+                ims.append([im])
+
+            # call the animator.
+            anim = animation.ArtistAnimation(fig, ims, interval=50, blit=False)
+
+            # Return animation
+            return anim
+
+        # Call animation function
+        ani = anim_fun(start_frame, end_frame, skip)
 
         # Show the movie
         plt.show()
