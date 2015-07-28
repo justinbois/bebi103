@@ -3,11 +3,8 @@ from __future__ import division
 import random
 
 import numpy as np
-import scipy.ndimage
 import scipy.odr
 import scipy.stats
-
-import skimage.transform
 
 
 # #####################
@@ -24,6 +21,8 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=10, thresh_r=0.0,
                  roi=None, roi_method='all', do_manders=True):
     """
     Costes colocalization.
+
+    Returns result as a CostesCololization instance.
     """
 
     # Make mirrored boundaries in preparation for scrambling
@@ -62,7 +61,7 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=10, thresh_r=0.0,
 
 
     # Now do work to compute adjusted Manders's coefficients
-    if do_manders:
+    if do_manders:        
         # Get the linear relationship between im_2 and im_1
         a, b = odr_linear(im_1.ravel(), im_2.ravel())
 
@@ -71,8 +70,9 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=10, thresh_r=0.0,
         thresh_2 = a * thresh_1 + b
 
         # Compute Costes's update to the Manders's coefficients
-        M_1 = im_1[im_1 > thresh_1].sum() / im_1.sum()
-        M_2 = im_2[im_2 > thresh_2].sum() / im_2.sum()
+        inds = (im_1 > thresh_1) & (im_2 > thresh_2)
+        M_1 = im_1[inds].sum() / im_1.sum()
+        M_2 = im_2[inds].sum() / im_2.sum()
 
         # Toss results into class for returning
         return CostesColocalization(
@@ -92,7 +92,7 @@ def odr_linear(x, y, intercept=None, beta0=None):
     Performs orthogonal linear regression on x, y data.  Fixes the intercept
     if intercept is not None.
 
-    beta0 is the guess at the slope and intercept, respectively
+    beta0 is the guess at the slope and intercept, respectively.
     """
 
     def linear_fun(p, x):
@@ -139,12 +139,12 @@ def find_thresh(im_1, im_2, a, b, thresh_r=0.0):
     thresh_max = im_1.max()
     thresh_min = im_1.min()
     thresh = thresh_max
-    r = pearsonr(thresh, im_1, im_2, a, b)
+    r = pearsonr_below_thresh(thresh, im_1, im_2, a, b)
     min_r = r
     min_thresh = thresh
     while thresh > thresh_min and r > thresh_r:
         thresh -= incr
-        r = pearsonr(thresh, im_1, im_2, a, b)
+        r = pearsonr_below_thresh(thresh, im_1, im_2, a, b)
         if min_r > r:
             min_r = r
             min_thresh = thresh
@@ -156,12 +156,12 @@ def find_thresh(im_1, im_2, a, b, thresh_r=0.0):
 
 
 # ####################    
-def pearsonr(thresh, im_1, im_2, a, b):
+def pearsonr_below_thresh(thresh, im_1, im_2, a, b):
     """
-    Returns the Pearson correlation coefficient for given threshold
-    value.
+    Returns the Pearson correlation coefficient for pixels below a
+    given threshold value.
     """
-    inds = (im_1 <= thresh) & (im_2 <= a * thresh + b)
+    inds = (im_1 <= thresh) | (im_2 <= a * thresh + b)
     r, p = scipy.stats.pearsonr(im_1[inds], im_2[inds])
     return r
 

@@ -208,6 +208,32 @@ def norm_cumsum_2d(trace, i=0, j=1, nbins=100, density=True, meshgrid=False):
     return count_cumsum[unsort].reshape(shape), x, y
 
 
+# ##########################################################
+def hpd(trace, mass_frac) :
+    """
+    Returns HPD interval containing mass_frac fraction of the total
+    proability for an MCMC trace of a single variable given by trace.
+    """
+    # Get sorted list
+    d = np.sort(np.copy(trace))
+
+    # Number of total samples taken
+    n = len(trace)
+    
+    # Get number of samples that should be included in HPD
+    n_samples = np.floor(mass_frac * n)
+    
+    # Get width (in units of data) 
+    # of all intervals containing n_samples samples
+    int_width = d[n_samples:] - d[:n-n_samples]
+    
+    # Pick out minimal interval
+    min_int = np.argmin(int_width)
+    
+    # Return interval
+    return np.array([d[min_int], d[min_int+n_samples]])
+
+
 # ###############################################
 # FOLLOWING ARE UTILITIES FOR DATA SMOOTHING
 # ###############################################
