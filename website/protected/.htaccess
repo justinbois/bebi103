@@ -4,9 +4,4 @@
  AuthUserFile /home/bebi103/.htpasswd
  AuthType Basic
  Require valid-user
- Order Deny,Allow
- Deny from all
- Allow from 131.215
- Allow from caltech.edu
- Satisfy Any
 </IfModule>
