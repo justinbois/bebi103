@@ -2,7 +2,8 @@
 Set of utilities written by Justin Bois for use in BE/Bi 103 (2014
 edition) and beyond.
 """
-from __future__ import division, print_function
+from __future__ import division, print_function, \
+                                absolute_import, unicode_literals
 
 import os
 import glob
@@ -269,7 +270,7 @@ def visushrink(data, threshold_factor=1.0, thresh_method='hard',
     lam = threshold_factor * sigma * np.sqrt(2.0 * np.log(len(data)))
 
     # Threshold each level
-    for j in xrange(len(data_wt)):
+    for j in range(len(data_wt)):
         # Perform hard threshold
         data_wt[j] = thresh(data_wt[j], lam)
 
@@ -364,7 +365,7 @@ def verts_to_roi(verts, size_x, size_y):
     x = np.arange(size_x)
     y = np.arange(size_y)
     xx, yy = np.meshgrid(x, y)
-    pts = zip(xx.ravel(), yy.ravel())
+    pts = np.array(list(zip(xx.ravel(), yy.ravel())))
 
     # Make a path object from vertices
     p = path.Path(verts)
