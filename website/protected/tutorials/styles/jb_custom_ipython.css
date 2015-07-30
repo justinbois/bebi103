@@ -1,0 +1,125 @@
+.container { width:105% !important; }
+
+body {
+    background: #4B4B4B;
+    color: #F6F6F6;
+}
+
+#notebook_panel { /* main background */
+    background: #4B4B4B;    
+    color: #f6f6f6;
+}
+
+div #notebook { /* center the content */
+    background: #fff;
+    background:4b4b4b;
+    color: #333;    
+    width: 120ex;
+    margin: auto; 
+    padding-left: 1em;
+    padding-right: 1em;
+    padding-top: 2ex;
+}
+
+#notebook li { /* More space between bullets. */
+    margin-top: 0.8em;
+}
+
+div.text_cell {
+    width: 105ex /* instead of 100%, */
+}
+
+div.text_cell_render{
+    padding: 1em;
+    font-family: Verdana, Geneva, sans-serif;
+    line-height: 145%; /* added for some line spacing of text. */
+    width: 800px; /* instead of 'inherit' for shorter lines */
+    font-weight: Light;
+    font-size: 13pt;
+}
+
+div.text_cell_render.border-box-sizing.rendered_html {
+    margin: 0;
+    padding: 1em; 
+    margin-left: 1ex;
+}
+div.cell.text_cell.border-box-sizing {
+    margin: 0;
+    padding: 0; 
+}
+.rendered_html h1 { /* Main titles big with more space*/
+    margin-top: 2.2em;
+    line-height: 1.4em;
+    margin-bottom: 0.1em;
+    padding: 0;
+    font-family: "Open Sans", Sans-Serif; 
+    font-weight: Light;
+}
+.rendered_html h2 {
+    margin-top:2.0em;
+    margin-bottome:0.0em;
+    margin: 0;
+    padding: 0;
+    font-family: "Open Sans", Sans-Serif; font-weight: Light;
+}
+.rendered_html h3 {
+    margin: 0;
+    padding: 0;
+    font-family: "Open Sans", Sans-Serif; font-weight: Light;
+}
+
+div.cell { /* set cell width to about 80 chars */
+    margin-top:1em;
+    margin-bottom:1em;
+    margin-left:auto;
+    margin-right:auto;
+    width: 800px;
+}
+
+div.cell.code_cell {  /* Area containing both code and output */
+background-color: #FFF; /* White */
+border-radius: 10px; /* rounded borders = friendlier */
+border-style: solid;
+border-width: 1px;
+border-color: gray;
+padding: 1em;
+}
+
+div.input_area { /* box around box with code */
+    border: none;
+    background: #f5f5f5;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding-top: 0.5ex;
+    padding-bottom: 0.5ex;
+    padding-left: 0.5em;
+}
+
+div.input { /* box with code */
+width: 105ex;
+}
+
+div.CodeMirror { /* code font */
+    font-family: "Droid Sans Mono", monospace;
+    font-size: 12pt;
+}
+
+div.prompt { /* remove In/Out prompt */
+    display: none;
+}
+
+div.output_subarea {
+    border:none;
+    font-size: 12pt;
+}
+
+div.cell.border-box-sizing.code_cell.running { 
+    /* draw border around running cells */
+    border: 3px dotted #f33;
+}
+
+/* header colours and fonts */
+h1 { color: #444; }
+h2 { color: #444; }
+h3 { color: #444; font-style: italic; font-weight: normal}
+

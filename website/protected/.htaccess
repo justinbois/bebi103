@@ -1,0 +1,7 @@
+# password protect excluding specific ip
+<IfModule mod_authn_file.c>
+ AuthName "Username and password required"
+ AuthUserFile /home/bebi103/.htpasswd
+ AuthType Basic
+ Require valid-user
+</IfModule>

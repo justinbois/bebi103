@@ -1,0 +1,296 @@
+body {text-align: center}
+
+a img {border: none}
+
+p {
+    margin: 0 3.0em 0 0;
+    font-size: 1.25em;
+    text-align: justify;
+  }
+
+/* Header text style */
+.pheader {
+    margin: 0 3.0em 0 0;
+    font-size: 3.0em;
+    text-align: justify;
+    color: #66D3FF
+}
+
+.psubheader {
+    margin: 0 3.0em 0 0;
+    font-size: 1.25em;
+    text-align: justify;
+    color: #CFF7F7
+}
+
+/* style to center website */
+#wrap {
+    text-align:left; 
+    margin: 0 auto; 
+    width:700px;
+    background: #E6E6E6;
+    color: #222222; 
+    font: small "Lucida Grande", Arial, sans-serif;
+}
+
+/* header styles */
+#masthead {
+    margin-bottom: 0; 
+    padding-top: 0;
+    width:700px;
+    background: #002E40;
+    text-align:right;
+}
+
+#secondhead {
+    margin-bottom: 0; 
+    border-top: 1px #4B4B4B;
+    border-bottom: double #4B4B4B;
+    padding-top: 10px;
+    padding-bottom:10px;
+    width:700px;
+    background: #2A5769;
+    text-align:left;
+    text-indent:1.0em;
+}
+
+#navlinks {
+    margin: 0em; 
+    padding: 0.5em 0.5em;
+    background: #002E40; 
+    color: #FABD4A;
+}
+
+#navlinks li {
+    display: inline;
+    margin-right: 0.25em; margin-left: 0em; padding-right: 0.75em; padding-left: 0em;
+    border-right: 1px solid #FFF;
+    font-weight: bold;
+}
+
+#navlinks li.current {
+    color: #FA9600;
+}
+
+#navlinks li.last {
+    border-right: 0;
+}
+
+#navlinks li.currentlast {
+    color: #FA9600;
+    border-right: 0;
+}
+
+#navlinks a {
+    text-decoration: none;
+    color: #FABD4A;
+}
+
+#navlinks a.hover {
+    color: #000000
+}
+
+#today {
+    margin-top: -1.66em; padding: 0 3em 0 0;
+    color: #FFF;
+    font-weight: bold;
+    
+    text-align: right;
+    line-height: 1;
+}
+
+/* body styles */
+
+#content {
+    width:700px;
+    margin: 0px auto;
+    text-align:left;
+    padding:15px;
+}
+
+#content h1 {
+    margin: 1em 0 0.5em 0; 
+    padding-bottom: 0.25em;
+    padding-right: 2.5em;
+    border-bottom: 1px solid #3E5448;
+    font-size: 1.75em;
+    text-align: left;
+    max-width: 600px;
+    color: #2A5769;
+}
+
+#content h2 {
+    margin: 1em 0 0.5em 0; 
+    padding-bottom: 0.25em;
+    padding-right: 2.5em;
+    font-size: 1.75em;
+    text-decoration: underline;
+    text-align: left;
+    max-width: 600px;
+    color: #2A5769;
+}
+
+#content img.illus {
+    float: left;
+    margin: 1em 1em 1em 0;
+}
+
+#content a{
+    text-decoration: none;
+    color: #E88B00
+}
+
+#content a.hover{
+    
+}
+
+#contentfull {
+    float: left;
+    padding: 1.5em 4em 4em 3em;
+}
+
+#contentfull h1 {
+    margin: 0em 0; 
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid #F37221;
+    font-size: 1.5em;
+}
+
+#contentfull img.illus {
+    float: left;
+    margin: 1em 1em 1em 0;
+}
+
+
+/* Image with caption */
+.leftfigure {
+    float: left;
+    margin: 0.5em;
+}
+.leftfigure p {
+    color: #222222;
+}
+
+.rightfigure {
+    float: right;
+    margin: 0.5em;
+    margin-left: 1.0em;
+}
+.rightfigure p {
+    color: #222222;
+}
+
+
+/* Inner and outer divs (useful for centering inner div) */
+.outer {
+    width:100%;
+}
+
+.inner {
+    width: 90%;
+    margin: auto auto auto auto;
+}
+
+
+/* Lists (for publications and courses) */
+.publist {
+    margin: 0.25em; 
+    padding: 0.5em 0.5em 0.5em 0.5em;    
+}
+.publist li{
+    margin: 0 3.0em 1.0em 1.5em;
+    font-size: 1.25em;
+    color: #222222;
+}
+
+/* Lists (for links) */
+.linklist {
+    margin: 0.5em; 
+    padding: 0.5em 0.5em 0.5em 0.5em;    
+}
+.linklist li{
+    margin: 0 3.0em 0.25em 0.25em;
+    font-size: 1.25em;
+    color: #222222;
+}
+
+
+/* Ordered list with a), b), etc.*/
+ol.alpha {
+  counter-reset: list;
+  margin: 0.25em 0 0 0;
+  padding-left: 2.0em;
+}
+ol.alpha > li {
+  list-style: none;
+  font-size: 1.25em;
+}
+ol.alpha > li:before {
+  content: counter(list, lower-alpha) ") ";
+  counter-increment: list;
+  font-size: 1.0em;
+}
+
+
+/* Set up definition lists for schedule */
+#schedule {
+    font-size: 1.25em;
+}
+
+dl {
+    font-size: 1.25em;
+}
+
+#schedule dt {
+    float: left;
+    clear: left;
+    text-align: right;
+    font-weight: bold;
+    width: 7em;
+}
+
+#schedule dt:after {
+    content: ":";
+}
+
+#schedule dd {
+    margin: 0 25px 0 8em;
+    padding: 0 0 0.25em 0;
+}
+
+#schedule dd.break {
+    padding: 0 25px 2.0em 0;
+}
+
+
+/* footer styles */
+#footer {
+	clear: both;
+	margin-top: 1.0em;
+	padding: 0.5em 0.5em;
+	background: #2A5769;
+	font-size: x-small;
+	font-style: italic;
+	border-top: double #4B4B4B;
+}
+
+#footer p {
+	margin: 0;
+	text-align: right;
+	color: #CFF7F7;
+}
+
+#footer a {
+	color: #CFF7F7;
+	text-decoration: underline;
+}
+
+/* main page footer alignment */
+.alignleft {
+	float: left;
+}
+.alignright {
+	float: right;
+}
+
+
