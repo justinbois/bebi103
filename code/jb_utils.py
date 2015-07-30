@@ -1,5 +1,5 @@
 """
-Set of utilities written by Justin Bois for use in BE/Bi 103 (2014
+Set of utilities written by Justin Bois for use in BE/Bi 103 (2015
 edition) and beyond.
 """
 from __future__ import division, print_function, \
@@ -36,7 +36,7 @@ except:
 try:
     from PIL import Image
 except:
-    warnings.warn('Unable to import PIL via Pillow.  ' \
+    warnings.warn('Unable to import PIL.  ' \
                   + 'Image processing utils will not work.', ImportWarning)
 
 try:
@@ -355,7 +355,7 @@ def verts_to_roi(verts, size_x, size_y):
         box of the ROI.  To extract the square image bounding the ROI,
         use:
             im_roi = im[roi_bbox[0]:roi_bbox[2]+1, roi_bbox[1]:roi_bbox[3]+1]
-    roi_box: array_like, shape is size of bounding box or ROI
+    roi_box : array_like, shape is size of bounding box or ROI
         A mask for the ROI with the same dimension as the bounding 
         box.  The indexing starts at zero at the upper right corner 
         of the box.
@@ -400,6 +400,7 @@ def n_frames(im_PIL):
             i += 1
         except EOFError:
             return im_PIL.tell()
+        
 
 # ############################
 class XYTStack(object):
