@@ -1,12 +1,10 @@
 .container { width:100% !important; }
 
 body {
-    background: #4B4B4B;
     color: #333;
 }
 
 #notebook_panel { /* main background */
-    background: #4B4B4B;    
     color: #f6f6f6;
 }
 
@@ -14,8 +12,6 @@ div #notebook { /* center the content */
     background: #fff;
     background:4b4b4b;
     color: #333;    
-/*    width: 120ex;
-    margin: auto; */
     padding-left: 1em;
     padding-right: 1em;
     padding-top: 2ex;
@@ -33,10 +29,10 @@ div.text_cell {
 
 div.text_cell_render{
     text-align: justify;
-    padding: 1em;
+    padding: 0em 1em 0em 1em;
     font-family: Verdana, Geneva, sans-serif;
     line-height: 145%; /* added for some line spacing of text. */
-    width: 842px; /* instead of 'inherit' for shorter lines */
+    width: 842px;      /* instead of 'inherit' for shorter lines */
     font-weight: Light;
     font-size: 13pt;
 }
