@@ -2,15 +2,18 @@
 
 body {
     color: #333;
+    background: #f6f6f6;
+    width: 980px;
+    margin: auto;
 }
 
 #notebook_panel { /* main background */
     color: #f6f6f6;
+    margin: auto;
 }
 
 div #notebook { /* center the content */
-    background: #fff;
-    background:4b4b4b;
+    background: #4b4b4b;
     color: #333;    
     padding-left: 1em;
     padding-right: 1em;
@@ -40,7 +43,7 @@ div.text_cell_render{
 div.text_cell_render.border-box-sizing.rendered_html {
     margin: 0;
     padding: 1em; 
-    margin-left: 1ex;
+    margin-left: 4ex;
     text-align: justify;
 }
 div.cell.text_cell.border-box-sizing {
@@ -130,14 +133,17 @@ div.CodeMirror { /* code font */
 div.prompt { /* remove In/Out prompt */
     display: none;
 }
- */
+
+div.cell.border-box-sizing.code_cell.rendered {
+    font-size: 12pt;
+}
  
 div.output_subarea {
     border:none;
     font-size: 12pt;
 }
 
-/* header colours and fonts */
+/* header colors and fonts */
 h1 { color: #444; }
 h2 { color: #444; }
 h3 { color: #444; font-style: italic; font-weight: normal}
