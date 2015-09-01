@@ -27,7 +27,7 @@ p {
 #wrap {
     text-align:left; 
     margin: 0 auto; 
-    width:700px;
+    width:750px;
     background: #E6E6E6;
     color: #222222; 
     font: small "Lucida Grande", Arial, sans-serif;
@@ -37,7 +37,7 @@ p {
 #masthead {
     margin-bottom: 0; 
     padding-top: 0;
-    width:700px;
+    width:750px;
     background: #002E40;
     text-align:right;
 }
@@ -48,7 +48,7 @@ p {
     border-bottom: double #4B4B4B;
     padding-top: 10px;
     padding-bottom:10px;
-    width:700px;
+    width:750px;
     background: #2A5769;
     text-align:left;
     text-indent:1.0em;
@@ -103,7 +103,7 @@ p {
 
 #content {
     width:700px;
-    margin: 0px auto;
+    margin: 10px 25px 10px 25px;
     text-align:left;
     padding:15px;
 }
