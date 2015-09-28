@@ -416,7 +416,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[1]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="nb">print</span><span class="p">(</span><span class="s">&#39;Hello, world.&#39;</span><span class="p">)</span>
@@ -465,7 +465,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[2]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">absolute_import</span>
@@ -499,7 +499,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[5]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Importing is done with the import statement</span>
@@ -558,7 +558,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="sd">&quot;&quot;&quot;</span>
@@ -619,7 +619,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="kn">import</span> <span class="nn">quadratic</span> <span class="k">as</span> <span class="nn">qd</span>
@@ -641,9 +641,18 @@ ax^2 + bx + c = 0.
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>roots: 3.0 -0.666666666667
-</pre>
+<div class="output_subarea output_text output_error">
+<pre>
+<span class="ansired">---------------------------------------------------------------------------</span>
+<span class="ansired">ImportError</span>                               Traceback (most recent call last)
+<span class="ansigreen">&lt;ipython-input-7-8a19bab66a6c&gt;</span> in <span class="ansicyan">&lt;module&gt;</span><span class="ansiblue">()</span>
+<span class="ansigreen">----&gt; 1</span><span class="ansired"> </span><span class="ansigreen">import</span> quadratic <span class="ansigreen">as</span> qd<span class="ansiblue"></span>
+<span class="ansigreen">      2</span> <span class="ansiblue"></span>
+<span class="ansigreen">      3</span> <span class="ansired"># Python has nifty syntax for making multiple definitions on the same line</span><span class="ansiblue"></span><span class="ansiblue"></span>
+<span class="ansigreen">      4</span> a<span class="ansiblue">,</span> b<span class="ansiblue">,</span> c <span class="ansiblue">=</span> <span class="ansicyan">3.0</span><span class="ansiblue">,</span> <span class="ansiblue">-</span><span class="ansicyan">7.0</span><span class="ansiblue">,</span> <span class="ansiblue">-</span><span class="ansicyan">6.0</span><span class="ansiblue"></span>
+<span class="ansigreen">      5</span> <span class="ansiblue"></span>
+
+<span class="ansired">ImportError</span>: No module named &apos;quadratic&apos;</pre>
 </div>
 </div>
 
@@ -673,7 +682,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># %load quadratic.py</span>
@@ -733,7 +742,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Specify a, b, and c that will give imaginary roots</span>
@@ -759,14 +768,6 @@ ax^2 + bx + c = 0.
 </div>
 </div>
 
-<div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stderr output_text">
-<pre>/Users/Justin/anaconda/lib/python3.4/site-packages/ipykernel/__main__.py:25: RuntimeWarning: invalid value encountered in sqrt
-/Users/Justin/anaconda/lib/python3.4/site-packages/ipykernel/__main__.py:26: RuntimeWarning: invalid value encountered in sqrt
-</pre>
-</div>
-</div>
-
 </div>
 </div>
 
@@ -784,7 +785,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="k">def</span> <span class="nf">roots</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
@@ -820,7 +821,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Pass in parameters that will give imaginary roots</span>
@@ -841,12 +842,12 @@ ax^2 + bx + c = 0.
 <pre>
 <span class="ansired">---------------------------------------------------------------------------</span>
 <span class="ansired">ValueError</span>                                Traceback (most recent call last)
-<span class="ansigreen">&lt;ipython-input-7-3c24fdd48190&gt;</span> in <span class="ansicyan">&lt;module&gt;</span><span class="ansiblue">()</span>
+<span class="ansigreen">&lt;ipython-input-11-3c24fdd48190&gt;</span> in <span class="ansicyan">&lt;module&gt;</span><span class="ansiblue">()</span>
 <span class="ansigreen">      1</span> <span class="ansired"># Pass in parameters that will give imaginary roots</span><span class="ansiblue"></span><span class="ansiblue"></span>
 <span class="ansigreen">      2</span> a<span class="ansiblue">,</span> b<span class="ansiblue">,</span> c <span class="ansiblue">=</span> <span class="ansicyan">1.0</span><span class="ansiblue">,</span> <span class="ansiblue">-</span><span class="ansicyan">2.0</span><span class="ansiblue">,</span> <span class="ansicyan">2.0</span><span class="ansiblue"></span>
 <span class="ansigreen">----&gt; 3</span><span class="ansired"> </span>root_1<span class="ansiblue">,</span> root_2 <span class="ansiblue">=</span> roots<span class="ansiblue">(</span>a<span class="ansiblue">,</span> b<span class="ansiblue">,</span> c<span class="ansiblue">)</span><span class="ansiblue"></span>
 
-<span class="ansigreen">&lt;ipython-input-6-ef88b835bc9e&gt;</span> in <span class="ansicyan">roots</span><span class="ansiblue">(a, b, c)</span>
+<span class="ansigreen">&lt;ipython-input-10-ef88b835bc9e&gt;</span> in <span class="ansicyan">roots</span><span class="ansiblue">(a, b, c)</span>
 <span class="ansigreen">      7</span> <span class="ansiblue"></span>
 <span class="ansigreen">      8</span>     <span class="ansigreen">if</span> delta <span class="ansiblue">&lt;</span> <span class="ansicyan">0.0</span><span class="ansiblue">:</span><span class="ansiblue"></span>
 <span class="ansigreen">----&gt; 9</span><span class="ansired">         </span><span class="ansigreen">raise</span> ValueError<span class="ansiblue">(</span><span class="ansiblue">&apos;Imaginary roots!  We only do real roots!&apos;</span><span class="ansiblue">)</span><span class="ansiblue"></span>
@@ -884,7 +885,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="n">np</span><span class="o">.</span><span class="n">roots</span><span class="o">?</span>
@@ -907,7 +908,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Define the coefficients in a list (using square brackets)</span>
@@ -954,7 +955,7 @@ Roots for (a, b, c) = (1, -2, 2):  [ 1.+1.j  1.-1.j]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># This is a list</span>
@@ -1012,7 +1013,7 @@ Roots for (a, b, c) = (1, -2, 2):  [ 1.+1.j  1.-1.j]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">])</span>
@@ -1063,7 +1064,7 @@ b**a:    [   4.   25.  216.]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[12]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Make 20 evenly spaced points from 0 to 2*pi</span>
@@ -1151,7 +1152,7 @@ y:  [ 1.          1.06547842  1.13495438  1.2083445   1.28550031  1.36620039
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Import Matplotlib</span>
@@ -1180,7 +1181,7 @@ y:  [ 1.          1.06547842  1.13495438  1.2083445   1.28550031  1.36620039
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[13]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[17]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -1413,7 +1414,7 @@ QF5NGAAAAABJRU5ErkJggg==
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Define forward differencing function</span>
@@ -1454,7 +1455,7 @@ QF5NGAAAAABJRU5ErkJggg==
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Compute exact derivative</span>
@@ -1485,11 +1486,11 @@ QF5NGAAAAABJRU5ErkJggg==
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[15]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[19]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
-<pre>&lt;matplotlib.legend.Legend at 0x111a1aef0&gt;</pre>
+<pre>&lt;matplotlib.legend.Legend at 0x1076c3ef0&gt;</pre>
 </div>
 
 </div>
@@ -1831,7 +1832,7 @@ ysFEDi4AAAAASUVORK5CYII=
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Use np.diff function to compute forward differences</span>
@@ -1872,7 +1873,7 @@ ysFEDi4AAAAASUVORK5CYII=
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[17]:</div>
+<div class="prompt input_prompt">In&nbsp;[21]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="o">%</span><span class="k">timeit</span> np_deriv = np.diff(y) / np.diff(x)
@@ -1890,8 +1891,8 @@ ysFEDi4AAAAASUVORK5CYII=
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>100000 loops, best of 3: 10.5 µs per loop
-10000 loops, best of 3: 63.1 µs per loop
+<pre>100000 loops, best of 3: 11.7 µs per loop
+10000 loops, best of 3: 68.6 µs per loop
 </pre>
 </div>
 </div>
@@ -1925,7 +1926,7 @@ ysFEDi4AAAAASUVORK5CYII=
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[22]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="kn">import</span> <span class="nn">scipy.special</span>
@@ -1970,7 +1971,7 @@ ysFEDi4AAAAASUVORK5CYII=
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[23]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Compute integral numerically (do not use last point because it would</span>
@@ -2014,7 +2015,7 @@ exact - approx:  0.0
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[20]:</div>
+<div class="prompt input_prompt">In&nbsp;[24]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Make a sum function that uses a for loop</span>
@@ -2042,12 +2043,12 @@ exact - approx:  0.0
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>100000 loops, best of 3: 15.3 µs per loop
-100000 loops, best of 3: 8.96 µs per loop
-The slowest run took 13.81 times longer than the fastest. This could mean that an intermediate result is being cached 
-100000 loops, best of 3: 1.99 µs per loop
-The slowest run took 15.82 times longer than the fastest. This could mean that an intermediate result is being cached 
-1000000 loops, best of 3: 1.48 µs per loop
+<pre>100000 loops, best of 3: 16.7 µs per loop
+100000 loops, best of 3: 9.62 µs per loop
+The slowest run took 12.46 times longer than the fastest. This could mean that an intermediate result is being cached 
+100000 loops, best of 3: 2.19 µs per loop
+The slowest run took 17.23 times longer than the fastest. This could mean that an intermediate result is being cached 
+1000000 loops, best of 3: 1.62 µs per loop
 </pre>
 </div>
 </div>
@@ -2068,7 +2069,7 @@ The slowest run took 15.82 times longer than the fastest. This could mean that a
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[21]:</div>
+<div class="prompt input_prompt">In&nbsp;[25]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Import Seaborn</span>
@@ -2100,13 +2101,13 @@ The slowest run took 15.82 times longer than the fastest. This could mean that a
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[22]:</div>
+<div class="prompt input_prompt">In&nbsp;[29]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Plot approximate derivative with gray dots; deriv is approximately between</span>
 <span class="c"># grid points in x</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">deriv</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s">&#39;.&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;gray&#39;</span><span class="p">,</span> 
-         <span class="n">linestyle</span><span class="o">=</span><span class="s">&#39;None&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">deriv</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;gray&#39;</span><span class="p">,</span> 
+         <span class="n">linestyle</span><span class="o">=</span><span class="s">&#39;None&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
 
 <span class="c"># Plot exact derivative as a black line (given by &#39;k-&#39;).</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">deriv_exact</span><span class="p">,</span> <span class="s">&#39;k-&#39;</span><span class="p">)</span>
@@ -2128,11 +2129,11 @@ The slowest run took 15.82 times longer than the fastest. This could mean that a
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[22]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[29]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
-<pre>&lt;matplotlib.legend.Legend at 0x11757dc88&gt;</pre>
+<pre>&lt;matplotlib.legend.Legend at 0x1193acdd8&gt;</pre>
 </div>
 
 </div>
@@ -2608,19 +2609,19 @@ L502.384 318.673" style="fill:none;stroke:#ffffff;stroke-linecap:round;"/>
       <!-- −1.5 -->
       <defs>
        <path d="
-M9.07812 0
-L9.07812 10.0156
-L19.0938 10.0156
-L19.0938 0
-z
-" id="ArialMT-2e"/>
-       <path d="
 M52.8281 31.2031
 L5.5625 31.2031
 L5.5625 39.4062
 L52.8281 39.4062
 z
 " id="ArialMT-2212"/>
+       <path d="
+M9.07812 0
+L9.07812 10.0156
+L19.0938 10.0156
+L19.0938 0
+z
+" id="ArialMT-2e"/>
       </defs>
       <g style="fill:#262626;" transform="translate(30.2 321.2578125)scale(0.1 -0.1)">
        <use xlink:href="#ArialMT-2212"/>
@@ -2840,19 +2841,6 @@ Q11.0781 -14.4062 8.79688 -14.4062
 Q8.6875 -14.3594 8.59375 -14.3281
 Q8.5 -14.3125 8.40625 -14.3125" id="Cmmi10-79"/>
       <path d="
-M5.60938 -23
-Q5.60938 -22.7031 5.71875 -22.6094
-L40.4844 73.7812
-Q40.6719 74.3594 41.1562 74.6719
-Q41.6562 75 42.2812 75
-Q43.1719 75 43.7188 74.4531
-Q44.2812 73.9219 44.2812 73
-L44.2812 72.6094
-L9.51562 -23.7812
-Q8.9375 -25 7.625 -25
-Q6.78125 -25 6.1875 -24.4062
-Q5.60938 -23.8281 5.60938 -23" id="Cmmi10-3d"/>
-      <path d="
 M24.4219 -1.125
 Q18.5 -1.125 13.6094 2.07812
 Q8.73438 5.28125 6.03125 10.5
@@ -2891,6 +2879,19 @@ Q14.5469 35.6875 13.2812 31.0938
 Q12.0156 26.5156 12.0156 21.4844
 Q12.0156 17.4844 12.4219 14.5
 Q12.8438 11.5312 14.2031 8.6875" id="Cmr10-64"/>
+      <path d="
+M5.60938 -23
+Q5.60938 -22.7031 5.71875 -22.6094
+L40.4844 73.7812
+Q40.6719 74.3594 41.1562 74.6719
+Q41.6562 75 42.2812 75
+Q43.1719 75 43.7188 74.4531
+Q44.2812 73.9219 44.2812 73
+L44.2812 72.6094
+L9.51562 -23.7812
+Q8.9375 -25 7.625 -25
+Q6.78125 -25 6.1875 -24.4062
+Q5.60938 -23.8281 5.60938 -23" id="Cmmi10-3d"/>
      </defs>
      <g style="fill:#262626;" transform="translate(20.7 189.34265625)rotate(-90.0)scale(0.18 -0.18)">
       <use xlink:href="#Cmr10-64"/>
@@ -2904,118 +2905,118 @@ Q12.8438 11.5312 14.2031 8.6875" id="Cmr10-64"/>
    <g id="line2d_43">
     <defs>
      <path d="
-M0 2.5
-C0.663008 2.5 1.29895 2.23658 1.76777 1.76777
-C2.23658 1.29895 2.5 0.663008 2.5 0
-C2.5 -0.663008 2.23658 -1.29895 1.76777 -1.76777
-C1.29895 -2.23658 0.663008 -2.5 0 -2.5
-C-0.663008 -2.5 -1.29895 -2.23658 -1.76777 -1.76777
-C-2.23658 -1.29895 -2.5 -0.663008 -2.5 0
-C-2.5 0.663008 -2.23658 1.29895 -1.76777 1.76777
-C-1.29895 2.23658 -0.663008 2.5 0 2.5
+M0 3.5
+C0.928211 3.5 1.81853 3.13122 2.47487 2.47487
+C3.13122 1.81853 3.5 0.928211 3.5 0
+C3.5 -0.928211 3.13122 -1.81853 2.47487 -2.47487
+C1.81853 -3.13122 0.928211 -3.5 0 -3.5
+C-0.928211 -3.5 -1.81853 -3.13122 -2.47487 -2.47487
+C-3.13122 -1.81853 -3.5 -0.928211 -3.5 0
+C-3.5 0.928211 -3.13122 1.81853 -2.47487 2.47487
+C-1.81853 3.13122 -0.928211 3.5 0 3.5
 z
-" id="m05a8745836"/>
+" id="mfe90d66956"/>
     </defs>
     <g clip-path="url(#pcac7533ba3)">
-     <use style="fill:#808080;" x="58.2389204545" xlink:href="#m05a8745836" y="59.6797238923"/>
-     <use style="fill:#808080;" x="62.7480113636" xlink:href="#m05a8745836" y="53.2362024366"/>
-     <use style="fill:#808080;" x="67.2571022727" xlink:href="#m05a8745836" y="46.9270538334"/>
-     <use style="fill:#808080;" x="71.7661931818" xlink:href="#m05a8745836" y="40.8572595202"/>
-     <use style="fill:#808080;" x="76.2752840909" xlink:href="#m05a8745836" y="35.1443377394"/>
-     <use style="fill:#808080;" x="80.784375" xlink:href="#m05a8745836" y="29.9171170122"/>
-     <use style="fill:#808080;" x="85.2934659091" xlink:href="#m05a8745836" y="25.3138532035"/>
-     <use style="fill:#808080;" x="89.8025568182" xlink:href="#m05a8745836" y="21.4796472485"/>
-     <use style="fill:#808080;" x="94.3116477273" xlink:href="#m05a8745836" y="18.5631519447"/>
-     <use style="fill:#808080;" x="98.8207386364" xlink:href="#m05a8745836" y="16.7125951539"/>
-     <use style="fill:#808080;" x="103.329829545" xlink:href="#m05a8745836" y="16.0711918936"/>
-     <use style="fill:#808080;" x="107.838920455" xlink:href="#m05a8745836" y="16.7720668102"/>
-     <use style="fill:#808080;" x="112.348011364" xlink:href="#m05a8745836" y="18.9328582494"/>
-     <use style="fill:#808080;" x="116.857102273" xlink:href="#m05a8745836" y="22.6502216571"/>
-     <use style="fill:#808080;" x="121.366193182" xlink:href="#m05a8745836" y="27.9944890115"/>
-     <use style="fill:#808080;" x="125.875284091" xlink:href="#m05a8745836" y="35.0047679358"/>
-     <use style="fill:#808080;" x="130.384375" xlink:href="#m05a8745836" y="43.6847749953"/>
-     <use style="fill:#808080;" x="134.893465909" xlink:href="#m05a8745836" y="53.9996892112"/>
-     <use style="fill:#808080;" x="139.402556818" xlink:href="#m05a8745836" y="65.8742821433"/>
-     <use style="fill:#808080;" x="143.911647727" xlink:href="#m05a8745836" y="79.1925298647"/>
-     <use style="fill:#808080;" x="148.420738636" xlink:href="#m05a8745836" y="93.7988416059"/>
-     <use style="fill:#808080;" x="152.929829545" xlink:href="#m05a8745836" y="109.50095365"/>
-     <use style="fill:#808080;" x="157.438920455" xlink:href="#m05a8745836" y="126.074440914"/>
-     <use style="fill:#808080;" x="161.948011364" xlink:href="#m05a8745836" y="143.268699638"/>
-     <use style="fill:#808080;" x="166.457102273" xlink:href="#m05a8745836" y="160.814160612"/>
-     <use style="fill:#808080;" x="170.966193182" xlink:href="#m05a8745836" y="178.430411237"/>
-     <use style="fill:#808080;" x="175.475284091" xlink:href="#m05a8745836" y="195.834843459"/>
-     <use style="fill:#808080;" x="179.984375" xlink:href="#m05a8745836" y="212.751408718"/>
-     <use style="fill:#808080;" x="184.493465909" xlink:href="#m05a8745836" y="228.919053706"/>
-     <use style="fill:#808080;" x="189.002556818" xlink:href="#m05a8745836" y="244.099432583"/>
-     <use style="fill:#808080;" x="193.511647727" xlink:href="#m05a8745836" y="258.083540478"/>
-     <use style="fill:#808080;" x="198.020738636" xlink:href="#m05a8745836" y="270.696985024"/>
-     <use style="fill:#808080;" x="202.529829545" xlink:href="#m05a8745836" y="281.803701261"/>
-     <use style="fill:#808080;" x="207.038920455" xlink:href="#m05a8745836" y="291.308012677"/>
-     <use style="fill:#808080;" x="211.548011364" xlink:href="#m05a8745836" y="299.155039759"/>
-     <use style="fill:#808080;" x="216.057102273" xlink:href="#m05a8745836" y="305.329549338"/>
-     <use style="fill:#808080;" x="220.566193182" xlink:href="#m05a8745836" y="309.853417044"/>
-     <use style="fill:#808080;" x="225.075284091" xlink:href="#m05a8745836" y="312.781936306"/>
-     <use style="fill:#808080;" x="229.584375" xlink:href="#m05a8745836" y="314.199247789"/>
-     <use style="fill:#808080;" x="234.093465909" xlink:href="#m05a8745836" y="314.213182115"/>
-     <use style="fill:#808080;" x="238.602556818" xlink:href="#m05a8745836" y="312.949807169"/>
-     <use style="fill:#808080;" x="243.111647727" xlink:href="#m05a8745836" y="310.547951959"/>
-     <use style="fill:#808080;" x="247.620738636" xlink:href="#m05a8745836" y="307.15394545"/>
-     <use style="fill:#808080;" x="252.129829545" xlink:href="#m05a8745836" y="302.916765526"/>
-     <use style="fill:#808080;" x="256.638920455" xlink:href="#m05a8745836" y="297.983744574"/>
-     <use style="fill:#808080;" x="261.148011364" xlink:href="#m05a8745836" y="292.496928361"/>
-     <use style="fill:#808080;" x="265.657102273" xlink:href="#m05a8745836" y="286.590137478"/>
-     <use style="fill:#808080;" x="270.166193182" xlink:href="#m05a8745836" y="280.386738328"/>
-     <use style="fill:#808080;" x="274.675284091" xlink:href="#m05a8745836" y="273.99809541"/>
-     <use style="fill:#808080;" x="279.184375" xlink:href="#m05a8745836" y="267.522649335"/>
-     <use style="fill:#808080;" x="283.693465909" xlink:href="#m05a8745836" y="261.045546001"/>
-     <use style="fill:#808080;" x="288.202556818" xlink:href="#m05a8745836" y="254.638730981"/>
-     <use style="fill:#808080;" x="292.711647727" xlink:href="#m05a8745836" y="248.36141876"/>
-     <use style="fill:#808080;" x="297.220738636" xlink:href="#m05a8745836" y="242.260847652"/>
-     <use style="fill:#808080;" x="301.729829545" xlink:href="#m05a8745836" y="236.373236822"/>
-     <use style="fill:#808080;" x="306.238920455" xlink:href="#m05a8745836" y="230.724870452"/>
-     <use style="fill:#808080;" x="310.748011364" xlink:href="#m05a8745836" y="225.333244576"/>
-     <use style="fill:#808080;" x="315.257102273" xlink:href="#m05a8745836" y="220.208223387"/>
-     <use style="fill:#808080;" x="319.766193182" xlink:href="#m05a8745836" y="215.353163102"/>
-     <use style="fill:#808080;" x="324.275284091" xlink:href="#m05a8745836" y="210.765972065"/>
-     <use style="fill:#808080;" x="328.784375" xlink:href="#m05a8745836" y="206.440085342"/>
-     <use style="fill:#808080;" x="333.293465909" xlink:href="#m05a8745836" y="202.365340303"/>
-     <use style="fill:#808080;" x="337.802556818" xlink:href="#m05a8745836" y="198.528746532"/>
-     <use style="fill:#808080;" x="342.311647727" xlink:href="#m05a8745836" y="194.91514882"/>
-     <use style="fill:#808080;" x="346.820738636" xlink:href="#m05a8745836" y="191.507786164"/>
-     <use style="fill:#808080;" x="351.329829545" xlink:href="#m05a8745836" y="188.288752651"/>
-     <use style="fill:#808080;" x="355.838920455" xlink:href="#m05a8745836" y="185.239368125"/>
-     <use style="fill:#808080;" x="360.348011364" xlink:href="#m05a8745836" y="182.340467684"/>
-     <use style="fill:#808080;" x="364.857102273" xlink:href="#m05a8745836" y="179.572619653"/>
-     <use style="fill:#808080;" x="369.366193182" xlink:href="#m05a8745836" y="176.916281749"/>
-     <use style="fill:#808080;" x="373.875284091" xlink:href="#m05a8745836" y="174.351904943"/>
-     <use style="fill:#808080;" x="378.384375" xlink:href="#m05a8745836" y="171.859994087"/>
-     <use style="fill:#808080;" x="382.893465909" xlink:href="#m05a8745836" y="169.421133864"/>
-     <use style="fill:#808080;" x="387.402556818" xlink:href="#m05a8745836" y="167.015988089"/>
-     <use style="fill:#808080;" x="391.911647727" xlink:href="#m05a8745836" y="164.625279899"/>
-     <use style="fill:#808080;" x="396.420738636" xlink:href="#m05a8745836" y="162.229759966"/>
-     <use style="fill:#808080;" x="400.929829545" xlink:href="#m05a8745836" y="159.810169644"/>
-     <use style="fill:#808080;" x="405.438920455" xlink:href="#m05a8745836" y="157.347205797"/>
-     <use style="fill:#808080;" x="409.948011364" xlink:href="#m05a8745836" y="154.821494128"/>
-     <use style="fill:#808080;" x="414.457102273" xlink:href="#m05a8745836" y="152.213578009"/>
-     <use style="fill:#808080;" x="418.966193182" xlink:href="#m05a8745836" y="149.503930132"/>
-     <use style="fill:#808080;" x="423.475284091" xlink:href="#m05a8745836" y="146.67299477"/>
-     <use style="fill:#808080;" x="427.984375" xlink:href="#m05a8745836" y="143.701268911"/>
-     <use style="fill:#808080;" x="432.493465909" xlink:href="#m05a8745836" y="140.569431107"/>
-     <use style="fill:#808080;" x="437.002556818" xlink:href="#m05a8745836" y="137.258527341"/>
-     <use style="fill:#808080;" x="441.511647727" xlink:href="#m05a8745836" y="133.750223542"/>
-     <use style="fill:#808080;" x="446.020738636" xlink:href="#m05a8745836" y="130.027134481"/>
-     <use style="fill:#808080;" x="450.529829545" xlink:href="#m05a8745836" y="126.073238476"/>
-     <use style="fill:#808080;" x="455.038920455" xlink:href="#m05a8745836" y="121.874386446"/>
-     <use style="fill:#808080;" x="459.548011364" xlink:href="#m05a8745836" y="117.418912339"/>
-     <use style="fill:#808080;" x="464.057102273" xlink:href="#m05a8745836" y="112.698349445"/>
-     <use style="fill:#808080;" x="468.566193182" xlink:href="#m05a8745836" y="107.708253602"/>
-     <use style="fill:#808080;" x="473.075284091" xlink:href="#m05a8745836" y="102.449129515"/>
-     <use style="fill:#808080;" x="477.584375" xlink:href="#m05a8745836" y="96.9274502762"/>
-     <use style="fill:#808080;" x="482.093465909" xlink:href="#m05a8745836" y="91.1567526349"/>
-     <use style="fill:#808080;" x="486.602556818" xlink:href="#m05a8745836" y="85.158781639"/>
-     <use style="fill:#808080;" x="491.111647727" xlink:href="#m05a8745836" y="78.9646481436"/>
-     <use style="fill:#808080;" x="495.620738636" xlink:href="#m05a8745836" y="72.6159516744"/>
-     <use style="fill:#808080;" x="500.129829545" xlink:href="#m05a8745836" y="66.165809765"/>
+     <use style="fill:#808080;" x="58.2389204545" xlink:href="#mfe90d66956" y="59.6797238923"/>
+     <use style="fill:#808080;" x="62.7480113636" xlink:href="#mfe90d66956" y="53.2362024366"/>
+     <use style="fill:#808080;" x="67.2571022727" xlink:href="#mfe90d66956" y="46.9270538334"/>
+     <use style="fill:#808080;" x="71.7661931818" xlink:href="#mfe90d66956" y="40.8572595202"/>
+     <use style="fill:#808080;" x="76.2752840909" xlink:href="#mfe90d66956" y="35.1443377394"/>
+     <use style="fill:#808080;" x="80.784375" xlink:href="#mfe90d66956" y="29.9171170122"/>
+     <use style="fill:#808080;" x="85.2934659091" xlink:href="#mfe90d66956" y="25.3138532035"/>
+     <use style="fill:#808080;" x="89.8025568182" xlink:href="#mfe90d66956" y="21.4796472485"/>
+     <use style="fill:#808080;" x="94.3116477273" xlink:href="#mfe90d66956" y="18.5631519447"/>
+     <use style="fill:#808080;" x="98.8207386364" xlink:href="#mfe90d66956" y="16.7125951539"/>
+     <use style="fill:#808080;" x="103.329829545" xlink:href="#mfe90d66956" y="16.0711918936"/>
+     <use style="fill:#808080;" x="107.838920455" xlink:href="#mfe90d66956" y="16.7720668102"/>
+     <use style="fill:#808080;" x="112.348011364" xlink:href="#mfe90d66956" y="18.9328582494"/>
+     <use style="fill:#808080;" x="116.857102273" xlink:href="#mfe90d66956" y="22.6502216571"/>
+     <use style="fill:#808080;" x="121.366193182" xlink:href="#mfe90d66956" y="27.9944890115"/>
+     <use style="fill:#808080;" x="125.875284091" xlink:href="#mfe90d66956" y="35.0047679358"/>
+     <use style="fill:#808080;" x="130.384375" xlink:href="#mfe90d66956" y="43.6847749953"/>
+     <use style="fill:#808080;" x="134.893465909" xlink:href="#mfe90d66956" y="53.9996892112"/>
+     <use style="fill:#808080;" x="139.402556818" xlink:href="#mfe90d66956" y="65.8742821433"/>
+     <use style="fill:#808080;" x="143.911647727" xlink:href="#mfe90d66956" y="79.1925298647"/>
+     <use style="fill:#808080;" x="148.420738636" xlink:href="#mfe90d66956" y="93.7988416059"/>
+     <use style="fill:#808080;" x="152.929829545" xlink:href="#mfe90d66956" y="109.50095365"/>
+     <use style="fill:#808080;" x="157.438920455" xlink:href="#mfe90d66956" y="126.074440914"/>
+     <use style="fill:#808080;" x="161.948011364" xlink:href="#mfe90d66956" y="143.268699638"/>
+     <use style="fill:#808080;" x="166.457102273" xlink:href="#mfe90d66956" y="160.814160612"/>
+     <use style="fill:#808080;" x="170.966193182" xlink:href="#mfe90d66956" y="178.430411237"/>
+     <use style="fill:#808080;" x="175.475284091" xlink:href="#mfe90d66956" y="195.834843459"/>
+     <use style="fill:#808080;" x="179.984375" xlink:href="#mfe90d66956" y="212.751408718"/>
+     <use style="fill:#808080;" x="184.493465909" xlink:href="#mfe90d66956" y="228.919053706"/>
+     <use style="fill:#808080;" x="189.002556818" xlink:href="#mfe90d66956" y="244.099432583"/>
+     <use style="fill:#808080;" x="193.511647727" xlink:href="#mfe90d66956" y="258.083540478"/>
+     <use style="fill:#808080;" x="198.020738636" xlink:href="#mfe90d66956" y="270.696985024"/>
+     <use style="fill:#808080;" x="202.529829545" xlink:href="#mfe90d66956" y="281.803701261"/>
+     <use style="fill:#808080;" x="207.038920455" xlink:href="#mfe90d66956" y="291.308012677"/>
+     <use style="fill:#808080;" x="211.548011364" xlink:href="#mfe90d66956" y="299.155039759"/>
+     <use style="fill:#808080;" x="216.057102273" xlink:href="#mfe90d66956" y="305.329549338"/>
+     <use style="fill:#808080;" x="220.566193182" xlink:href="#mfe90d66956" y="309.853417044"/>
+     <use style="fill:#808080;" x="225.075284091" xlink:href="#mfe90d66956" y="312.781936306"/>
+     <use style="fill:#808080;" x="229.584375" xlink:href="#mfe90d66956" y="314.199247789"/>
+     <use style="fill:#808080;" x="234.093465909" xlink:href="#mfe90d66956" y="314.213182115"/>
+     <use style="fill:#808080;" x="238.602556818" xlink:href="#mfe90d66956" y="312.949807169"/>
+     <use style="fill:#808080;" x="243.111647727" xlink:href="#mfe90d66956" y="310.547951959"/>
+     <use style="fill:#808080;" x="247.620738636" xlink:href="#mfe90d66956" y="307.15394545"/>
+     <use style="fill:#808080;" x="252.129829545" xlink:href="#mfe90d66956" y="302.916765526"/>
+     <use style="fill:#808080;" x="256.638920455" xlink:href="#mfe90d66956" y="297.983744574"/>
+     <use style="fill:#808080;" x="261.148011364" xlink:href="#mfe90d66956" y="292.496928361"/>
+     <use style="fill:#808080;" x="265.657102273" xlink:href="#mfe90d66956" y="286.590137478"/>
+     <use style="fill:#808080;" x="270.166193182" xlink:href="#mfe90d66956" y="280.386738328"/>
+     <use style="fill:#808080;" x="274.675284091" xlink:href="#mfe90d66956" y="273.99809541"/>
+     <use style="fill:#808080;" x="279.184375" xlink:href="#mfe90d66956" y="267.522649335"/>
+     <use style="fill:#808080;" x="283.693465909" xlink:href="#mfe90d66956" y="261.045546001"/>
+     <use style="fill:#808080;" x="288.202556818" xlink:href="#mfe90d66956" y="254.638730981"/>
+     <use style="fill:#808080;" x="292.711647727" xlink:href="#mfe90d66956" y="248.36141876"/>
+     <use style="fill:#808080;" x="297.220738636" xlink:href="#mfe90d66956" y="242.260847652"/>
+     <use style="fill:#808080;" x="301.729829545" xlink:href="#mfe90d66956" y="236.373236822"/>
+     <use style="fill:#808080;" x="306.238920455" xlink:href="#mfe90d66956" y="230.724870452"/>
+     <use style="fill:#808080;" x="310.748011364" xlink:href="#mfe90d66956" y="225.333244576"/>
+     <use style="fill:#808080;" x="315.257102273" xlink:href="#mfe90d66956" y="220.208223387"/>
+     <use style="fill:#808080;" x="319.766193182" xlink:href="#mfe90d66956" y="215.353163102"/>
+     <use style="fill:#808080;" x="324.275284091" xlink:href="#mfe90d66956" y="210.765972065"/>
+     <use style="fill:#808080;" x="328.784375" xlink:href="#mfe90d66956" y="206.440085342"/>
+     <use style="fill:#808080;" x="333.293465909" xlink:href="#mfe90d66956" y="202.365340303"/>
+     <use style="fill:#808080;" x="337.802556818" xlink:href="#mfe90d66956" y="198.528746532"/>
+     <use style="fill:#808080;" x="342.311647727" xlink:href="#mfe90d66956" y="194.91514882"/>
+     <use style="fill:#808080;" x="346.820738636" xlink:href="#mfe90d66956" y="191.507786164"/>
+     <use style="fill:#808080;" x="351.329829545" xlink:href="#mfe90d66956" y="188.288752651"/>
+     <use style="fill:#808080;" x="355.838920455" xlink:href="#mfe90d66956" y="185.239368125"/>
+     <use style="fill:#808080;" x="360.348011364" xlink:href="#mfe90d66956" y="182.340467684"/>
+     <use style="fill:#808080;" x="364.857102273" xlink:href="#mfe90d66956" y="179.572619653"/>
+     <use style="fill:#808080;" x="369.366193182" xlink:href="#mfe90d66956" y="176.916281749"/>
+     <use style="fill:#808080;" x="373.875284091" xlink:href="#mfe90d66956" y="174.351904943"/>
+     <use style="fill:#808080;" x="378.384375" xlink:href="#mfe90d66956" y="171.859994087"/>
+     <use style="fill:#808080;" x="382.893465909" xlink:href="#mfe90d66956" y="169.421133864"/>
+     <use style="fill:#808080;" x="387.402556818" xlink:href="#mfe90d66956" y="167.015988089"/>
+     <use style="fill:#808080;" x="391.911647727" xlink:href="#mfe90d66956" y="164.625279899"/>
+     <use style="fill:#808080;" x="396.420738636" xlink:href="#mfe90d66956" y="162.229759966"/>
+     <use style="fill:#808080;" x="400.929829545" xlink:href="#mfe90d66956" y="159.810169644"/>
+     <use style="fill:#808080;" x="405.438920455" xlink:href="#mfe90d66956" y="157.347205797"/>
+     <use style="fill:#808080;" x="409.948011364" xlink:href="#mfe90d66956" y="154.821494128"/>
+     <use style="fill:#808080;" x="414.457102273" xlink:href="#mfe90d66956" y="152.213578009"/>
+     <use style="fill:#808080;" x="418.966193182" xlink:href="#mfe90d66956" y="149.503930132"/>
+     <use style="fill:#808080;" x="423.475284091" xlink:href="#mfe90d66956" y="146.67299477"/>
+     <use style="fill:#808080;" x="427.984375" xlink:href="#mfe90d66956" y="143.701268911"/>
+     <use style="fill:#808080;" x="432.493465909" xlink:href="#mfe90d66956" y="140.569431107"/>
+     <use style="fill:#808080;" x="437.002556818" xlink:href="#mfe90d66956" y="137.258527341"/>
+     <use style="fill:#808080;" x="441.511647727" xlink:href="#mfe90d66956" y="133.750223542"/>
+     <use style="fill:#808080;" x="446.020738636" xlink:href="#mfe90d66956" y="130.027134481"/>
+     <use style="fill:#808080;" x="450.529829545" xlink:href="#mfe90d66956" y="126.073238476"/>
+     <use style="fill:#808080;" x="455.038920455" xlink:href="#mfe90d66956" y="121.874386446"/>
+     <use style="fill:#808080;" x="459.548011364" xlink:href="#mfe90d66956" y="117.418912339"/>
+     <use style="fill:#808080;" x="464.057102273" xlink:href="#mfe90d66956" y="112.698349445"/>
+     <use style="fill:#808080;" x="468.566193182" xlink:href="#mfe90d66956" y="107.708253602"/>
+     <use style="fill:#808080;" x="473.075284091" xlink:href="#mfe90d66956" y="102.449129515"/>
+     <use style="fill:#808080;" x="477.584375" xlink:href="#mfe90d66956" y="96.9274502762"/>
+     <use style="fill:#808080;" x="482.093465909" xlink:href="#mfe90d66956" y="91.1567526349"/>
+     <use style="fill:#808080;" x="486.602556818" xlink:href="#mfe90d66956" y="85.158781639"/>
+     <use style="fill:#808080;" x="491.111647727" xlink:href="#mfe90d66956" y="78.9646481436"/>
+     <use style="fill:#808080;" x="495.620738636" xlink:href="#mfe90d66956" y="72.6159516744"/>
+     <use style="fill:#808080;" x="500.129829545" xlink:href="#mfe90d66956" y="66.165809765"/>
     </g>
    </g>
    <g id="line2d_44">
@@ -3123,8 +3124,8 @@ L502.384 62.9227" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-wi
    </g>
    <g id="patch_3">
     <path d="
-M55.9844 11.7727
-L502.384 11.7727" style="fill:none;"/>
+M55.9844 318.673
+L55.9844 11.7727" style="fill:none;"/>
    </g>
    <g id="patch_4">
     <path d="
@@ -3133,38 +3134,24 @@ L502.384 11.7727" style="fill:none;"/>
    </g>
    <g id="patch_5">
     <path d="
-M55.9844 318.673
-L502.384 318.673" style="fill:none;"/>
+M55.9844 11.7727
+L502.384 11.7727" style="fill:none;"/>
    </g>
    <g id="patch_6">
     <path d="
 M55.9844 318.673
-L55.9844 11.7727" style="fill:none;"/>
+L502.384 318.673" style="fill:none;"/>
    </g>
    <g id="legend_1">
     <g id="line2d_45"/>
     <g id="line2d_46">
      <g>
-      <use style="fill:#808080;" x="263.3703125" xlink:href="#m05a8745836" y="22.43046875"/>
+      <use style="fill:#808080;" x="263.3703125" xlink:href="#mfe90d66956" y="22.43046875"/>
      </g>
     </g>
     <g id="text_17">
      <!-- fin. diff -->
      <defs>
-      <path id="ArialMT-20"/>
-      <path d="
-M6.64062 61.4688
-L6.64062 71.5781
-L15.4375 71.5781
-L15.4375 61.4688
-z
-
-M6.64062 0
-L6.64062 51.8594
-L15.4375 51.8594
-L15.4375 0
-z
-" id="ArialMT-69"/>
       <path d="
 M6.59375 0
 L6.59375 51.8594
@@ -3234,6 +3221,20 @@ Q40.375 35.7969 36.2656 40.7656
 Q32.1719 45.75 26.1719 45.75
 Q20.3125 45.75 16.375 40.9688
 Q12.4531 36.1875 12.4531 25.875" id="ArialMT-64"/>
+      <path id="ArialMT-20"/>
+      <path d="
+M6.64062 61.4688
+L6.64062 71.5781
+L15.4375 71.5781
+L15.4375 61.4688
+z
+
+M6.64062 0
+L6.64062 51.8594
+L15.4375 51.8594
+L15.4375 0
+z
+" id="ArialMT-69"/>
      </defs>
      <g style="fill:#262626;" transform="translate(275.3703125 25.93046875)scale(0.1 -0.1)">
       <use xlink:href="#ArialMT-66"/>
@@ -3257,6 +3258,28 @@ L273.37 36.5758" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-wid
      <!-- exact -->
      <defs>
       <path d="
+M25.7812 7.85938
+L27.0469 0.09375
+Q23.3438 -0.6875 20.4062 -0.6875
+Q15.625 -0.6875 12.9844 0.828125
+Q10.3594 2.34375 9.28125 4.8125
+Q8.20312 7.28125 8.20312 15.1875
+L8.20312 45.0156
+L1.76562 45.0156
+L1.76562 51.8594
+L8.20312 51.8594
+L8.20312 64.7031
+L16.9375 69.9688
+L16.9375 51.8594
+L25.7812 51.8594
+L25.7812 45.0156
+L16.9375 45.0156
+L16.9375 14.7031
+Q16.9375 10.9375 17.4062 9.85938
+Q17.875 8.79688 18.9219 8.15625
+Q19.9688 7.51562 21.9219 7.51562
+Q23.3906 7.51562 25.7812 7.85938" id="ArialMT-74"/>
+      <path d="
 M40.4375 19
 L49.0781 17.875
 Q47.6562 8.9375 41.8125 3.875
@@ -3278,23 +3301,28 @@ Q20.9531 6.0625 27.3906 6.0625
 Q32.5625 6.0625 36.0312 9.23438
 Q39.5 12.4062 40.4375 19" id="ArialMT-63"/>
       <path d="
-M0.734375 0
-L19.6719 26.9531
-L2.15625 51.8594
-L13.1406 51.8594
-L21.0938 39.7031
-Q23.3438 36.2344 24.7031 33.8906
-Q26.8594 37.1094 28.6562 39.5938
-L37.4062 51.8594
-L47.9062 51.8594
-L29.9844 27.4375
-L49.2656 0
-L38.4844 0
-L27.8281 16.1094
-L25 20.4531
-L11.375 0
-z
-" id="ArialMT-78"/>
+M42.0938 16.7031
+L51.1719 15.5781
+Q49.0312 7.625 43.2188 3.21875
+Q37.4062 -1.17188 28.375 -1.17188
+Q17 -1.17188 10.3281 5.82812
+Q3.65625 12.8438 3.65625 25.4844
+Q3.65625 38.5781 10.3906 45.7969
+Q17.1406 53.0312 27.875 53.0312
+Q38.2812 53.0312 44.875 45.9531
+Q51.4688 38.875 51.4688 26.0312
+Q51.4688 25.25 51.4219 23.6875
+L12.75 23.6875
+Q13.2344 15.1406 17.5781 10.5938
+Q21.9219 6.0625 28.4219 6.0625
+Q33.25 6.0625 36.6719 8.59375
+Q40.0938 11.1406 42.0938 16.7031
+M13.2344 30.9062
+L42.1875 30.9062
+Q41.6094 37.4531 38.875 40.7188
+Q34.6719 45.7969 27.9844 45.7969
+Q21.9219 45.7969 17.7969 41.75
+Q13.6719 37.7031 13.2344 30.9062" id="ArialMT-65"/>
       <path d="
 M40.4375 6.39062
 Q35.5469 2.25 31.0312 0.53125
@@ -3337,50 +3365,23 @@ Q39.7031 17 39.7031 22.7969
 z
 " id="ArialMT-61"/>
       <path d="
-M42.0938 16.7031
-L51.1719 15.5781
-Q49.0312 7.625 43.2188 3.21875
-Q37.4062 -1.17188 28.375 -1.17188
-Q17 -1.17188 10.3281 5.82812
-Q3.65625 12.8438 3.65625 25.4844
-Q3.65625 38.5781 10.3906 45.7969
-Q17.1406 53.0312 27.875 53.0312
-Q38.2812 53.0312 44.875 45.9531
-Q51.4688 38.875 51.4688 26.0312
-Q51.4688 25.25 51.4219 23.6875
-L12.75 23.6875
-Q13.2344 15.1406 17.5781 10.5938
-Q21.9219 6.0625 28.4219 6.0625
-Q33.25 6.0625 36.6719 8.59375
-Q40.0938 11.1406 42.0938 16.7031
-M13.2344 30.9062
-L42.1875 30.9062
-Q41.6094 37.4531 38.875 40.7188
-Q34.6719 45.7969 27.9844 45.7969
-Q21.9219 45.7969 17.7969 41.75
-Q13.6719 37.7031 13.2344 30.9062" id="ArialMT-65"/>
-      <path d="
-M25.7812 7.85938
-L27.0469 0.09375
-Q23.3438 -0.6875 20.4062 -0.6875
-Q15.625 -0.6875 12.9844 0.828125
-Q10.3594 2.34375 9.28125 4.8125
-Q8.20312 7.28125 8.20312 15.1875
-L8.20312 45.0156
-L1.76562 45.0156
-L1.76562 51.8594
-L8.20312 51.8594
-L8.20312 64.7031
-L16.9375 69.9688
-L16.9375 51.8594
-L25.7812 51.8594
-L25.7812 45.0156
-L16.9375 45.0156
-L16.9375 14.7031
-Q16.9375 10.9375 17.4062 9.85938
-Q17.875 8.79688 18.9219 8.15625
-Q19.9688 7.51562 21.9219 7.51562
-Q23.3906 7.51562 25.7812 7.85938" id="ArialMT-74"/>
+M0.734375 0
+L19.6719 26.9531
+L2.15625 51.8594
+L13.1406 51.8594
+L21.0938 39.7031
+Q23.3438 36.2344 24.7031 33.8906
+Q26.8594 37.1094 28.6562 39.5938
+L37.4062 51.8594
+L47.9062 51.8594
+L29.9844 27.4375
+L49.2656 0
+L38.4844 0
+L27.8281 16.1094
+L25 20.4531
+L11.375 0
+z
+" id="ArialMT-78"/>
      </defs>
      <g style="fill:#262626;" transform="translate(275.3703125 40.07578125)scale(0.1 -0.1)">
       <use xlink:href="#ArialMT-65"/>
@@ -3420,7 +3421,7 @@ Q23.3906 7.51562 25.7812 7.85938" id="ArialMT-74"/>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[28]:</div>
+<div class="prompt input_prompt">In&nbsp;[31]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Import Bokeh modules for interactive plotting</span>
@@ -3682,9 +3683,9 @@ Q23.3906 7.51562 25.7812 7.85938" id="ArialMT-74"/>
 <div class="output_html rendered_html output_subarea ">
 <script type="text/javascript">
         Bokeh.$(function() {
-        var all_models = [{"id": "21504676-f69d-46d5-8623-0aedda3aa049", "type": "X", "attributes": {"doc": null, "tags": [], "id": "21504676-f69d-46d5-8623-0aedda3aa049"}}, {"id": "ca2a7f83-ab3d-4bd0-85a8-49f8a0aacd17", "type": "GlyphRenderer", "attributes": {"glyph": {"id": "3e5de7e0-eb66-468d-a3d2-e28f3a950703", "type": "Circle"}, "doc": null, "tags": [], "selection_glyph": null, "nonselection_glyph": null, "data_source": {"id": "c749ea38-09f7-4850-bdf5-36fb854218cd", "type": "ColumnDataSource"}, "id": "ca2a7f83-ab3d-4bd0-85a8-49f8a0aacd17"}}, {"id": "d18cd68e-bcb8-4bea-8b51-11c9ec015520", "type": "BoxZoomTool", "attributes": {"doc": null, "dimensions": ["width", "height"], "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "d18cd68e-bcb8-4bea-8b51-11c9ec015520", "tags": []}}, {"id": "b0951392-ea00-45f8-9770-4faaf660153a", "type": "GlyphRenderer", "attributes": {"glyph": {"id": "0f5c7959-73cc-4952-bfc7-ec3cb8b05e97", "type": "Line"}, "doc": null, "tags": [], "selection_glyph": null, "nonselection_glyph": null, "data_source": {"id": "0fcccc5e-26f5-4563-9c91-7478d90c39dc", "type": "ColumnDataSource"}, "id": "b0951392-ea00-45f8-9770-4faaf660153a"}}, {"id": "2bda18d5-5b1f-46e0-bafe-433c969d4786", "type": "BasicTicker", "attributes": {"doc": null, "tags": [], "mantissas": [2, 5, 10], "id": "2bda18d5-5b1f-46e0-bafe-433c969d4786"}}, {"id": "19e00511-da02-4d8d-b2be-d7e319f86860", "type": "BasicTickFormatter", "attributes": {"doc": null, "tags": [], "id": "19e00511-da02-4d8d-b2be-d7e319f86860"}}, {"id": "c749ea38-09f7-4850-bdf5-36fb854218cd", "type": "ColumnDataSource", "attributes": {"doc": null, "selected": {"1d": {"indices": []}, "2d": {"indices": []}, "0d": {"indices": [], "flag": false}}, "callback": null, "data": {"Series 1": [1.03170021854991, 1.0946867430442517, 1.156359749918268, 1.2156930276620166, 1.2715378153529153, 1.3226347921582582, 1.3676324833477997, 1.4051125024584024, 1.43362174296519, 1.4517112521610807, 1.4579810787527034, 1.4511299065471912, 1.4300078005924706, 1.3936699373694643, 1.3414288097603295, 1.2729021340588262, 1.1880535802022967, 1.0872235292158472, 0.9711473519716298, 0.840959202202327, 0.6981800062960676, 0.5446891749721611, 0.38268050181538726, 0.21460368145125922, 0.043093799006615995, -0.12910806438925435, -0.299239366656599, -0.46460168590868406, -0.6226431813842881, -0.7710339817499233, -0.9077310286182496, -1.0310296067871927, -1.1395996579720509, -1.2325059279287542, -1.3092119600137753, -1.3695688473915761, -1.4137904280936147, -1.4424172048451445, -1.4562716670494316, -1.456407877465384, -1.4440581712523732, -1.4205796257014076, -1.3874026314763492, -1.3459834728875204, -1.2977623492110233, -1.2441277821236874, -1.1863878907869465, -1.125748602916922, -1.0632985255150904, -0.9999999324081167, -0.9366851393090164, -0.8740574265039295, -0.8126956257075998, -0.7530614995280609, -0.695509096500038, -0.6402953489964144, -0.5875912837307511, -0.537493324893795, -0.49003428008069944, -0.44519370298571753, -0.4029074202492972, -0.3630760904459128, -0.32557273002975284, -0.29024919423645557, -0.25694164138333536, -0.22547503813071124, -0.19566678274753974, -0.16732953503670256, -0.1402733470474775, -0.1143071896297362, -0.08923996767793692, -0.06488111277670096, -0.041040836888007894, -0.01753012550761892, 0.005839456020608233, 0.029256073154818582, 0.05290798246049368, 0.07698387539583196, 0.10167313902190829, 0.1271659652141118, 0.1536532367304695, 0.18132611416974226, 0.2103752428103124, 0.24098949309114773, 0.2733541437806843, 0.30764841357081435, 0.3440422460297832, 0.3826922558585433, 0.4237367527280728, 0.4672897743001965, 0.5134340841152116, 0.5622131246133817, 0.613621962218722, 0.6675973213465662, 0.7240068779575347, 0.7826380704888571, 0.8431867850086365, 0.9052463790383612, 0.968297619599087], "Series 0": [0.03173325912716963, 0.0951997773815089, 0.15866629563584816, 0.2221328138901874, 0.28559933214452665, 0.34906585039886595, 0.4125323686532052, 0.47599888690754444, 0.5394654051618837, 0.6029319234162229, 0.6663984416705622, 0.7298649599249014, 0.7933314781792408, 0.85679799643358, 0.9202645146879193, 0.9837310329422585, 1.0471975511965979, 1.1106640694509369, 1.1741305877052763, 1.2375971059596154, 1.3010636242139548, 1.3645301424682938, 1.4279966607226333, 1.4914631789769726, 1.5549296972313118, 1.6183962154856513, 1.6818627337399903, 1.7453292519943298, 1.8087957702486688, 1.8722622885030082, 1.9357288067573473, 1.9991953250116867, 2.062661843266026, 2.126128361520365, 2.1895948797747042, 2.2530613980290437, 2.316527916283383, 2.379994434537722, 2.443460952792061, 2.5069274710464007, 2.57039398930074, 2.633860507555079, 2.697327025809418, 2.7607935440637577, 2.824260062318097, 2.887726580572436, 2.951193098826775, 3.014659617081115, 3.078126135335454, 3.141592653589793, 3.2050591718441326, 3.268525690098472, 3.331992208352811, 3.39545872660715, 3.4589252448614896, 3.522391763115829, 3.585858281370168, 3.649324799624507, 3.7127913178788465, 3.776257836133186, 3.839724354387525, 3.903190872641864, 3.9666573908962035, 4.030123909150543, 4.093590427404882, 4.157056945659221, 4.220523463913561, 4.2839899821679, 4.347456500422239, 4.410923018676579, 4.474389536930918, 4.537856055185257, 4.601322573439596, 4.664789091693935, 4.728255609948275, 4.791722128202614, 4.855188646456953, 4.918655164711293, 4.982121682965632, 5.045588201219971, 5.10905471947431, 5.17252123772865, 5.235987755982989, 5.299454274237328, 5.362920792491668, 5.426387310746007, 5.489853829000346, 5.553320347254685, 5.616786865509024, 5.680253383763364, 5.743719902017703, 5.807186420272042, 5.870652938526382, 5.934119456780721, 5.99758597503506, 6.061052493289399, 6.124519011543739, 6.187985529798078, 6.251452048052417]}, "column_names": ["Series 0", "Series 1"], "id": "c749ea38-09f7-4850-bdf5-36fb854218cd", "tags": []}}, {"id": "5bb331aa-e67e-4807-b19e-ea603df9c30f", "type": "BasicTickFormatter", "attributes": {"doc": null, "tags": [], "id": "5bb331aa-e67e-4807-b19e-ea603df9c30f"}}, {"id": "9f8ccb55-58fa-4a25-9d80-7ea754d7ffd2", "type": "PanTool", "attributes": {"doc": null, "dimensions": ["width", "height"], "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "9f8ccb55-58fa-4a25-9d80-7ea754d7ffd2", "tags": []}}, {"id": "3cbd1ea1-3897-43b1-a686-b36444625659", "type": "LinearAxis", "attributes": {"axis_label_text_font": "sans-serif", "axis_label": "dy/dx", "axis_label_text_font_size": {"value": "18.000000pt"}, "ticker": {"id": "2bda18d5-5b1f-46e0-bafe-433c969d4786", "type": "BasicTicker"}, "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "major_label_text_font_style": "normal", "id": "3cbd1ea1-3897-43b1-a686-b36444625659", "tags": [], "major_label_text_font": "sans-serif", "doc": null, "axis_label_text_font_style": "normal", "formatter": {"id": "5bb331aa-e67e-4807-b19e-ea603df9c30f", "type": "BasicTickFormatter"}, "major_label_text_font_size": {"value": "10.000000pt"}}}, {"id": "3e5de7e0-eb66-468d-a3d2-e28f3a950703", "type": "Circle", "attributes": {"line_color": {"value": "#000000"}, "y": {"field": "Series 1"}, "size": {"value": 10, "units": "screen"}, "id": "3e5de7e0-eb66-468d-a3d2-e28f3a950703", "tags": [], "doc": null, "x": {"field": "Series 0"}, "line_alpha": {"value": 1.0}, "fill_alpha": {"value": 1.0}, "fill_color": {"value": "#808080"}, "line_width": {"value": 0.0}}}, {"id": "2320b059-0799-4615-a6a4-d26b8fe5555c", "type": "HelpTool", "attributes": {"doc": null, "tags": [], "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "2320b059-0799-4615-a6a4-d26b8fe5555c"}}, {"id": "0f5c7959-73cc-4952-bfc7-ec3cb8b05e97", "type": "Line", "attributes": {"line_dash": [], "doc": null, "line_color": {"value": "#000000"}, "x": {"field": "Series 0"}, "y": {"field": "Series 1"}, "line_alpha": {"value": 1.0}, "id": "0f5c7959-73cc-4952-bfc7-ec3cb8b05e97", "tags": [], "line_width": {"value": 2.0}}}, {"id": "114e0987-1b59-4643-b6ca-ff3c48cb012b", "type": "BasicTicker", "attributes": {"doc": null, "tags": [], "mantissas": [2, 5, 10], "id": "114e0987-1b59-4643-b6ca-ff3c48cb012b"}}, {"id": "d1793733-91ee-4111-8c04-f801ca40caec", "type": "DataRange1d", "attributes": {"names": [], "renderers": [], "tags": [], "callback": null, "doc": null, "id": "d1793733-91ee-4111-8c04-f801ca40caec"}}, {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot", "attributes": {"tags": [], "tool_events": {"id": "dea8450d-cfbb-419b-9733-011c155e5b32", "type": "ToolEvents"}, "renderers": [{"id": "d3cdb19d-f91e-4c6b-ba2a-7e24dae91f26", "type": "LinearAxis"}, {"id": "b0fda4c8-8aab-4225-92c3-9eeeae89f74c", "type": "Grid"}, {"id": "3cbd1ea1-3897-43b1-a686-b36444625659", "type": "LinearAxis"}, {"id": "64e05a59-a0db-4943-9156-713970cf2414", "type": "Grid"}, {"id": "efb90533-4e39-42ca-b832-437a2a240bbc", "type": "GlyphRenderer"}, {"id": "ca2a7f83-ab3d-4bd0-85a8-49f8a0aacd17", "type": "GlyphRenderer"}, {"id": "b0951392-ea00-45f8-9770-4faaf660153a", "type": "GlyphRenderer"}], "background_fill": "#EAEAF2", "extra_x_ranges": {}, "id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "x_range": {"id": "961a9092-9928-46ce-aad5-7dcafa792b4a", "type": "DataRange1d"}, "above": [], "below": [{"id": "d3cdb19d-f91e-4c6b-ba2a-7e24dae91f26", "type": "LinearAxis"}], "right": [], "y_range": {"id": "d1793733-91ee-4111-8c04-f801ca40caec", "type": "DataRange1d"}, "extra_y_ranges": {}, "left": [{"id": "3cbd1ea1-3897-43b1-a686-b36444625659", "type": "LinearAxis"}], "tools": [{"id": "9f8ccb55-58fa-4a25-9d80-7ea754d7ffd2", "type": "PanTool"}, {"id": "60a3b5af-da2e-419d-8ef8-c46a7083561c", "type": "WheelZoomTool"}, {"id": "d18cd68e-bcb8-4bea-8b51-11c9ec015520", "type": "BoxZoomTool"}, {"id": "dde181e6-dec4-4fc5-8144-9b1bc1f176ad", "type": "PreviewSaveTool"}, {"id": "46d0e014-5f5e-4ff2-b79b-dddfe526d44f", "type": "ResizeTool"}, {"id": "938fc6ac-5878-4036-925a-993e0596a483", "type": "ResetTool"}, {"id": "2320b059-0799-4615-a6a4-d26b8fe5555c", "type": "HelpTool"}], "plot_width": 640, "title": "", "plot_height": 440, "doc": null}}, {"id": "b0fda4c8-8aab-4225-92c3-9eeeae89f74c", "type": "Grid", "attributes": {"doc": null, "tags": [], "grid_line_color": {"value": "white"}, "ticker": {"id": "114e0987-1b59-4643-b6ca-ff3c48cb012b", "type": "BasicTicker"}, "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "b0fda4c8-8aab-4225-92c3-9eeeae89f74c", "grid_line_width": {"value": 1}, "dimension": 0}}, {"id": "d3cdb19d-f91e-4c6b-ba2a-7e24dae91f26", "type": "LinearAxis", "attributes": {"axis_label_text_font": "sans-serif", "axis_label": "x", "axis_label_text_font_size": {"value": "18.000000pt"}, "ticker": {"id": "114e0987-1b59-4643-b6ca-ff3c48cb012b", "type": "BasicTicker"}, "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "major_label_text_font_style": "normal", "id": "d3cdb19d-f91e-4c6b-ba2a-7e24dae91f26", "tags": [], "major_label_text_font": "sans-serif", "doc": null, "axis_label_text_font_style": "normal", "formatter": {"id": "19e00511-da02-4d8d-b2be-d7e319f86860", "type": "BasicTickFormatter"}, "major_label_text_font_size": {"value": "10.000000pt"}}}, {"id": "60a3b5af-da2e-419d-8ef8-c46a7083561c", "type": "WheelZoomTool", "attributes": {"doc": null, "dimensions": ["width", "height"], "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "60a3b5af-da2e-419d-8ef8-c46a7083561c", "tags": []}}, {"id": "dde181e6-dec4-4fc5-8144-9b1bc1f176ad", "type": "PreviewSaveTool", "attributes": {"doc": null, "tags": [], "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "dde181e6-dec4-4fc5-8144-9b1bc1f176ad"}}, {"id": "0fcccc5e-26f5-4563-9c91-7478d90c39dc", "type": "ColumnDataSource", "attributes": {"doc": null, "selected": {"1d": {"indices": []}, "2d": {"indices": []}, "0d": {"indices": [], "flag": false}}, "callback": null, "data": {"Series 1": [1.0, 1.063333267980401, 1.1258234565230252, 1.1865081447462105, 1.2442983536012697, 1.2979875275870778, 1.3462666410208366, 1.387745975082701, 1.4209838452520307, 1.444522213694075, 1.4569287072032306, 1.4568440966459644, 1.4430338054423473, 1.4144415374023989, 1.3702426890962642, 1.309894882655224, 1.233182764008064, 1.1402541956111598, 1.0316451574314192, 0.9082910657445775, 0.771522818191701, 0.6230466475071645, 0.46490776815474394, 0.2994387663726883, 0.12919464053532048, -0.043122732882821, -0.21474722618901293, -0.3829342165695287, -0.5450452930708835, -0.6986278082498518, -0.8414855206669554, -0.9717371752914612, -1.087860664895925, -1.1887213376180825, -1.2735839869125374, -1.3421090029127405, -1.3943340091358216, -1.4306429996339995, -1.4517254912783353, -1.4585284959028892, -1.4522041990623018, -1.4340561247335684, -1.4054863001467666, -1.3679455522201398, -1.3228886105171007, -1.271735204030097, -1.215837858662019, -1.1564566601390538, -1.094740865863068, -1.0317169426955937, -0.9682823814309438, -0.9052044913387792, -0.8431233028250561, -0.7825576925120246, -0.7239138804195615, -0.6674955204386609, -0.6135147005057895, -0.5621032767826348, -0.5133240775517812, -0.4671816203492672, -0.42363208500237126, -0.382592372516256, -0.3439481535285052, -0.30756086995908893, -0.2732737000936639, -0.24091653185531692, -0.2103100130270572, -0.18126876243846188, -0.15360383439284378, -0.12712453155916453, -0.10163966069486392, -0.07695832221141685, -0.05289031984185184, -0.02924627141062554, -0.005837496642234193, 0.01752424639347738, 0.04102710783281196, 0.06485950907365595, 0.0892104562233427, 0.11426973668998863, 0.14022792909199439, 0.16727615283632988, 0.19560547895848676, 0.22540591857906905, 0.25686490022715047, 0.290165143102962, 0.32548183109573964, 0.3629789932407773, 0.40280500170504674, 0.44508710993068684, 0.48992497297159854, 0.537383121107766, 0.5874823982059652, 0.6401904294375189, 0.6954112497856605, 0.7529743054173693, 0.812623133500927, 0.8740041300410178, 0.9366559256695384, 0.9999999999999998], "Series 0": [0.0, 0.06346651825433926, 0.12693303650867852, 0.1903995547630178, 0.25386607301735703, 0.3173325912716963, 0.3807991095260356, 0.4442656277803748, 0.5077321460347141, 0.5711986642890533, 0.6346651825433925, 0.6981317007977318, 0.7615982190520711, 0.8250647373064104, 0.8885312555607496, 0.9519977738150889, 1.0154642920694281, 1.0789308103237674, 1.1423973285781066, 1.2058638468324459, 1.269330365086785, 1.3327968833411243, 1.3962634015954636, 1.4597299198498028, 1.5231964381041423, 1.5866629563584815, 1.6501294746128208, 1.71359599286716, 1.7770625111214993, 1.8405290293758385, 1.9039955476301778, 1.967462065884517, 2.0309285841388562, 2.0943951023931957, 2.1578616206475347, 2.221328138901874, 2.284794657156213, 2.3482611754105527, 2.4117276936648917, 2.475194211919231, 2.53866073017357, 2.6021272484279097, 2.6655937666822487, 2.729060284936588, 2.792526803190927, 2.8559933214452666, 2.9194598396996057, 2.982926357953945, 3.0463928762082846, 3.1098593944626236, 3.173325912716963, 3.236792430971302, 3.3002589492256416, 3.3637254674799806, 3.42719198573432, 3.490658503988659, 3.5541250222429985, 3.6175915404973376, 3.681058058751677, 3.744524577006016, 3.8079910952603555, 3.8714576135146945, 3.934924131769034, 3.998390650023373, 4.0618571682777125, 4.1253236865320515, 4.188790204786391, 4.25225672304073, 4.3157232412950695, 4.3791897595494085, 4.442656277803748, 4.506122796058087, 4.569589314312426, 4.6330558325667655, 4.696522350821105, 4.759988869075444, 4.823455387329783, 4.886921905584122, 4.950388423838462, 5.013854942092801, 5.07732146034714, 5.14078797860148, 5.204254496855819, 5.267721015110158, 5.331187533364497, 5.394654051618837, 5.458120569873176, 5.521587088127515, 5.585053606381854, 5.648520124636194, 5.711986642890533, 5.775453161144872, 5.838919679399211, 5.902386197653551, 5.96585271590789, 6.029319234162229, 6.092785752416569, 6.156252270670908, 6.219718788925247, 6.283185307179586]}, "column_names": ["Series 0", "Series 1"], "id": "0fcccc5e-26f5-4563-9c91-7478d90c39dc", "tags": []}}, {"id": "efb90533-4e39-42ca-b832-437a2a240bbc", "type": "GlyphRenderer", "attributes": {"glyph": {"id": "21504676-f69d-46d5-8623-0aedda3aa049", "type": "X"}, "doc": null, "tags": [], "selection_glyph": null, "nonselection_glyph": null, "data_source": {"id": "321c57f5-3079-4d7b-98ca-92d4ca481b05", "type": "ColumnDataSource"}, "id": "efb90533-4e39-42ca-b832-437a2a240bbc"}}, {"id": "46d0e014-5f5e-4ff2-b79b-dddfe526d44f", "type": "ResizeTool", "attributes": {"doc": null, "tags": [], "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "46d0e014-5f5e-4ff2-b79b-dddfe526d44f"}}, {"id": "64e05a59-a0db-4943-9156-713970cf2414", "type": "Grid", "attributes": {"doc": null, "tags": [], "grid_line_color": {"value": "white"}, "ticker": {"id": "2bda18d5-5b1f-46e0-bafe-433c969d4786", "type": "BasicTicker"}, "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "64e05a59-a0db-4943-9156-713970cf2414", "grid_line_width": {"value": 1}, "dimension": 1}}, {"id": "938fc6ac-5878-4036-925a-993e0596a483", "type": "ResetTool", "attributes": {"doc": null, "tags": [], "plot": {"id": "ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e", "type": "Plot"}, "id": "938fc6ac-5878-4036-925a-993e0596a483"}}, {"id": "961a9092-9928-46ce-aad5-7dcafa792b4a", "type": "DataRange1d", "attributes": {"names": [], "renderers": [], "tags": [], "callback": null, "doc": null, "id": "961a9092-9928-46ce-aad5-7dcafa792b4a"}}, {"id": "dea8450d-cfbb-419b-9733-011c155e5b32", "type": "ToolEvents", "attributes": {"geometries": [], "doc": null, "tags": [], "id": "dea8450d-cfbb-419b-9733-011c155e5b32"}}, {"id": "321c57f5-3079-4d7b-98ca-92d4ca481b05", "type": "ColumnDataSource", "attributes": {"doc": null, "selected": {"1d": {"indices": []}, "2d": {"indices": []}, "0d": {"indices": [], "flag": false}}, "callback": null, "data": {"name": "ax_end"}, "column_names": ["name"], "id": "321c57f5-3079-4d7b-98ca-92d4ca481b05", "tags": []}}];
+        var all_models = [{"type": "ColumnDataSource", "attributes": {"selected": {"0d": {"indices": [], "flag": false}, "2d": {"indices": []}, "1d": {"indices": []}}, "column_names": ["Series 0", "Series 1"], "callback": null, "doc": null, "tags": [], "data": {"Series 1": [1.0, 1.063333267980401, 1.1258234565230252, 1.1865081447462105, 1.2442983536012697, 1.2979875275870778, 1.3462666410208366, 1.387745975082701, 1.4209838452520307, 1.444522213694075, 1.4569287072032306, 1.4568440966459644, 1.4430338054423473, 1.4144415374023989, 1.3702426890962642, 1.309894882655224, 1.233182764008064, 1.1402541956111598, 1.0316451574314192, 0.9082910657445775, 0.771522818191701, 0.6230466475071645, 0.46490776815474394, 0.2994387663726883, 0.12919464053532048, -0.043122732882821, -0.21474722618901293, -0.3829342165695287, -0.5450452930708835, -0.6986278082498518, -0.8414855206669554, -0.9717371752914612, -1.087860664895925, -1.1887213376180825, -1.2735839869125374, -1.3421090029127405, -1.3943340091358216, -1.4306429996339995, -1.4517254912783353, -1.4585284959028892, -1.4522041990623018, -1.4340561247335684, -1.4054863001467666, -1.3679455522201398, -1.3228886105171007, -1.271735204030097, -1.215837858662019, -1.1564566601390538, -1.094740865863068, -1.0317169426955937, -0.9682823814309438, -0.9052044913387792, -0.8431233028250561, -0.7825576925120246, -0.7239138804195615, -0.6674955204386609, -0.6135147005057895, -0.5621032767826348, -0.5133240775517812, -0.4671816203492672, -0.42363208500237126, -0.382592372516256, -0.3439481535285052, -0.30756086995908893, -0.2732737000936639, -0.24091653185531692, -0.2103100130270572, -0.18126876243846188, -0.15360383439284378, -0.12712453155916453, -0.10163966069486392, -0.07695832221141685, -0.05289031984185184, -0.02924627141062554, -0.005837496642234193, 0.01752424639347738, 0.04102710783281196, 0.06485950907365595, 0.0892104562233427, 0.11426973668998863, 0.14022792909199439, 0.16727615283632988, 0.19560547895848676, 0.22540591857906905, 0.25686490022715047, 0.290165143102962, 0.32548183109573964, 0.3629789932407773, 0.40280500170504674, 0.44508710993068684, 0.48992497297159854, 0.537383121107766, 0.5874823982059652, 0.6401904294375189, 0.6954112497856605, 0.7529743054173693, 0.812623133500927, 0.8740041300410178, 0.9366559256695384, 0.9999999999999998], "Series 0": [0.0, 0.06346651825433926, 0.12693303650867852, 0.1903995547630178, 0.25386607301735703, 0.3173325912716963, 0.3807991095260356, 0.4442656277803748, 0.5077321460347141, 0.5711986642890533, 0.6346651825433925, 0.6981317007977318, 0.7615982190520711, 0.8250647373064104, 0.8885312555607496, 0.9519977738150889, 1.0154642920694281, 1.0789308103237674, 1.1423973285781066, 1.2058638468324459, 1.269330365086785, 1.3327968833411243, 1.3962634015954636, 1.4597299198498028, 1.5231964381041423, 1.5866629563584815, 1.6501294746128208, 1.71359599286716, 1.7770625111214993, 1.8405290293758385, 1.9039955476301778, 1.967462065884517, 2.0309285841388562, 2.0943951023931957, 2.1578616206475347, 2.221328138901874, 2.284794657156213, 2.3482611754105527, 2.4117276936648917, 2.475194211919231, 2.53866073017357, 2.6021272484279097, 2.6655937666822487, 2.729060284936588, 2.792526803190927, 2.8559933214452666, 2.9194598396996057, 2.982926357953945, 3.0463928762082846, 3.1098593944626236, 3.173325912716963, 3.236792430971302, 3.3002589492256416, 3.3637254674799806, 3.42719198573432, 3.490658503988659, 3.5541250222429985, 3.6175915404973376, 3.681058058751677, 3.744524577006016, 3.8079910952603555, 3.8714576135146945, 3.934924131769034, 3.998390650023373, 4.0618571682777125, 4.1253236865320515, 4.188790204786391, 4.25225672304073, 4.3157232412950695, 4.3791897595494085, 4.442656277803748, 4.506122796058087, 4.569589314312426, 4.6330558325667655, 4.696522350821105, 4.759988869075444, 4.823455387329783, 4.886921905584122, 4.950388423838462, 5.013854942092801, 5.07732146034714, 5.14078797860148, 5.204254496855819, 5.267721015110158, 5.331187533364497, 5.394654051618837, 5.458120569873176, 5.521587088127515, 5.585053606381854, 5.648520124636194, 5.711986642890533, 5.775453161144872, 5.838919679399211, 5.902386197653551, 5.96585271590789, 6.029319234162229, 6.092785752416569, 6.156252270670908, 6.219718788925247, 6.283185307179586]}, "id": "361d49be-06f6-48c2-8f8f-7ebb0f65a65c"}, "id": "361d49be-06f6-48c2-8f8f-7ebb0f65a65c"}, {"type": "BasicTicker", "attributes": {"doc": null, "mantissas": [2, 5, 10], "tags": [], "id": "c3b02098-198b-49d4-8160-f83b3187170d"}, "id": "c3b02098-198b-49d4-8160-f83b3187170d"}, {"type": "BasicTickFormatter", "attributes": {"tags": [], "id": "ab04bfd5-9e8a-4bd8-8ad0-da5ab8bef1d5", "doc": null}, "id": "ab04bfd5-9e8a-4bd8-8ad0-da5ab8bef1d5"}, {"type": "BoxZoomTool", "attributes": {"dimensions": ["width", "height"], "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "d5a94ba2-2f52-40b1-99ae-27c4a89b93ee"}, "id": "d5a94ba2-2f52-40b1-99ae-27c4a89b93ee"}, {"type": "ColumnDataSource", "attributes": {"selected": {"0d": {"indices": [], "flag": false}, "2d": {"indices": []}, "1d": {"indices": []}}, "column_names": ["name"], "callback": null, "doc": null, "tags": [], "data": {"name": "ax_end"}, "id": "dca5b93b-621c-4e82-9813-baccb8ef2457"}, "id": "dca5b93b-621c-4e82-9813-baccb8ef2457"}, {"type": "GlyphRenderer", "attributes": {"doc": null, "nonselection_glyph": null, "glyph": {"type": "Circle", "id": "be183194-d9cb-46e4-97b0-0bfd1bc2855e"}, "tags": [], "id": "7f45c9e6-cc2c-42b1-a384-82043d704572", "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "6e7d837a-fcd2-41f4-b256-46906ba78406"}}, "id": "7f45c9e6-cc2c-42b1-a384-82043d704572"}, {"type": "HelpTool", "attributes": {"doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "71d6230b-be90-4057-8c44-178ba09a558e"}, "id": "71d6230b-be90-4057-8c44-178ba09a558e"}, {"type": "DataRange1d", "attributes": {"callback": null, "doc": null, "tags": [], "names": [], "renderers": [], "id": "6d0a79e1-66a8-494f-87dd-b8acd1cce42a"}, "id": "6d0a79e1-66a8-494f-87dd-b8acd1cce42a"}, {"type": "WheelZoomTool", "attributes": {"dimensions": ["width", "height"], "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "2b30d97c-0708-4c28-8b3c-64dfb9112ace"}, "id": "2b30d97c-0708-4c28-8b3c-64dfb9112ace"}, {"type": "Plot", "attributes": {"tool_events": {"type": "ToolEvents", "id": "f7c849af-1c53-4eea-a1b7-f6989760dd9a"}, "extra_x_ranges": {}, "tools": [{"type": "PanTool", "id": "c007925b-c7dd-4f91-b6cb-a33c8df147c6"}, {"type": "WheelZoomTool", "id": "2b30d97c-0708-4c28-8b3c-64dfb9112ace"}, {"type": "BoxZoomTool", "id": "d5a94ba2-2f52-40b1-99ae-27c4a89b93ee"}, {"type": "PreviewSaveTool", "id": "bcd6684f-35b6-42bd-9071-0c06a6e8d0af"}, {"type": "ResizeTool", "id": "2c290ce2-84cb-4871-a46e-ffa0c2625e0b"}, {"type": "ResetTool", "id": "3a8fcd06-9194-427d-9107-9d0f19e1138d"}, {"type": "HelpTool", "id": "71d6230b-be90-4057-8c44-178ba09a558e"}], "background_fill": "#EAEAF2", "extra_y_ranges": {}, "plot_width": 640, "tags": [], "id": "f637f540-52db-43cf-b63b-2794141c11fc", "below": [{"type": "LinearAxis", "id": "484587fb-5033-4f5d-97b9-9078bb6ebc6b"}], "left": [{"type": "LinearAxis", "id": "338bf6b9-cbac-4da3-a345-fc0c41520015"}], "plot_height": 440, "above": [], "y_range": {"type": "DataRange1d", "id": "6d0a79e1-66a8-494f-87dd-b8acd1cce42a"}, "x_range": {"type": "DataRange1d", "id": "f42d0d89-8457-4b28-ab32-42b1b91ddf1b"}, "title": "", "renderers": [{"type": "LinearAxis", "id": "484587fb-5033-4f5d-97b9-9078bb6ebc6b"}, {"type": "Grid", "id": "67c38748-c175-4a94-9d9e-d43e6b01a5fb"}, {"type": "LinearAxis", "id": "338bf6b9-cbac-4da3-a345-fc0c41520015"}, {"type": "Grid", "id": "734d01af-5ecd-44b7-98b8-69c5b7fa4cc9"}, {"type": "GlyphRenderer", "id": "de69408c-a052-4bda-95c3-78746e17f16f"}, {"type": "GlyphRenderer", "id": "7f45c9e6-cc2c-42b1-a384-82043d704572"}, {"type": "GlyphRenderer", "id": "d01829c3-d508-4a4c-bc9f-7b2869063e60"}], "right": [], "doc": null}, "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, {"type": "GlyphRenderer", "attributes": {"doc": null, "nonselection_glyph": null, "glyph": {"type": "X", "id": "d99f2337-cc5d-4383-a101-af61ae562d61"}, "tags": [], "id": "de69408c-a052-4bda-95c3-78746e17f16f", "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "dca5b93b-621c-4e82-9813-baccb8ef2457"}}, "id": "de69408c-a052-4bda-95c3-78746e17f16f"}, {"type": "Line", "attributes": {"y": {"field": "Series 1"}, "line_width": {"value": 2.0}, "x": {"field": "Series 0"}, "id": "f97c18a7-ee9f-4a2b-9874-39b321e93c67", "tags": [], "line_color": {"value": "#000000"}, "line_alpha": {"value": 1.0}, "doc": null, "line_dash": []}, "id": "f97c18a7-ee9f-4a2b-9874-39b321e93c67"}, {"type": "Grid", "attributes": {"doc": null, "tags": [], "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "ticker": {"type": "BasicTicker", "id": "c3b02098-198b-49d4-8160-f83b3187170d"}, "grid_line_width": {"value": 1}, "dimension": 1, "grid_line_color": {"value": "white"}, "id": "734d01af-5ecd-44b7-98b8-69c5b7fa4cc9"}, "id": "734d01af-5ecd-44b7-98b8-69c5b7fa4cc9"}, {"type": "ResizeTool", "attributes": {"doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "2c290ce2-84cb-4871-a46e-ffa0c2625e0b"}, "id": "2c290ce2-84cb-4871-a46e-ffa0c2625e0b"}, {"type": "ColumnDataSource", "attributes": {"selected": {"0d": {"indices": [], "flag": false}, "2d": {"indices": []}, "1d": {"indices": []}}, "column_names": ["Series 0", "Series 1"], "callback": null, "doc": null, "tags": [], "data": {"Series 1": [1.03170021854991, 1.0946867430442517, 1.156359749918268, 1.2156930276620166, 1.2715378153529153, 1.3226347921582582, 1.3676324833477997, 1.4051125024584024, 1.43362174296519, 1.4517112521610807, 1.4579810787527034, 1.4511299065471912, 1.4300078005924706, 1.3936699373694643, 1.3414288097603295, 1.2729021340588262, 1.1880535802022967, 1.0872235292158472, 0.9711473519716298, 0.840959202202327, 0.6981800062960676, 0.5446891749721611, 0.38268050181538726, 0.21460368145125922, 0.043093799006615995, -0.12910806438925435, -0.299239366656599, -0.46460168590868406, -0.6226431813842881, -0.7710339817499233, -0.9077310286182496, -1.0310296067871927, -1.1395996579720509, -1.2325059279287542, -1.3092119600137753, -1.3695688473915761, -1.4137904280936147, -1.4424172048451445, -1.4562716670494316, -1.456407877465384, -1.4440581712523732, -1.4205796257014076, -1.3874026314763492, -1.3459834728875204, -1.2977623492110233, -1.2441277821236874, -1.1863878907869465, -1.125748602916922, -1.0632985255150904, -0.9999999324081167, -0.9366851393090164, -0.8740574265039295, -0.8126956257075998, -0.7530614995280609, -0.695509096500038, -0.6402953489964144, -0.5875912837307511, -0.537493324893795, -0.49003428008069944, -0.44519370298571753, -0.4029074202492972, -0.3630760904459128, -0.32557273002975284, -0.29024919423645557, -0.25694164138333536, -0.22547503813071124, -0.19566678274753974, -0.16732953503670256, -0.1402733470474775, -0.1143071896297362, -0.08923996767793692, -0.06488111277670096, -0.041040836888007894, -0.01753012550761892, 0.005839456020608233, 0.029256073154818582, 0.05290798246049368, 0.07698387539583196, 0.10167313902190829, 0.1271659652141118, 0.1536532367304695, 0.18132611416974226, 0.2103752428103124, 0.24098949309114773, 0.2733541437806843, 0.30764841357081435, 0.3440422460297832, 0.3826922558585433, 0.4237367527280728, 0.4672897743001965, 0.5134340841152116, 0.5622131246133817, 0.613621962218722, 0.6675973213465662, 0.7240068779575347, 0.7826380704888571, 0.8431867850086365, 0.9052463790383612, 0.968297619599087], "Series 0": [0.03173325912716963, 0.0951997773815089, 0.15866629563584816, 0.2221328138901874, 0.28559933214452665, 0.34906585039886595, 0.4125323686532052, 0.47599888690754444, 0.5394654051618837, 0.6029319234162229, 0.6663984416705622, 0.7298649599249014, 0.7933314781792408, 0.85679799643358, 0.9202645146879193, 0.9837310329422585, 1.0471975511965979, 1.1106640694509369, 1.1741305877052763, 1.2375971059596154, 1.3010636242139548, 1.3645301424682938, 1.4279966607226333, 1.4914631789769726, 1.5549296972313118, 1.6183962154856513, 1.6818627337399903, 1.7453292519943298, 1.8087957702486688, 1.8722622885030082, 1.9357288067573473, 1.9991953250116867, 2.062661843266026, 2.126128361520365, 2.1895948797747042, 2.2530613980290437, 2.316527916283383, 2.379994434537722, 2.443460952792061, 2.5069274710464007, 2.57039398930074, 2.633860507555079, 2.697327025809418, 2.7607935440637577, 2.824260062318097, 2.887726580572436, 2.951193098826775, 3.014659617081115, 3.078126135335454, 3.141592653589793, 3.2050591718441326, 3.268525690098472, 3.331992208352811, 3.39545872660715, 3.4589252448614896, 3.522391763115829, 3.585858281370168, 3.649324799624507, 3.7127913178788465, 3.776257836133186, 3.839724354387525, 3.903190872641864, 3.9666573908962035, 4.030123909150543, 4.093590427404882, 4.157056945659221, 4.220523463913561, 4.2839899821679, 4.347456500422239, 4.410923018676579, 4.474389536930918, 4.537856055185257, 4.601322573439596, 4.664789091693935, 4.728255609948275, 4.791722128202614, 4.855188646456953, 4.918655164711293, 4.982121682965632, 5.045588201219971, 5.10905471947431, 5.17252123772865, 5.235987755982989, 5.299454274237328, 5.362920792491668, 5.426387310746007, 5.489853829000346, 5.553320347254685, 5.616786865509024, 5.680253383763364, 5.743719902017703, 5.807186420272042, 5.870652938526382, 5.934119456780721, 5.99758597503506, 6.061052493289399, 6.124519011543739, 6.187985529798078, 6.251452048052417]}, "id": "6e7d837a-fcd2-41f4-b256-46906ba78406"}, "id": "6e7d837a-fcd2-41f4-b256-46906ba78406"}, {"type": "PanTool", "attributes": {"dimensions": ["width", "height"], "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "c007925b-c7dd-4f91-b6cb-a33c8df147c6"}, "id": "c007925b-c7dd-4f91-b6cb-a33c8df147c6"}, {"type": "Circle", "attributes": {"line_width": {"value": 0.0}, "x": {"field": "Series 0"}, "line_color": {"value": "#000000"}, "fill_alpha": {"value": 1.0}, "y": {"field": "Series 1"}, "fill_color": {"value": "#808080"}, "line_alpha": {"value": 1.0}, "doc": null, "tags": [], "id": "be183194-d9cb-46e4-97b0-0bfd1bc2855e", "size": {"units": "screen", "value": 10}}, "id": "be183194-d9cb-46e4-97b0-0bfd1bc2855e"}, {"type": "ResetTool", "attributes": {"doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "3a8fcd06-9194-427d-9107-9d0f19e1138d"}, "id": "3a8fcd06-9194-427d-9107-9d0f19e1138d"}, {"type": "BasicTickFormatter", "attributes": {"tags": [], "id": "9847505e-99eb-440d-8580-93391280cb7f", "doc": null}, "id": "9847505e-99eb-440d-8580-93391280cb7f"}, {"type": "PreviewSaveTool", "attributes": {"doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "bcd6684f-35b6-42bd-9071-0c06a6e8d0af"}, "id": "bcd6684f-35b6-42bd-9071-0c06a6e8d0af"}, {"type": "DataRange1d", "attributes": {"callback": null, "doc": null, "tags": [], "names": [], "renderers": [], "id": "f42d0d89-8457-4b28-ab32-42b1b91ddf1b"}, "id": "f42d0d89-8457-4b28-ab32-42b1b91ddf1b"}, {"type": "LinearAxis", "attributes": {"axis_label_text_font_style": "normal", "major_label_text_font_size": {"value": "10.000000pt"}, "axis_label_text_font": "sans-serif", "ticker": {"type": "BasicTicker", "id": "c3b02098-198b-49d4-8160-f83b3187170d"}, "axis_label_text_font_size": {"value": "18.000000pt"}, "major_label_text_font": "sans-serif", "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "axis_label": "dy/dx", "major_label_text_font_style": "normal", "id": "338bf6b9-cbac-4da3-a345-fc0c41520015", "formatter": {"type": "BasicTickFormatter", "id": "ab04bfd5-9e8a-4bd8-8ad0-da5ab8bef1d5"}}, "id": "338bf6b9-cbac-4da3-a345-fc0c41520015"}, {"type": "Grid", "attributes": {"doc": null, "tags": [], "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "ticker": {"type": "BasicTicker", "id": "54e7d81b-f462-46ea-a404-4c01b5125895"}, "grid_line_width": {"value": 1}, "dimension": 0, "grid_line_color": {"value": "white"}, "id": "67c38748-c175-4a94-9d9e-d43e6b01a5fb"}, "id": "67c38748-c175-4a94-9d9e-d43e6b01a5fb"}, {"type": "ToolEvents", "attributes": {"doc": null, "tags": [], "id": "f7c849af-1c53-4eea-a1b7-f6989760dd9a", "geometries": []}, "id": "f7c849af-1c53-4eea-a1b7-f6989760dd9a"}, {"type": "GlyphRenderer", "attributes": {"doc": null, "nonselection_glyph": null, "glyph": {"type": "Line", "id": "f97c18a7-ee9f-4a2b-9874-39b321e93c67"}, "tags": [], "id": "d01829c3-d508-4a4c-bc9f-7b2869063e60", "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "361d49be-06f6-48c2-8f8f-7ebb0f65a65c"}}, "id": "d01829c3-d508-4a4c-bc9f-7b2869063e60"}, {"type": "LinearAxis", "attributes": {"axis_label_text_font_style": "normal", "major_label_text_font_size": {"value": "10.000000pt"}, "axis_label_text_font": "sans-serif", "ticker": {"type": "BasicTicker", "id": "54e7d81b-f462-46ea-a404-4c01b5125895"}, "axis_label_text_font_size": {"value": "18.000000pt"}, "major_label_text_font": "sans-serif", "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "axis_label": "x", "major_label_text_font_style": "normal", "id": "484587fb-5033-4f5d-97b9-9078bb6ebc6b", "formatter": {"type": "BasicTickFormatter", "id": "9847505e-99eb-440d-8580-93391280cb7f"}}, "id": "484587fb-5033-4f5d-97b9-9078bb6ebc6b"}, {"type": "BasicTicker", "attributes": {"doc": null, "mantissas": [2, 5, 10], "tags": [], "id": "54e7d81b-f462-46ea-a404-4c01b5125895"}, "id": "54e7d81b-f462-46ea-a404-4c01b5125895"}, {"type": "X", "attributes": {"tags": [], "id": "d99f2337-cc5d-4383-a101-af61ae562d61", "doc": null}, "id": "d99f2337-cc5d-4383-a101-af61ae562d61"}];
         Bokeh.load_models(all_models);
-        var plots = [{'modeltype': 'Plot', 'modelid': 'ce746cc8-8096-4ce5-a85c-1bdafbbb8f4e', 'elementid': '58a976a6-889c-4849-8c17-8eabbbc38fe7'}];
+        var plots = [{'modeltype': 'Plot', 'elementid': 'b84e7474-6c8c-4ef8-a23d-2f1312b8d888', 'modelid': 'f637f540-52db-43cf-b63b-2794141c11fc'}];
         for (idx in plots) {
         	var plot = plots[idx];
         	var model = Bokeh.Collections(plot.modeltype).get(plot.modelid);
@@ -3700,7 +3701,7 @@ Q23.3906 7.51562 25.7812 7.85938" id="ArialMT-74"/>
         }
     });
     </script>
-<div class="plotdiv" id="58a976a6-889c-4849-8c17-8eabbbc38fe7"></div>
+<div class="plotdiv" id="b84e7474-6c8c-4ef8-a23d-2f1312b8d888"></div>
 
 
 </div>
