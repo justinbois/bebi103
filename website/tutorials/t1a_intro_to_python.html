@@ -398,7 +398,7 @@ div#notebook {
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>In <a href="http://bebi103.caltech.edu/2015/tutorials/t0a_python_for_scientific_computing.html">Tutorial 0</a>, we installed the <a href="https://store.continuum.io/cshop/anaconda/">Anaconda Python distribution</a>.  Anaconda contains most of what we need to do scientific computing with Python.  At the most basic level, it has Python 3.4, which we will use as the core language for our analysis.  (Python 3.5 has been released and the late October release of Anaconda will have Python 3.5 as the default language.)  It contains other modules we will make heavy use of, the three most important ones being <a href="http://www.numpy.org/">NumPy</a>, <a href="http://matplotlib.org/">matplotlib</a>, and <a href="http://ipython.org">IPython</a>.  We will also make heavy use of <a href="http://pandas.pydata.org/">pandas</a>, <a href="http://www.scipy.org/">SciPy</a>, and <a href="http://scikit-image.org/">scikit-image</a> throughout the course.  We will use the <code>conda</code> package manager to keep our software updated and to install new packages we may need.  For example, you already installed <a href="http://stanford.edu/~mwaskom/software/seaborn/">Seaborn</a> using <code>conda</code> in <a href="http://bebi103.caltech.edu/2015/tutorials/t0a_python_for_scientific_computing.html">Tutorial 0</a>.  For some packages, we will use <code>pip</code>, as you did for <code>beeswarm</code>.  We will be doing Markov chain Monte Carlo later in the course, mostly using <a href="http://dan.iel.fm/emcee/current/">emcee</a>, and also using <a href="https://github.com/pymc-devs/pymc3">PyMC3</a>, both of which we will install with <code>pip</code>.</p>
-<p>Assuming you have completed <a href="http://bebi103.caltech.edu/2015/tutorials/t0a_python_for_scientific_computing.html">Tutorial 0</a> and all necessary software is installed, we will proceed to learning how to use some of the useful packages for scientific computing using Python.  In this tutorial, we will first learn some of the basics of the Python programming language at the same time exploring the properties of NumPy's very useful (and as we'll see, ubiquitous) <code>ndarray</code> data structure.  Finally, we'll load some data and use matplotlib to generate plots.</p>
+<p>Assuming you have completed <a href="http://bebi103.caltech.edu/2015/tutorials/t0a_python_for_scientific_computing.html">Tutorial 0</a> and all necessary software is installed, we will proceed to learning how to use some of the useful packages for scientific computing using Python.  In this tutorial, we will first learn some of the basics of the Python programming language at the same time exploring the properties of NumPy's very useful (and as we'll see, ubiquitous) <code>ndarray</code> data structure.  Finally, we'll load some data and use Matplotlib to generate plots.</p>
 
 </div>
 </div>
@@ -409,14 +409,14 @@ div#notebook {
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h2 id="Hello,-world."><code>Hello, world.</code><a class="anchor-link" href="#Hello,-world.">&#182;</a></h2><p>Normally we would start with a <code>Hello, world</code> program and then move systematically forward, performing a series of simple tasks in Python.  This tutorial will plow through that and go directly toward using NumPy. You will pick up Python's syntax as we go along.</p>
-<p>Even though this is the plan, we <em>have</em> to start with <code>Hello, world</code>.  So, fire up an IPython session using Canopy or whatever else you like and enter the following at the prompt.</p>
+<p>Even though this is the plan, we <em>have</em> to start with <code>Hello, world</code>.  So, fire up an IPython session and enter the following at the prompt.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[3]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="nb">print</span><span class="p">(</span><span class="s">&#39;Hello, world.&#39;</span><span class="p">)</span>
@@ -465,7 +465,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[4]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">absolute_import</span>
@@ -499,7 +499,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[5]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Importing is done with the import statement</span>
@@ -536,7 +536,7 @@ cos(pi) =  -1.0
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Notice that we used the <code>import ... as</code> construction.  This enabled us to abbreviate the name of the module so we do not have to type <code>numpy</code> each time.</p>
-<p>Also, notice that to access the (approximate) value of $\pi$ in the <code>numpy</code> module, we prefaced the name of the attiribute (<code>pi</code>) with the module name followed by a dot (<code>np.</code>).  This is generally how you access attributes in modules.</p>
+<p>Also, notice that to access the (approximate) value of $\pi$ in the <code>numpy</code> module, we prefaced the name of the attribute (<code>pi</code>) with the module name followed by a dot (<code>np.</code>).  This is generally how you access attributes in modules.</p>
 <p>We also learned an important bit of syntax: strings are enclosed in single (or double) quotes.</p>
 <p>We're already getting dangerous with Python.  So dangerous, in fact, that we'll write our own module!</p>
 
@@ -551,14 +551,14 @@ cos(pi) =  -1.0
 <h2 id="Writing-your-own-module-(and-learning-a-bunch-of-syntax!)">Writing your own module (and learning a bunch of syntax!)<a class="anchor-link" href="#Writing-your-own-module-(and-learning-a-bunch-of-syntax!)">&#182;</a></h2><p>Modules are stored in files ending in <code>.py</code>.  As an example, we will create a module that finds the roots of the quadratic equation</p>
 \begin{align}
 ax^2 + bx + c = 0.
-\end{align}<p>Using the Spyder editing window (or your favorite text editor), we'll create a file called <code>quadratic.py</code> containing the code below.  The file should be saved in a directory that is part of your <code>PYTHONPATH</code> environment variable (which usually contains the present working directory) so that the interpreter can find it.</p>
+\end{align}<p>Using Light Table  (or your favorite text editor), we'll create a file called <code>quadratic.py</code> containing the code below.  The file should be saved in a directory that is part of your <code>PYTHONPATH</code> environment variable (which usually contains the present working directory) so that the interpreter can find it.</p>
 
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[6]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="sd">&quot;&quot;&quot;</span>
@@ -619,7 +619,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[7]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="kn">import</span> <span class="nn">quadratic</span> <span class="k">as</span> <span class="nn">qd</span>
@@ -641,18 +641,9 @@ ax^2 + bx + c = 0.
 
 
 <div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_text output_error">
-<pre>
-<span class="ansired">---------------------------------------------------------------------------</span>
-<span class="ansired">ImportError</span>                               Traceback (most recent call last)
-<span class="ansigreen">&lt;ipython-input-7-8a19bab66a6c&gt;</span> in <span class="ansicyan">&lt;module&gt;</span><span class="ansiblue">()</span>
-<span class="ansigreen">----&gt; 1</span><span class="ansired"> </span><span class="ansigreen">import</span> quadratic <span class="ansigreen">as</span> qd<span class="ansiblue"></span>
-<span class="ansigreen">      2</span> <span class="ansiblue"></span>
-<span class="ansigreen">      3</span> <span class="ansired"># Python has nifty syntax for making multiple definitions on the same line</span><span class="ansiblue"></span><span class="ansiblue"></span>
-<span class="ansigreen">      4</span> a<span class="ansiblue">,</span> b<span class="ansiblue">,</span> c <span class="ansiblue">=</span> <span class="ansicyan">3.0</span><span class="ansiblue">,</span> <span class="ansiblue">-</span><span class="ansicyan">7.0</span><span class="ansiblue">,</span> <span class="ansiblue">-</span><span class="ansicyan">6.0</span><span class="ansiblue"></span>
-<span class="ansigreen">      5</span> <span class="ansiblue"></span>
-
-<span class="ansired">ImportError</span>: No module named &apos;quadratic&apos;</pre>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>roots: 3.0 -0.666666666667
+</pre>
 </div>
 </div>
 
@@ -682,7 +673,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[7]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># %load quadratic.py</span>
@@ -742,7 +733,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[8]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Specify a, b, and c that will give imaginary roots</span>
@@ -768,6 +759,14 @@ ax^2 + bx + c = 0.
 </div>
 </div>
 
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stderr output_text">
+<pre>/Users/Justin/anaconda/lib/python3.4/site-packages/ipykernel/__main__.py:25: RuntimeWarning: invalid value encountered in sqrt
+/Users/Justin/anaconda/lib/python3.4/site-packages/ipykernel/__main__.py:26: RuntimeWarning: invalid value encountered in sqrt
+</pre>
+</div>
+</div>
+
 </div>
 </div>
 
@@ -785,7 +784,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[9]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="k">def</span> <span class="nf">roots</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
@@ -821,7 +820,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[11]:</div>
+<div class="prompt input_prompt">In&nbsp;[10]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Pass in parameters that will give imaginary roots</span>
@@ -842,12 +841,12 @@ ax^2 + bx + c = 0.
 <pre>
 <span class="ansired">---------------------------------------------------------------------------</span>
 <span class="ansired">ValueError</span>                                Traceback (most recent call last)
-<span class="ansigreen">&lt;ipython-input-11-3c24fdd48190&gt;</span> in <span class="ansicyan">&lt;module&gt;</span><span class="ansiblue">()</span>
+<span class="ansigreen">&lt;ipython-input-10-3c24fdd48190&gt;</span> in <span class="ansicyan">&lt;module&gt;</span><span class="ansiblue">()</span>
 <span class="ansigreen">      1</span> <span class="ansired"># Pass in parameters that will give imaginary roots</span><span class="ansiblue"></span><span class="ansiblue"></span>
 <span class="ansigreen">      2</span> a<span class="ansiblue">,</span> b<span class="ansiblue">,</span> c <span class="ansiblue">=</span> <span class="ansicyan">1.0</span><span class="ansiblue">,</span> <span class="ansiblue">-</span><span class="ansicyan">2.0</span><span class="ansiblue">,</span> <span class="ansicyan">2.0</span><span class="ansiblue"></span>
 <span class="ansigreen">----&gt; 3</span><span class="ansired"> </span>root_1<span class="ansiblue">,</span> root_2 <span class="ansiblue">=</span> roots<span class="ansiblue">(</span>a<span class="ansiblue">,</span> b<span class="ansiblue">,</span> c<span class="ansiblue">)</span><span class="ansiblue"></span>
 
-<span class="ansigreen">&lt;ipython-input-10-ef88b835bc9e&gt;</span> in <span class="ansicyan">roots</span><span class="ansiblue">(a, b, c)</span>
+<span class="ansigreen">&lt;ipython-input-9-ef88b835bc9e&gt;</span> in <span class="ansicyan">roots</span><span class="ansiblue">(a, b, c)</span>
 <span class="ansigreen">      7</span> <span class="ansiblue"></span>
 <span class="ansigreen">      8</span>     <span class="ansigreen">if</span> delta <span class="ansiblue">&lt;</span> <span class="ansicyan">0.0</span><span class="ansiblue">:</span><span class="ansiblue"></span>
 <span class="ansigreen">----&gt; 9</span><span class="ansired">         </span><span class="ansigreen">raise</span> ValueError<span class="ansiblue">(</span><span class="ansiblue">&apos;Imaginary roots!  We only do real roots!&apos;</span><span class="ansiblue">)</span><span class="ansiblue"></span>
@@ -908,7 +907,7 @@ ax^2 + bx + c = 0.
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[13]:</div>
+<div class="prompt input_prompt">In&nbsp;[11]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Define the coefficients in a list (using square brackets)</span>
@@ -955,7 +954,7 @@ Roots for (a, b, c) = (1, -2, 2):  [ 1.+1.j  1.-1.j]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[14]:</div>
+<div class="prompt input_prompt">In&nbsp;[12]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># This is a list</span>
@@ -1013,7 +1012,7 @@ Roots for (a, b, c) = (1, -2, 2):  [ 1.+1.j  1.-1.j]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[15]:</div>
+<div class="prompt input_prompt">In&nbsp;[13]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">])</span>
@@ -1064,7 +1063,7 @@ b**a:    [   4.   25.  216.]
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[16]:</div>
+<div class="prompt input_prompt">In&nbsp;[14]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Make 20 evenly spaced points from 0 to 2*pi</span>
@@ -1152,7 +1151,7 @@ y:  [ 1.          1.06547842  1.13495438  1.2083445   1.28550031  1.36620039
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[17]:</div>
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Import Matplotlib</span>
@@ -1181,7 +1180,7 @@ y:  [ 1.          1.06547842  1.13495438  1.2083445   1.28550031  1.36620039
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[17]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[15]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
@@ -1414,7 +1413,7 @@ QF5NGAAAAABJRU5ErkJggg==
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="prompt input_prompt">In&nbsp;[16]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Define forward differencing function</span>
@@ -1455,7 +1454,7 @@ QF5NGAAAAABJRU5ErkJggg==
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="prompt input_prompt">In&nbsp;[17]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Compute exact derivative</span>
@@ -1486,11 +1485,11 @@ QF5NGAAAAABJRU5ErkJggg==
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[19]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[17]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
-<pre>&lt;matplotlib.legend.Legend at 0x1076c3ef0&gt;</pre>
+<pre>&lt;matplotlib.legend.Legend at 0x111913e10&gt;</pre>
 </div>
 
 </div>
@@ -1832,7 +1831,7 @@ ysFEDi4AAAAASUVORK5CYII=
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[20]:</div>
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Use np.diff function to compute forward differences</span>
@@ -1873,7 +1872,7 @@ ysFEDi4AAAAASUVORK5CYII=
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[21]:</div>
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="o">%</span><span class="k">timeit</span> np_deriv = np.diff(y) / np.diff(x)
@@ -1891,8 +1890,9 @@ ysFEDi4AAAAASUVORK5CYII=
 
 <div class="output_area"><div class="prompt"></div>
 <div class="output_subarea output_stream output_stdout output_text">
-<pre>100000 loops, best of 3: 11.7 µs per loop
-10000 loops, best of 3: 68.6 µs per loop
+<pre>The slowest run took 4.39 times longer than the fastest. This could mean that an intermediate result is being cached 
+100000 loops, best of 3: 10.5 µs per loop
+10000 loops, best of 3: 62 µs per loop
 </pre>
 </div>
 </div>
@@ -1926,7 +1926,7 @@ ysFEDi4AAAAASUVORK5CYII=
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[22]:</div>
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="kn">import</span> <span class="nn">scipy.special</span>
@@ -1971,7 +1971,7 @@ ysFEDi4AAAAASUVORK5CYII=
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[23]:</div>
+<div class="prompt input_prompt">In&nbsp;[21]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Compute integral numerically (do not use last point because it would</span>
@@ -2069,7 +2069,7 @@ The slowest run took 17.23 times longer than the fastest. This could mean that a
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[25]:</div>
+<div class="prompt input_prompt">In&nbsp;[22]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Import Seaborn</span>
@@ -2101,7 +2101,7 @@ The slowest run took 17.23 times longer than the fastest. This could mean that a
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[29]:</div>
+<div class="prompt input_prompt">In&nbsp;[23]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Plot approximate derivative with gray dots; deriv is approximately between</span>
@@ -2129,11 +2129,11 @@ The slowest run took 17.23 times longer than the fastest. This could mean that a
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[29]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[23]:</div>
 
 
 <div class="output_text output_subarea output_execute_result">
-<pre>&lt;matplotlib.legend.Legend at 0x1193acdd8&gt;</pre>
+<pre>&lt;matplotlib.legend.Legend at 0x11756be80&gt;</pre>
 </div>
 
 </div>
@@ -2787,6 +2787,58 @@ L502.384 11.7727" style="fill:none;stroke:#ffffff;stroke-linecap:round;"/>
      <!-- $\mathrm{d}y/\mathrm{d}x$ -->
      <defs>
       <path d="
+M5.60938 -23
+Q5.60938 -22.7031 5.71875 -22.6094
+L40.4844 73.7812
+Q40.6719 74.3594 41.1562 74.6719
+Q41.6562 75 42.2812 75
+Q43.1719 75 43.7188 74.4531
+Q44.2812 73.9219 44.2812 73
+L44.2812 72.6094
+L9.51562 -23.7812
+Q8.9375 -25 7.625 -25
+Q6.78125 -25 6.1875 -24.4062
+Q5.60938 -23.8281 5.60938 -23" id="Cmmi10-3d"/>
+      <path d="
+M24.4219 -1.125
+Q18.5 -1.125 13.6094 2.07812
+Q8.73438 5.28125 6.03125 10.5
+Q3.32812 15.7188 3.32812 21.5781
+Q3.32812 27.6406 6.28125 32.8281
+Q9.23438 38.0312 14.3125 41.1094
+Q19.3906 44.1875 25.4844 44.1875
+Q29.1562 44.1875 32.4219 42.6406
+Q35.6875 41.1094 38.0938 38.375
+L38.0938 59.1875
+Q38.0938 61.8594 37.2812 63.0625
+Q36.4688 64.2656 34.9844 64.5312
+Q33.5 64.7969 30.3281 64.7969
+L30.3281 68.3125
+L45.125 69.3906
+L45.125 9.07812
+Q45.125 6.45312 45.9219 5.25
+Q46.7344 4.04688 48.2188 3.78125
+Q49.7031 3.51562 52.875 3.51562
+L52.875 0
+L37.7969 -1.125
+L37.7969 5.17188
+Q35.2031 2.20312 31.6406 0.53125
+Q28.0781 -1.125 24.4219 -1.125
+M14.2031 8.6875
+Q15.9219 5.42188 18.7656 3.46875
+Q21.625 1.51562 25 1.51562
+Q29.1562 1.51562 32.6094 3.90625
+Q36.0781 6.29688 37.7969 10.1094
+L37.7969 34.0781
+Q36.625 36.2812 34.8438 38.0156
+Q33.0625 39.75 30.8281 40.6719
+Q28.6094 41.6094 26.125 41.6094
+Q20.9062 41.6094 17.7188 38.6406
+Q14.5469 35.6875 13.2812 31.0938
+Q12.0156 26.5156 12.0156 21.4844
+Q12.0156 17.4844 12.4219 14.5
+Q12.8438 11.5312 14.2031 8.6875" id="Cmr10-64"/>
+      <path d="
 M8.40625 -14.3125
 Q10.5 -17.9219 15.7188 -17.9219
 Q20.4531 -17.9219 23.9219 -14.5938
@@ -2840,58 +2892,6 @@ Q14.5 -10.9844 12.7812 -12.6875
 Q11.0781 -14.4062 8.79688 -14.4062
 Q8.6875 -14.3594 8.59375 -14.3281
 Q8.5 -14.3125 8.40625 -14.3125" id="Cmmi10-79"/>
-      <path d="
-M24.4219 -1.125
-Q18.5 -1.125 13.6094 2.07812
-Q8.73438 5.28125 6.03125 10.5
-Q3.32812 15.7188 3.32812 21.5781
-Q3.32812 27.6406 6.28125 32.8281
-Q9.23438 38.0312 14.3125 41.1094
-Q19.3906 44.1875 25.4844 44.1875
-Q29.1562 44.1875 32.4219 42.6406
-Q35.6875 41.1094 38.0938 38.375
-L38.0938 59.1875
-Q38.0938 61.8594 37.2812 63.0625
-Q36.4688 64.2656 34.9844 64.5312
-Q33.5 64.7969 30.3281 64.7969
-L30.3281 68.3125
-L45.125 69.3906
-L45.125 9.07812
-Q45.125 6.45312 45.9219 5.25
-Q46.7344 4.04688 48.2188 3.78125
-Q49.7031 3.51562 52.875 3.51562
-L52.875 0
-L37.7969 -1.125
-L37.7969 5.17188
-Q35.2031 2.20312 31.6406 0.53125
-Q28.0781 -1.125 24.4219 -1.125
-M14.2031 8.6875
-Q15.9219 5.42188 18.7656 3.46875
-Q21.625 1.51562 25 1.51562
-Q29.1562 1.51562 32.6094 3.90625
-Q36.0781 6.29688 37.7969 10.1094
-L37.7969 34.0781
-Q36.625 36.2812 34.8438 38.0156
-Q33.0625 39.75 30.8281 40.6719
-Q28.6094 41.6094 26.125 41.6094
-Q20.9062 41.6094 17.7188 38.6406
-Q14.5469 35.6875 13.2812 31.0938
-Q12.0156 26.5156 12.0156 21.4844
-Q12.0156 17.4844 12.4219 14.5
-Q12.8438 11.5312 14.2031 8.6875" id="Cmr10-64"/>
-      <path d="
-M5.60938 -23
-Q5.60938 -22.7031 5.71875 -22.6094
-L40.4844 73.7812
-Q40.6719 74.3594 41.1562 74.6719
-Q41.6562 75 42.2812 75
-Q43.1719 75 43.7188 74.4531
-Q44.2812 73.9219 44.2812 73
-L44.2812 72.6094
-L9.51562 -23.7812
-Q8.9375 -25 7.625 -25
-Q6.78125 -25 6.1875 -24.4062
-Q5.60938 -23.8281 5.60938 -23" id="Cmmi10-3d"/>
      </defs>
      <g style="fill:#262626;" transform="translate(20.7 189.34265625)rotate(-90.0)scale(0.18 -0.18)">
       <use xlink:href="#Cmr10-64"/>
@@ -3124,23 +3124,23 @@ L502.384 62.9227" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-wi
    </g>
    <g id="patch_3">
     <path d="
-M55.9844 318.673
-L55.9844 11.7727" style="fill:none;"/>
-   </g>
-   <g id="patch_4">
-    <path d="
-M502.384 318.673
-L502.384 11.7727" style="fill:none;"/>
-   </g>
-   <g id="patch_5">
-    <path d="
 M55.9844 11.7727
 L502.384 11.7727" style="fill:none;"/>
    </g>
-   <g id="patch_6">
+   <g id="patch_4">
+    <path d="
+M55.9844 318.673
+L55.9844 11.7727" style="fill:none;"/>
+   </g>
+   <g id="patch_5">
     <path d="
 M55.9844 318.673
 L502.384 318.673" style="fill:none;"/>
+   </g>
+   <g id="patch_6">
+    <path d="
+M502.384 318.673
+L502.384 11.7727" style="fill:none;"/>
    </g>
    <g id="legend_1">
     <g id="line2d_45"/>
@@ -3153,26 +3153,18 @@ L502.384 318.673" style="fill:none;"/>
      <!-- fin. diff -->
      <defs>
       <path d="
-M6.59375 0
-L6.59375 51.8594
-L14.5 51.8594
-L14.5 44.4844
-Q20.2188 53.0312 31 53.0312
-Q35.6875 53.0312 39.625 51.3438
-Q43.5625 49.6562 45.5156 46.9219
-Q47.4688 44.1875 48.25 40.4375
-Q48.7344 37.9844 48.7344 31.8906
-L48.7344 0
-L39.9375 0
-L39.9375 31.5469
-Q39.9375 36.9219 38.9062 39.5781
-Q37.8906 42.2344 35.2812 43.8125
-Q32.6719 45.4062 29.1562 45.4062
-Q23.5312 45.4062 19.4531 41.8438
-Q15.375 38.2812 15.375 28.3281
-L15.375 0
+M6.64062 61.4688
+L6.64062 71.5781
+L15.4375 71.5781
+L15.4375 61.4688
 z
-" id="ArialMT-6e"/>
+
+M6.64062 0
+L6.64062 51.8594
+L15.4375 51.8594
+L15.4375 0
+z
+" id="ArialMT-69"/>
       <path d="
 M8.6875 0
 L8.6875 45.0156
@@ -3223,18 +3215,26 @@ Q20.3125 45.75 16.375 40.9688
 Q12.4531 36.1875 12.4531 25.875" id="ArialMT-64"/>
       <path id="ArialMT-20"/>
       <path d="
-M6.64062 61.4688
-L6.64062 71.5781
-L15.4375 71.5781
-L15.4375 61.4688
+M6.59375 0
+L6.59375 51.8594
+L14.5 51.8594
+L14.5 44.4844
+Q20.2188 53.0312 31 53.0312
+Q35.6875 53.0312 39.625 51.3438
+Q43.5625 49.6562 45.5156 46.9219
+Q47.4688 44.1875 48.25 40.4375
+Q48.7344 37.9844 48.7344 31.8906
+L48.7344 0
+L39.9375 0
+L39.9375 31.5469
+Q39.9375 36.9219 38.9062 39.5781
+Q37.8906 42.2344 35.2812 43.8125
+Q32.6719 45.4062 29.1562 45.4062
+Q23.5312 45.4062 19.4531 41.8438
+Q15.375 38.2812 15.375 28.3281
+L15.375 0
 z
-
-M6.64062 0
-L6.64062 51.8594
-L15.4375 51.8594
-L15.4375 0
-z
-" id="ArialMT-69"/>
+" id="ArialMT-6e"/>
      </defs>
      <g style="fill:#262626;" transform="translate(275.3703125 25.93046875)scale(0.1 -0.1)">
       <use xlink:href="#ArialMT-66"/>
@@ -3258,49 +3258,6 @@ L273.37 36.5758" style="fill:none;stroke:#000000;stroke-linecap:round;stroke-wid
      <!-- exact -->
      <defs>
       <path d="
-M25.7812 7.85938
-L27.0469 0.09375
-Q23.3438 -0.6875 20.4062 -0.6875
-Q15.625 -0.6875 12.9844 0.828125
-Q10.3594 2.34375 9.28125 4.8125
-Q8.20312 7.28125 8.20312 15.1875
-L8.20312 45.0156
-L1.76562 45.0156
-L1.76562 51.8594
-L8.20312 51.8594
-L8.20312 64.7031
-L16.9375 69.9688
-L16.9375 51.8594
-L25.7812 51.8594
-L25.7812 45.0156
-L16.9375 45.0156
-L16.9375 14.7031
-Q16.9375 10.9375 17.4062 9.85938
-Q17.875 8.79688 18.9219 8.15625
-Q19.9688 7.51562 21.9219 7.51562
-Q23.3906 7.51562 25.7812 7.85938" id="ArialMT-74"/>
-      <path d="
-M40.4375 19
-L49.0781 17.875
-Q47.6562 8.9375 41.8125 3.875
-Q35.9844 -1.17188 27.4844 -1.17188
-Q16.8438 -1.17188 10.375 5.78125
-Q3.90625 12.75 3.90625 25.7344
-Q3.90625 34.125 6.6875 40.4219
-Q9.46875 46.7344 15.1562 49.875
-Q20.8438 53.0312 27.5469 53.0312
-Q35.9844 53.0312 41.3594 48.75
-Q46.7344 44.4844 48.25 36.625
-L39.7031 35.2969
-Q38.4844 40.5312 35.375 43.1562
-Q32.2812 45.7969 27.875 45.7969
-Q21.2344 45.7969 17.0781 41.0312
-Q12.9375 36.2812 12.9375 25.9844
-Q12.9375 15.5312 16.9375 10.7969
-Q20.9531 6.0625 27.3906 6.0625
-Q32.5625 6.0625 36.0312 9.23438
-Q39.5 12.4062 40.4375 19" id="ArialMT-63"/>
-      <path d="
 M42.0938 16.7031
 L51.1719 15.5781
 Q49.0312 7.625 43.2188 3.21875
@@ -3323,6 +3280,27 @@ Q41.6094 37.4531 38.875 40.7188
 Q34.6719 45.7969 27.9844 45.7969
 Q21.9219 45.7969 17.7969 41.75
 Q13.6719 37.7031 13.2344 30.9062" id="ArialMT-65"/>
+      <path d="
+M40.4375 19
+L49.0781 17.875
+Q47.6562 8.9375 41.8125 3.875
+Q35.9844 -1.17188 27.4844 -1.17188
+Q16.8438 -1.17188 10.375 5.78125
+Q3.90625 12.75 3.90625 25.7344
+Q3.90625 34.125 6.6875 40.4219
+Q9.46875 46.7344 15.1562 49.875
+Q20.8438 53.0312 27.5469 53.0312
+Q35.9844 53.0312 41.3594 48.75
+Q46.7344 44.4844 48.25 36.625
+L39.7031 35.2969
+Q38.4844 40.5312 35.375 43.1562
+Q32.2812 45.7969 27.875 45.7969
+Q21.2344 45.7969 17.0781 41.0312
+Q12.9375 36.2812 12.9375 25.9844
+Q12.9375 15.5312 16.9375 10.7969
+Q20.9531 6.0625 27.3906 6.0625
+Q32.5625 6.0625 36.0312 9.23438
+Q39.5 12.4062 40.4375 19" id="ArialMT-63"/>
       <path d="
 M40.4375 6.39062
 Q35.5469 2.25 31.0312 0.53125
@@ -3382,6 +3360,28 @@ L25 20.4531
 L11.375 0
 z
 " id="ArialMT-78"/>
+      <path d="
+M25.7812 7.85938
+L27.0469 0.09375
+Q23.3438 -0.6875 20.4062 -0.6875
+Q15.625 -0.6875 12.9844 0.828125
+Q10.3594 2.34375 9.28125 4.8125
+Q8.20312 7.28125 8.20312 15.1875
+L8.20312 45.0156
+L1.76562 45.0156
+L1.76562 51.8594
+L8.20312 51.8594
+L8.20312 64.7031
+L16.9375 69.9688
+L16.9375 51.8594
+L25.7812 51.8594
+L25.7812 45.0156
+L16.9375 45.0156
+L16.9375 14.7031
+Q16.9375 10.9375 17.4062 9.85938
+Q17.875 8.79688 18.9219 8.15625
+Q19.9688 7.51562 21.9219 7.51562
+Q23.3906 7.51562 25.7812 7.85938" id="ArialMT-74"/>
      </defs>
      <g style="fill:#262626;" transform="translate(275.3703125 40.07578125)scale(0.1 -0.1)">
       <use xlink:href="#ArialMT-65"/>
@@ -3421,7 +3421,7 @@ z
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[31]:</div>
+<div class="prompt input_prompt">In&nbsp;[24]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span class="c"># Import Bokeh modules for interactive plotting</span>
@@ -3683,9 +3683,9 @@ z
 <div class="output_html rendered_html output_subarea ">
 <script type="text/javascript">
         Bokeh.$(function() {
-        var all_models = [{"type": "ColumnDataSource", "attributes": {"selected": {"0d": {"indices": [], "flag": false}, "2d": {"indices": []}, "1d": {"indices": []}}, "column_names": ["Series 0", "Series 1"], "callback": null, "doc": null, "tags": [], "data": {"Series 1": [1.0, 1.063333267980401, 1.1258234565230252, 1.1865081447462105, 1.2442983536012697, 1.2979875275870778, 1.3462666410208366, 1.387745975082701, 1.4209838452520307, 1.444522213694075, 1.4569287072032306, 1.4568440966459644, 1.4430338054423473, 1.4144415374023989, 1.3702426890962642, 1.309894882655224, 1.233182764008064, 1.1402541956111598, 1.0316451574314192, 0.9082910657445775, 0.771522818191701, 0.6230466475071645, 0.46490776815474394, 0.2994387663726883, 0.12919464053532048, -0.043122732882821, -0.21474722618901293, -0.3829342165695287, -0.5450452930708835, -0.6986278082498518, -0.8414855206669554, -0.9717371752914612, -1.087860664895925, -1.1887213376180825, -1.2735839869125374, -1.3421090029127405, -1.3943340091358216, -1.4306429996339995, -1.4517254912783353, -1.4585284959028892, -1.4522041990623018, -1.4340561247335684, -1.4054863001467666, -1.3679455522201398, -1.3228886105171007, -1.271735204030097, -1.215837858662019, -1.1564566601390538, -1.094740865863068, -1.0317169426955937, -0.9682823814309438, -0.9052044913387792, -0.8431233028250561, -0.7825576925120246, -0.7239138804195615, -0.6674955204386609, -0.6135147005057895, -0.5621032767826348, -0.5133240775517812, -0.4671816203492672, -0.42363208500237126, -0.382592372516256, -0.3439481535285052, -0.30756086995908893, -0.2732737000936639, -0.24091653185531692, -0.2103100130270572, -0.18126876243846188, -0.15360383439284378, -0.12712453155916453, -0.10163966069486392, -0.07695832221141685, -0.05289031984185184, -0.02924627141062554, -0.005837496642234193, 0.01752424639347738, 0.04102710783281196, 0.06485950907365595, 0.0892104562233427, 0.11426973668998863, 0.14022792909199439, 0.16727615283632988, 0.19560547895848676, 0.22540591857906905, 0.25686490022715047, 0.290165143102962, 0.32548183109573964, 0.3629789932407773, 0.40280500170504674, 0.44508710993068684, 0.48992497297159854, 0.537383121107766, 0.5874823982059652, 0.6401904294375189, 0.6954112497856605, 0.7529743054173693, 0.812623133500927, 0.8740041300410178, 0.9366559256695384, 0.9999999999999998], "Series 0": [0.0, 0.06346651825433926, 0.12693303650867852, 0.1903995547630178, 0.25386607301735703, 0.3173325912716963, 0.3807991095260356, 0.4442656277803748, 0.5077321460347141, 0.5711986642890533, 0.6346651825433925, 0.6981317007977318, 0.7615982190520711, 0.8250647373064104, 0.8885312555607496, 0.9519977738150889, 1.0154642920694281, 1.0789308103237674, 1.1423973285781066, 1.2058638468324459, 1.269330365086785, 1.3327968833411243, 1.3962634015954636, 1.4597299198498028, 1.5231964381041423, 1.5866629563584815, 1.6501294746128208, 1.71359599286716, 1.7770625111214993, 1.8405290293758385, 1.9039955476301778, 1.967462065884517, 2.0309285841388562, 2.0943951023931957, 2.1578616206475347, 2.221328138901874, 2.284794657156213, 2.3482611754105527, 2.4117276936648917, 2.475194211919231, 2.53866073017357, 2.6021272484279097, 2.6655937666822487, 2.729060284936588, 2.792526803190927, 2.8559933214452666, 2.9194598396996057, 2.982926357953945, 3.0463928762082846, 3.1098593944626236, 3.173325912716963, 3.236792430971302, 3.3002589492256416, 3.3637254674799806, 3.42719198573432, 3.490658503988659, 3.5541250222429985, 3.6175915404973376, 3.681058058751677, 3.744524577006016, 3.8079910952603555, 3.8714576135146945, 3.934924131769034, 3.998390650023373, 4.0618571682777125, 4.1253236865320515, 4.188790204786391, 4.25225672304073, 4.3157232412950695, 4.3791897595494085, 4.442656277803748, 4.506122796058087, 4.569589314312426, 4.6330558325667655, 4.696522350821105, 4.759988869075444, 4.823455387329783, 4.886921905584122, 4.950388423838462, 5.013854942092801, 5.07732146034714, 5.14078797860148, 5.204254496855819, 5.267721015110158, 5.331187533364497, 5.394654051618837, 5.458120569873176, 5.521587088127515, 5.585053606381854, 5.648520124636194, 5.711986642890533, 5.775453161144872, 5.838919679399211, 5.902386197653551, 5.96585271590789, 6.029319234162229, 6.092785752416569, 6.156252270670908, 6.219718788925247, 6.283185307179586]}, "id": "361d49be-06f6-48c2-8f8f-7ebb0f65a65c"}, "id": "361d49be-06f6-48c2-8f8f-7ebb0f65a65c"}, {"type": "BasicTicker", "attributes": {"doc": null, "mantissas": [2, 5, 10], "tags": [], "id": "c3b02098-198b-49d4-8160-f83b3187170d"}, "id": "c3b02098-198b-49d4-8160-f83b3187170d"}, {"type": "BasicTickFormatter", "attributes": {"tags": [], "id": "ab04bfd5-9e8a-4bd8-8ad0-da5ab8bef1d5", "doc": null}, "id": "ab04bfd5-9e8a-4bd8-8ad0-da5ab8bef1d5"}, {"type": "BoxZoomTool", "attributes": {"dimensions": ["width", "height"], "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "d5a94ba2-2f52-40b1-99ae-27c4a89b93ee"}, "id": "d5a94ba2-2f52-40b1-99ae-27c4a89b93ee"}, {"type": "ColumnDataSource", "attributes": {"selected": {"0d": {"indices": [], "flag": false}, "2d": {"indices": []}, "1d": {"indices": []}}, "column_names": ["name"], "callback": null, "doc": null, "tags": [], "data": {"name": "ax_end"}, "id": "dca5b93b-621c-4e82-9813-baccb8ef2457"}, "id": "dca5b93b-621c-4e82-9813-baccb8ef2457"}, {"type": "GlyphRenderer", "attributes": {"doc": null, "nonselection_glyph": null, "glyph": {"type": "Circle", "id": "be183194-d9cb-46e4-97b0-0bfd1bc2855e"}, "tags": [], "id": "7f45c9e6-cc2c-42b1-a384-82043d704572", "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "6e7d837a-fcd2-41f4-b256-46906ba78406"}}, "id": "7f45c9e6-cc2c-42b1-a384-82043d704572"}, {"type": "HelpTool", "attributes": {"doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "71d6230b-be90-4057-8c44-178ba09a558e"}, "id": "71d6230b-be90-4057-8c44-178ba09a558e"}, {"type": "DataRange1d", "attributes": {"callback": null, "doc": null, "tags": [], "names": [], "renderers": [], "id": "6d0a79e1-66a8-494f-87dd-b8acd1cce42a"}, "id": "6d0a79e1-66a8-494f-87dd-b8acd1cce42a"}, {"type": "WheelZoomTool", "attributes": {"dimensions": ["width", "height"], "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "2b30d97c-0708-4c28-8b3c-64dfb9112ace"}, "id": "2b30d97c-0708-4c28-8b3c-64dfb9112ace"}, {"type": "Plot", "attributes": {"tool_events": {"type": "ToolEvents", "id": "f7c849af-1c53-4eea-a1b7-f6989760dd9a"}, "extra_x_ranges": {}, "tools": [{"type": "PanTool", "id": "c007925b-c7dd-4f91-b6cb-a33c8df147c6"}, {"type": "WheelZoomTool", "id": "2b30d97c-0708-4c28-8b3c-64dfb9112ace"}, {"type": "BoxZoomTool", "id": "d5a94ba2-2f52-40b1-99ae-27c4a89b93ee"}, {"type": "PreviewSaveTool", "id": "bcd6684f-35b6-42bd-9071-0c06a6e8d0af"}, {"type": "ResizeTool", "id": "2c290ce2-84cb-4871-a46e-ffa0c2625e0b"}, {"type": "ResetTool", "id": "3a8fcd06-9194-427d-9107-9d0f19e1138d"}, {"type": "HelpTool", "id": "71d6230b-be90-4057-8c44-178ba09a558e"}], "background_fill": "#EAEAF2", "extra_y_ranges": {}, "plot_width": 640, "tags": [], "id": "f637f540-52db-43cf-b63b-2794141c11fc", "below": [{"type": "LinearAxis", "id": "484587fb-5033-4f5d-97b9-9078bb6ebc6b"}], "left": [{"type": "LinearAxis", "id": "338bf6b9-cbac-4da3-a345-fc0c41520015"}], "plot_height": 440, "above": [], "y_range": {"type": "DataRange1d", "id": "6d0a79e1-66a8-494f-87dd-b8acd1cce42a"}, "x_range": {"type": "DataRange1d", "id": "f42d0d89-8457-4b28-ab32-42b1b91ddf1b"}, "title": "", "renderers": [{"type": "LinearAxis", "id": "484587fb-5033-4f5d-97b9-9078bb6ebc6b"}, {"type": "Grid", "id": "67c38748-c175-4a94-9d9e-d43e6b01a5fb"}, {"type": "LinearAxis", "id": "338bf6b9-cbac-4da3-a345-fc0c41520015"}, {"type": "Grid", "id": "734d01af-5ecd-44b7-98b8-69c5b7fa4cc9"}, {"type": "GlyphRenderer", "id": "de69408c-a052-4bda-95c3-78746e17f16f"}, {"type": "GlyphRenderer", "id": "7f45c9e6-cc2c-42b1-a384-82043d704572"}, {"type": "GlyphRenderer", "id": "d01829c3-d508-4a4c-bc9f-7b2869063e60"}], "right": [], "doc": null}, "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, {"type": "GlyphRenderer", "attributes": {"doc": null, "nonselection_glyph": null, "glyph": {"type": "X", "id": "d99f2337-cc5d-4383-a101-af61ae562d61"}, "tags": [], "id": "de69408c-a052-4bda-95c3-78746e17f16f", "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "dca5b93b-621c-4e82-9813-baccb8ef2457"}}, "id": "de69408c-a052-4bda-95c3-78746e17f16f"}, {"type": "Line", "attributes": {"y": {"field": "Series 1"}, "line_width": {"value": 2.0}, "x": {"field": "Series 0"}, "id": "f97c18a7-ee9f-4a2b-9874-39b321e93c67", "tags": [], "line_color": {"value": "#000000"}, "line_alpha": {"value": 1.0}, "doc": null, "line_dash": []}, "id": "f97c18a7-ee9f-4a2b-9874-39b321e93c67"}, {"type": "Grid", "attributes": {"doc": null, "tags": [], "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "ticker": {"type": "BasicTicker", "id": "c3b02098-198b-49d4-8160-f83b3187170d"}, "grid_line_width": {"value": 1}, "dimension": 1, "grid_line_color": {"value": "white"}, "id": "734d01af-5ecd-44b7-98b8-69c5b7fa4cc9"}, "id": "734d01af-5ecd-44b7-98b8-69c5b7fa4cc9"}, {"type": "ResizeTool", "attributes": {"doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "2c290ce2-84cb-4871-a46e-ffa0c2625e0b"}, "id": "2c290ce2-84cb-4871-a46e-ffa0c2625e0b"}, {"type": "ColumnDataSource", "attributes": {"selected": {"0d": {"indices": [], "flag": false}, "2d": {"indices": []}, "1d": {"indices": []}}, "column_names": ["Series 0", "Series 1"], "callback": null, "doc": null, "tags": [], "data": {"Series 1": [1.03170021854991, 1.0946867430442517, 1.156359749918268, 1.2156930276620166, 1.2715378153529153, 1.3226347921582582, 1.3676324833477997, 1.4051125024584024, 1.43362174296519, 1.4517112521610807, 1.4579810787527034, 1.4511299065471912, 1.4300078005924706, 1.3936699373694643, 1.3414288097603295, 1.2729021340588262, 1.1880535802022967, 1.0872235292158472, 0.9711473519716298, 0.840959202202327, 0.6981800062960676, 0.5446891749721611, 0.38268050181538726, 0.21460368145125922, 0.043093799006615995, -0.12910806438925435, -0.299239366656599, -0.46460168590868406, -0.6226431813842881, -0.7710339817499233, -0.9077310286182496, -1.0310296067871927, -1.1395996579720509, -1.2325059279287542, -1.3092119600137753, -1.3695688473915761, -1.4137904280936147, -1.4424172048451445, -1.4562716670494316, -1.456407877465384, -1.4440581712523732, -1.4205796257014076, -1.3874026314763492, -1.3459834728875204, -1.2977623492110233, -1.2441277821236874, -1.1863878907869465, -1.125748602916922, -1.0632985255150904, -0.9999999324081167, -0.9366851393090164, -0.8740574265039295, -0.8126956257075998, -0.7530614995280609, -0.695509096500038, -0.6402953489964144, -0.5875912837307511, -0.537493324893795, -0.49003428008069944, -0.44519370298571753, -0.4029074202492972, -0.3630760904459128, -0.32557273002975284, -0.29024919423645557, -0.25694164138333536, -0.22547503813071124, -0.19566678274753974, -0.16732953503670256, -0.1402733470474775, -0.1143071896297362, -0.08923996767793692, -0.06488111277670096, -0.041040836888007894, -0.01753012550761892, 0.005839456020608233, 0.029256073154818582, 0.05290798246049368, 0.07698387539583196, 0.10167313902190829, 0.1271659652141118, 0.1536532367304695, 0.18132611416974226, 0.2103752428103124, 0.24098949309114773, 0.2733541437806843, 0.30764841357081435, 0.3440422460297832, 0.3826922558585433, 0.4237367527280728, 0.4672897743001965, 0.5134340841152116, 0.5622131246133817, 0.613621962218722, 0.6675973213465662, 0.7240068779575347, 0.7826380704888571, 0.8431867850086365, 0.9052463790383612, 0.968297619599087], "Series 0": [0.03173325912716963, 0.0951997773815089, 0.15866629563584816, 0.2221328138901874, 0.28559933214452665, 0.34906585039886595, 0.4125323686532052, 0.47599888690754444, 0.5394654051618837, 0.6029319234162229, 0.6663984416705622, 0.7298649599249014, 0.7933314781792408, 0.85679799643358, 0.9202645146879193, 0.9837310329422585, 1.0471975511965979, 1.1106640694509369, 1.1741305877052763, 1.2375971059596154, 1.3010636242139548, 1.3645301424682938, 1.4279966607226333, 1.4914631789769726, 1.5549296972313118, 1.6183962154856513, 1.6818627337399903, 1.7453292519943298, 1.8087957702486688, 1.8722622885030082, 1.9357288067573473, 1.9991953250116867, 2.062661843266026, 2.126128361520365, 2.1895948797747042, 2.2530613980290437, 2.316527916283383, 2.379994434537722, 2.443460952792061, 2.5069274710464007, 2.57039398930074, 2.633860507555079, 2.697327025809418, 2.7607935440637577, 2.824260062318097, 2.887726580572436, 2.951193098826775, 3.014659617081115, 3.078126135335454, 3.141592653589793, 3.2050591718441326, 3.268525690098472, 3.331992208352811, 3.39545872660715, 3.4589252448614896, 3.522391763115829, 3.585858281370168, 3.649324799624507, 3.7127913178788465, 3.776257836133186, 3.839724354387525, 3.903190872641864, 3.9666573908962035, 4.030123909150543, 4.093590427404882, 4.157056945659221, 4.220523463913561, 4.2839899821679, 4.347456500422239, 4.410923018676579, 4.474389536930918, 4.537856055185257, 4.601322573439596, 4.664789091693935, 4.728255609948275, 4.791722128202614, 4.855188646456953, 4.918655164711293, 4.982121682965632, 5.045588201219971, 5.10905471947431, 5.17252123772865, 5.235987755982989, 5.299454274237328, 5.362920792491668, 5.426387310746007, 5.489853829000346, 5.553320347254685, 5.616786865509024, 5.680253383763364, 5.743719902017703, 5.807186420272042, 5.870652938526382, 5.934119456780721, 5.99758597503506, 6.061052493289399, 6.124519011543739, 6.187985529798078, 6.251452048052417]}, "id": "6e7d837a-fcd2-41f4-b256-46906ba78406"}, "id": "6e7d837a-fcd2-41f4-b256-46906ba78406"}, {"type": "PanTool", "attributes": {"dimensions": ["width", "height"], "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "c007925b-c7dd-4f91-b6cb-a33c8df147c6"}, "id": "c007925b-c7dd-4f91-b6cb-a33c8df147c6"}, {"type": "Circle", "attributes": {"line_width": {"value": 0.0}, "x": {"field": "Series 0"}, "line_color": {"value": "#000000"}, "fill_alpha": {"value": 1.0}, "y": {"field": "Series 1"}, "fill_color": {"value": "#808080"}, "line_alpha": {"value": 1.0}, "doc": null, "tags": [], "id": "be183194-d9cb-46e4-97b0-0bfd1bc2855e", "size": {"units": "screen", "value": 10}}, "id": "be183194-d9cb-46e4-97b0-0bfd1bc2855e"}, {"type": "ResetTool", "attributes": {"doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "3a8fcd06-9194-427d-9107-9d0f19e1138d"}, "id": "3a8fcd06-9194-427d-9107-9d0f19e1138d"}, {"type": "BasicTickFormatter", "attributes": {"tags": [], "id": "9847505e-99eb-440d-8580-93391280cb7f", "doc": null}, "id": "9847505e-99eb-440d-8580-93391280cb7f"}, {"type": "PreviewSaveTool", "attributes": {"doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "id": "bcd6684f-35b6-42bd-9071-0c06a6e8d0af"}, "id": "bcd6684f-35b6-42bd-9071-0c06a6e8d0af"}, {"type": "DataRange1d", "attributes": {"callback": null, "doc": null, "tags": [], "names": [], "renderers": [], "id": "f42d0d89-8457-4b28-ab32-42b1b91ddf1b"}, "id": "f42d0d89-8457-4b28-ab32-42b1b91ddf1b"}, {"type": "LinearAxis", "attributes": {"axis_label_text_font_style": "normal", "major_label_text_font_size": {"value": "10.000000pt"}, "axis_label_text_font": "sans-serif", "ticker": {"type": "BasicTicker", "id": "c3b02098-198b-49d4-8160-f83b3187170d"}, "axis_label_text_font_size": {"value": "18.000000pt"}, "major_label_text_font": "sans-serif", "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "axis_label": "dy/dx", "major_label_text_font_style": "normal", "id": "338bf6b9-cbac-4da3-a345-fc0c41520015", "formatter": {"type": "BasicTickFormatter", "id": "ab04bfd5-9e8a-4bd8-8ad0-da5ab8bef1d5"}}, "id": "338bf6b9-cbac-4da3-a345-fc0c41520015"}, {"type": "Grid", "attributes": {"doc": null, "tags": [], "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "ticker": {"type": "BasicTicker", "id": "54e7d81b-f462-46ea-a404-4c01b5125895"}, "grid_line_width": {"value": 1}, "dimension": 0, "grid_line_color": {"value": "white"}, "id": "67c38748-c175-4a94-9d9e-d43e6b01a5fb"}, "id": "67c38748-c175-4a94-9d9e-d43e6b01a5fb"}, {"type": "ToolEvents", "attributes": {"doc": null, "tags": [], "id": "f7c849af-1c53-4eea-a1b7-f6989760dd9a", "geometries": []}, "id": "f7c849af-1c53-4eea-a1b7-f6989760dd9a"}, {"type": "GlyphRenderer", "attributes": {"doc": null, "nonselection_glyph": null, "glyph": {"type": "Line", "id": "f97c18a7-ee9f-4a2b-9874-39b321e93c67"}, "tags": [], "id": "d01829c3-d508-4a4c-bc9f-7b2869063e60", "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "361d49be-06f6-48c2-8f8f-7ebb0f65a65c"}}, "id": "d01829c3-d508-4a4c-bc9f-7b2869063e60"}, {"type": "LinearAxis", "attributes": {"axis_label_text_font_style": "normal", "major_label_text_font_size": {"value": "10.000000pt"}, "axis_label_text_font": "sans-serif", "ticker": {"type": "BasicTicker", "id": "54e7d81b-f462-46ea-a404-4c01b5125895"}, "axis_label_text_font_size": {"value": "18.000000pt"}, "major_label_text_font": "sans-serif", "doc": null, "plot": {"type": "Plot", "id": "f637f540-52db-43cf-b63b-2794141c11fc"}, "tags": [], "axis_label": "x", "major_label_text_font_style": "normal", "id": "484587fb-5033-4f5d-97b9-9078bb6ebc6b", "formatter": {"type": "BasicTickFormatter", "id": "9847505e-99eb-440d-8580-93391280cb7f"}}, "id": "484587fb-5033-4f5d-97b9-9078bb6ebc6b"}, {"type": "BasicTicker", "attributes": {"doc": null, "mantissas": [2, 5, 10], "tags": [], "id": "54e7d81b-f462-46ea-a404-4c01b5125895"}, "id": "54e7d81b-f462-46ea-a404-4c01b5125895"}, {"type": "X", "attributes": {"tags": [], "id": "d99f2337-cc5d-4383-a101-af61ae562d61", "doc": null}, "id": "d99f2337-cc5d-4383-a101-af61ae562d61"}];
+        var all_models = [{"attributes": {"plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "tags": [], "dimensions": ["width", "height"], "id": "137a80be-1c24-4364-917f-b14cf01841d9", "doc": null}, "type": "WheelZoomTool", "id": "137a80be-1c24-4364-917f-b14cf01841d9"}, {"attributes": {"ticker": {"type": "BasicTicker", "id": "44a3843f-a425-41bd-9e54-a698326d0839"}, "major_label_text_font": "sans-serif", "axis_label_text_font_size": {"value": "18.000000pt"}, "major_label_text_font_size": {"value": "10.000000pt"}, "axis_label_text_font": "sans-serif", "axis_label_text_font_style": "normal", "plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "doc": null, "tags": [], "major_label_text_font_style": "normal", "formatter": {"type": "BasicTickFormatter", "id": "8efd9781-e881-45ce-a4b7-4fff0563cd94"}, "axis_label": "x", "id": "a1ec7a0c-0493-4e11-b2c4-4a2b6c38705e"}, "type": "LinearAxis", "id": "a1ec7a0c-0493-4e11-b2c4-4a2b6c38705e"}, {"attributes": {"doc": null, "names": [], "tags": [], "callback": null, "id": "e601aa17-3cdc-4d32-9958-fe87229e2e12", "renderers": []}, "type": "DataRange1d", "id": "e601aa17-3cdc-4d32-9958-fe87229e2e12"}, {"attributes": {"mantissas": [2, 5, 10], "id": "0f66599f-fde6-4af3-928b-0e30bc448896", "doc": null, "tags": []}, "type": "BasicTicker", "id": "0f66599f-fde6-4af3-928b-0e30bc448896"}, {"attributes": {"data": {"name": "ax_end"}, "tags": [], "callback": null, "column_names": ["name"], "selected": {"1d": {"indices": []}, "0d": {"indices": [], "flag": false}, "2d": {"indices": []}}, "doc": null, "id": "ec32e730-3f48-455a-9b6e-3c08041fb1a1"}, "type": "ColumnDataSource", "id": "ec32e730-3f48-455a-9b6e-3c08041fb1a1"}, {"attributes": {"plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "tags": [], "id": "aa24643c-ffd9-4836-8342-ccec75bc5fb0", "doc": null}, "type": "ResetTool", "id": "aa24643c-ffd9-4836-8342-ccec75bc5fb0"}, {"attributes": {"ticker": {"type": "BasicTicker", "id": "44a3843f-a425-41bd-9e54-a698326d0839"}, "grid_line_color": {"value": "white"}, "tags": [], "plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "dimension": 0, "grid_line_width": {"value": 1}, "doc": null, "id": "ab473b7a-9a53-49cd-aabb-4f8436f090a0"}, "type": "Grid", "id": "ab473b7a-9a53-49cd-aabb-4f8436f090a0"}, {"attributes": {"plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "tags": [], "dimensions": ["width", "height"], "id": "13aeff5c-f999-4663-8822-b0abbda7dcdf", "doc": null}, "type": "BoxZoomTool", "id": "13aeff5c-f999-4663-8822-b0abbda7dcdf"}, {"attributes": {"line_dash": [], "y": {"field": "Series 1"}, "line_width": {"value": 2.0}, "line_color": {"value": "#000000"}, "tags": [], "line_alpha": {"value": 1.0}, "x": {"field": "Series 0"}, "doc": null, "id": "b497f3cd-64da-4116-8707-feee4be5cd92"}, "type": "Line", "id": "b497f3cd-64da-4116-8707-feee4be5cd92"}, {"attributes": {"ticker": {"type": "BasicTicker", "id": "0f66599f-fde6-4af3-928b-0e30bc448896"}, "major_label_text_font": "sans-serif", "axis_label_text_font_size": {"value": "18.000000pt"}, "major_label_text_font_size": {"value": "10.000000pt"}, "axis_label_text_font": "sans-serif", "axis_label_text_font_style": "normal", "plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "doc": null, "tags": [], "major_label_text_font_style": "normal", "formatter": {"type": "BasicTickFormatter", "id": "23364348-d783-4243-ba9c-54db829884c6"}, "axis_label": "dy/dx", "id": "56bb392c-7797-41a5-bb47-8f5ad64b5822"}, "type": "LinearAxis", "id": "56bb392c-7797-41a5-bb47-8f5ad64b5822"}, {"attributes": {"plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "tags": [], "id": "89509080-f1bb-4337-b756-4862b631e9b0", "doc": null}, "type": "PreviewSaveTool", "id": "89509080-f1bb-4337-b756-4862b631e9b0"}, {"attributes": {"mantissas": [2, 5, 10], "id": "44a3843f-a425-41bd-9e54-a698326d0839", "doc": null, "tags": []}, "type": "BasicTicker", "id": "44a3843f-a425-41bd-9e54-a698326d0839"}, {"attributes": {"plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "tags": [], "dimensions": ["width", "height"], "id": "455fc237-1b07-4a66-802c-5b4b03a726b7", "doc": null}, "type": "PanTool", "id": "455fc237-1b07-4a66-802c-5b4b03a726b7"}, {"attributes": {"glyph": {"type": "X", "id": "f4f3812b-fdb3-4a17-bd26-e54376cb21d2"}, "tags": [], "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "ec32e730-3f48-455a-9b6e-3c08041fb1a1"}, "id": "0dc43b66-5f4e-4e64-9929-6a23e395f6dd", "doc": null, "nonselection_glyph": null}, "type": "GlyphRenderer", "id": "0dc43b66-5f4e-4e64-9929-6a23e395f6dd"}, {"attributes": {"plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "tags": [], "id": "3c4e42ce-634a-4ede-a2c9-1fcd653e9860", "doc": null}, "type": "HelpTool", "id": "3c4e42ce-634a-4ede-a2c9-1fcd653e9860"}, {"attributes": {"id": "f4f3812b-fdb3-4a17-bd26-e54376cb21d2", "doc": null, "tags": []}, "type": "X", "id": "f4f3812b-fdb3-4a17-bd26-e54376cb21d2"}, {"attributes": {"glyph": {"type": "Line", "id": "b497f3cd-64da-4116-8707-feee4be5cd92"}, "tags": [], "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "bf7115ad-b5d9-4114-8a39-3876d4bb6730"}, "id": "0f2d9ccf-0747-4226-9e51-1766257e5259", "doc": null, "nonselection_glyph": null}, "type": "GlyphRenderer", "id": "0f2d9ccf-0747-4226-9e51-1766257e5259"}, {"attributes": {"plot_height": 440, "y_range": {"type": "DataRange1d", "id": "e601aa17-3cdc-4d32-9958-fe87229e2e12"}, "x_range": {"type": "DataRange1d", "id": "e7bc065b-96c1-450f-bbbb-691e3011b3fb"}, "above": [], "background_fill": "#EAEAF2", "title": "", "tags": [], "right": [], "renderers": [{"type": "LinearAxis", "id": "a1ec7a0c-0493-4e11-b2c4-4a2b6c38705e"}, {"type": "Grid", "id": "ab473b7a-9a53-49cd-aabb-4f8436f090a0"}, {"type": "LinearAxis", "id": "56bb392c-7797-41a5-bb47-8f5ad64b5822"}, {"type": "Grid", "id": "67fabf48-1629-4f37-8ca9-6fa604068b99"}, {"type": "GlyphRenderer", "id": "0dc43b66-5f4e-4e64-9929-6a23e395f6dd"}, {"type": "GlyphRenderer", "id": "716d59d1-63c7-42c3-91c0-92304a919c60"}, {"type": "GlyphRenderer", "id": "0f2d9ccf-0747-4226-9e51-1766257e5259"}], "below": [{"type": "LinearAxis", "id": "a1ec7a0c-0493-4e11-b2c4-4a2b6c38705e"}], "left": [{"type": "LinearAxis", "id": "56bb392c-7797-41a5-bb47-8f5ad64b5822"}], "extra_y_ranges": {}, "doc": null, "tool_events": {"type": "ToolEvents", "id": "e0096278-48b3-4641-99de-c74b34ab36f7"}, "extra_x_ranges": {}, "tools": [{"type": "PanTool", "id": "455fc237-1b07-4a66-802c-5b4b03a726b7"}, {"type": "WheelZoomTool", "id": "137a80be-1c24-4364-917f-b14cf01841d9"}, {"type": "BoxZoomTool", "id": "13aeff5c-f999-4663-8822-b0abbda7dcdf"}, {"type": "PreviewSaveTool", "id": "89509080-f1bb-4337-b756-4862b631e9b0"}, {"type": "ResizeTool", "id": "cca95aeb-6c06-4269-b719-818de13a76ed"}, {"type": "ResetTool", "id": "aa24643c-ffd9-4836-8342-ccec75bc5fb0"}, {"type": "HelpTool", "id": "3c4e42ce-634a-4ede-a2c9-1fcd653e9860"}], "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4", "plot_width": 640}, "type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, {"attributes": {"id": "23364348-d783-4243-ba9c-54db829884c6", "doc": null, "tags": []}, "type": "BasicTickFormatter", "id": "23364348-d783-4243-ba9c-54db829884c6"}, {"attributes": {"plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "tags": [], "id": "cca95aeb-6c06-4269-b719-818de13a76ed", "doc": null}, "type": "ResizeTool", "id": "cca95aeb-6c06-4269-b719-818de13a76ed"}, {"attributes": {"geometries": [], "tags": [], "id": "e0096278-48b3-4641-99de-c74b34ab36f7", "doc": null}, "type": "ToolEvents", "id": "e0096278-48b3-4641-99de-c74b34ab36f7"}, {"attributes": {"ticker": {"type": "BasicTicker", "id": "0f66599f-fde6-4af3-928b-0e30bc448896"}, "grid_line_color": {"value": "white"}, "tags": [], "plot": {"type": "Plot", "id": "6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4"}, "dimension": 1, "grid_line_width": {"value": 1}, "doc": null, "id": "67fabf48-1629-4f37-8ca9-6fa604068b99"}, "type": "Grid", "id": "67fabf48-1629-4f37-8ca9-6fa604068b99"}, {"attributes": {"glyph": {"type": "Circle", "id": "6102edee-bcdc-4727-a38f-007ea94df07a"}, "tags": [], "selection_glyph": null, "data_source": {"type": "ColumnDataSource", "id": "ae28328d-0d56-4b38-a0bc-ea3883403517"}, "id": "716d59d1-63c7-42c3-91c0-92304a919c60", "doc": null, "nonselection_glyph": null}, "type": "GlyphRenderer", "id": "716d59d1-63c7-42c3-91c0-92304a919c60"}, {"attributes": {"data": {"Series 0": [0.03173325912716963, 0.0951997773815089, 0.15866629563584816, 0.2221328138901874, 0.28559933214452665, 0.34906585039886595, 0.4125323686532052, 0.47599888690754444, 0.5394654051618837, 0.6029319234162229, 0.6663984416705622, 0.7298649599249014, 0.7933314781792408, 0.85679799643358, 0.9202645146879193, 0.9837310329422585, 1.0471975511965979, 1.1106640694509369, 1.1741305877052763, 1.2375971059596154, 1.3010636242139548, 1.3645301424682938, 1.4279966607226333, 1.4914631789769726, 1.5549296972313118, 1.6183962154856513, 1.6818627337399903, 1.7453292519943298, 1.8087957702486688, 1.8722622885030082, 1.9357288067573473, 1.9991953250116867, 2.062661843266026, 2.126128361520365, 2.1895948797747042, 2.2530613980290437, 2.316527916283383, 2.379994434537722, 2.443460952792061, 2.5069274710464007, 2.57039398930074, 2.633860507555079, 2.697327025809418, 2.7607935440637577, 2.824260062318097, 2.887726580572436, 2.951193098826775, 3.014659617081115, 3.078126135335454, 3.141592653589793, 3.2050591718441326, 3.268525690098472, 3.331992208352811, 3.39545872660715, 3.4589252448614896, 3.522391763115829, 3.585858281370168, 3.649324799624507, 3.7127913178788465, 3.776257836133186, 3.839724354387525, 3.903190872641864, 3.9666573908962035, 4.030123909150543, 4.093590427404882, 4.157056945659221, 4.220523463913561, 4.2839899821679, 4.347456500422239, 4.410923018676579, 4.474389536930918, 4.537856055185257, 4.601322573439596, 4.664789091693935, 4.728255609948275, 4.791722128202614, 4.855188646456953, 4.918655164711293, 4.982121682965632, 5.045588201219971, 5.10905471947431, 5.17252123772865, 5.235987755982989, 5.299454274237328, 5.362920792491668, 5.426387310746007, 5.489853829000346, 5.553320347254685, 5.616786865509024, 5.680253383763364, 5.743719902017703, 5.807186420272042, 5.870652938526382, 5.934119456780721, 5.99758597503506, 6.061052493289399, 6.124519011543739, 6.187985529798078, 6.251452048052417], "Series 1": [1.03170021854991, 1.0946867430442517, 1.156359749918268, 1.2156930276620166, 1.2715378153529153, 1.3226347921582582, 1.3676324833477997, 1.4051125024584024, 1.43362174296519, 1.4517112521610807, 1.4579810787527034, 1.4511299065471912, 1.4300078005924706, 1.3936699373694643, 1.3414288097603295, 1.2729021340588262, 1.1880535802022967, 1.0872235292158472, 0.9711473519716298, 0.840959202202327, 0.6981800062960676, 0.5446891749721611, 0.38268050181538726, 0.21460368145125922, 0.043093799006615995, -0.12910806438925435, -0.299239366656599, -0.46460168590868406, -0.6226431813842881, -0.7710339817499233, -0.9077310286182496, -1.0310296067871927, -1.1395996579720509, -1.2325059279287542, -1.3092119600137753, -1.3695688473915761, -1.4137904280936147, -1.4424172048451445, -1.4562716670494316, -1.456407877465384, -1.4440581712523732, -1.4205796257014076, -1.3874026314763492, -1.3459834728875204, -1.2977623492110233, -1.2441277821236874, -1.1863878907869465, -1.125748602916922, -1.0632985255150904, -0.9999999324081167, -0.9366851393090164, -0.8740574265039295, -0.8126956257075998, -0.7530614995280609, -0.695509096500038, -0.6402953489964144, -0.5875912837307511, -0.537493324893795, -0.49003428008069944, -0.44519370298571753, -0.4029074202492972, -0.3630760904459128, -0.32557273002975284, -0.29024919423645557, -0.25694164138333536, -0.22547503813071124, -0.19566678274753974, -0.16732953503670256, -0.1402733470474775, -0.1143071896297362, -0.08923996767793692, -0.06488111277670096, -0.041040836888007894, -0.01753012550761892, 0.005839456020608233, 0.029256073154818582, 0.05290798246049368, 0.07698387539583196, 0.10167313902190829, 0.1271659652141118, 0.1536532367304695, 0.18132611416974226, 0.2103752428103124, 0.24098949309114773, 0.2733541437806843, 0.30764841357081435, 0.3440422460297832, 0.3826922558585433, 0.4237367527280728, 0.4672897743001965, 0.5134340841152116, 0.5622131246133817, 0.613621962218722, 0.6675973213465662, 0.7240068779575347, 0.7826380704888571, 0.8431867850086365, 0.9052463790383612, 0.968297619599087]}, "tags": [], "callback": null, "column_names": ["Series 0", "Series 1"], "selected": {"1d": {"indices": []}, "0d": {"indices": [], "flag": false}, "2d": {"indices": []}}, "doc": null, "id": "ae28328d-0d56-4b38-a0bc-ea3883403517"}, "type": "ColumnDataSource", "id": "ae28328d-0d56-4b38-a0bc-ea3883403517"}, {"attributes": {"data": {"Series 0": [0.0, 0.06346651825433926, 0.12693303650867852, 0.1903995547630178, 0.25386607301735703, 0.3173325912716963, 0.3807991095260356, 0.4442656277803748, 0.5077321460347141, 0.5711986642890533, 0.6346651825433925, 0.6981317007977318, 0.7615982190520711, 0.8250647373064104, 0.8885312555607496, 0.9519977738150889, 1.0154642920694281, 1.0789308103237674, 1.1423973285781066, 1.2058638468324459, 1.269330365086785, 1.3327968833411243, 1.3962634015954636, 1.4597299198498028, 1.5231964381041423, 1.5866629563584815, 1.6501294746128208, 1.71359599286716, 1.7770625111214993, 1.8405290293758385, 1.9039955476301778, 1.967462065884517, 2.0309285841388562, 2.0943951023931957, 2.1578616206475347, 2.221328138901874, 2.284794657156213, 2.3482611754105527, 2.4117276936648917, 2.475194211919231, 2.53866073017357, 2.6021272484279097, 2.6655937666822487, 2.729060284936588, 2.792526803190927, 2.8559933214452666, 2.9194598396996057, 2.982926357953945, 3.0463928762082846, 3.1098593944626236, 3.173325912716963, 3.236792430971302, 3.3002589492256416, 3.3637254674799806, 3.42719198573432, 3.490658503988659, 3.5541250222429985, 3.6175915404973376, 3.681058058751677, 3.744524577006016, 3.8079910952603555, 3.8714576135146945, 3.934924131769034, 3.998390650023373, 4.0618571682777125, 4.1253236865320515, 4.188790204786391, 4.25225672304073, 4.3157232412950695, 4.3791897595494085, 4.442656277803748, 4.506122796058087, 4.569589314312426, 4.6330558325667655, 4.696522350821105, 4.759988869075444, 4.823455387329783, 4.886921905584122, 4.950388423838462, 5.013854942092801, 5.07732146034714, 5.14078797860148, 5.204254496855819, 5.267721015110158, 5.331187533364497, 5.394654051618837, 5.458120569873176, 5.521587088127515, 5.585053606381854, 5.648520124636194, 5.711986642890533, 5.775453161144872, 5.838919679399211, 5.902386197653551, 5.96585271590789, 6.029319234162229, 6.092785752416569, 6.156252270670908, 6.219718788925247, 6.283185307179586], "Series 1": [1.0, 1.063333267980401, 1.1258234565230252, 1.1865081447462105, 1.2442983536012697, 1.2979875275870778, 1.3462666410208366, 1.387745975082701, 1.4209838452520307, 1.444522213694075, 1.4569287072032306, 1.4568440966459644, 1.4430338054423473, 1.4144415374023989, 1.3702426890962642, 1.309894882655224, 1.233182764008064, 1.1402541956111598, 1.0316451574314192, 0.9082910657445775, 0.771522818191701, 0.6230466475071645, 0.46490776815474394, 0.2994387663726883, 0.12919464053532048, -0.043122732882821, -0.21474722618901293, -0.3829342165695287, -0.5450452930708835, -0.6986278082498518, -0.8414855206669554, -0.9717371752914612, -1.087860664895925, -1.1887213376180825, -1.2735839869125374, -1.3421090029127405, -1.3943340091358216, -1.4306429996339995, -1.4517254912783353, -1.4585284959028892, -1.4522041990623018, -1.4340561247335684, -1.4054863001467666, -1.3679455522201398, -1.3228886105171007, -1.271735204030097, -1.215837858662019, -1.1564566601390538, -1.094740865863068, -1.0317169426955937, -0.9682823814309438, -0.9052044913387792, -0.8431233028250561, -0.7825576925120246, -0.7239138804195615, -0.6674955204386609, -0.6135147005057895, -0.5621032767826348, -0.5133240775517812, -0.4671816203492672, -0.42363208500237126, -0.382592372516256, -0.3439481535285052, -0.30756086995908893, -0.2732737000936639, -0.24091653185531692, -0.2103100130270572, -0.18126876243846188, -0.15360383439284378, -0.12712453155916453, -0.10163966069486392, -0.07695832221141685, -0.05289031984185184, -0.02924627141062554, -0.005837496642234193, 0.01752424639347738, 0.04102710783281196, 0.06485950907365595, 0.0892104562233427, 0.11426973668998863, 0.14022792909199439, 0.16727615283632988, 0.19560547895848676, 0.22540591857906905, 0.25686490022715047, 0.290165143102962, 0.32548183109573964, 0.3629789932407773, 0.40280500170504674, 0.44508710993068684, 0.48992497297159854, 0.537383121107766, 0.5874823982059652, 0.6401904294375189, 0.6954112497856605, 0.7529743054173693, 0.812623133500927, 0.8740041300410178, 0.9366559256695384, 0.9999999999999998]}, "tags": [], "callback": null, "column_names": ["Series 0", "Series 1"], "selected": {"1d": {"indices": []}, "0d": {"indices": [], "flag": false}, "2d": {"indices": []}}, "doc": null, "id": "bf7115ad-b5d9-4114-8a39-3876d4bb6730"}, "type": "ColumnDataSource", "id": "bf7115ad-b5d9-4114-8a39-3876d4bb6730"}, {"attributes": {"size": {"value": 10, "units": "screen"}, "y": {"field": "Series 1"}, "tags": [], "line_width": {"value": 0.0}, "line_alpha": {"value": 1.0}, "fill_alpha": {"value": 1.0}, "fill_color": {"value": "#808080"}, "x": {"field": "Series 0"}, "doc": null, "line_color": {"value": "#000000"}, "id": "6102edee-bcdc-4727-a38f-007ea94df07a"}, "type": "Circle", "id": "6102edee-bcdc-4727-a38f-007ea94df07a"}, {"attributes": {"doc": null, "names": [], "tags": [], "callback": null, "id": "e7bc065b-96c1-450f-bbbb-691e3011b3fb", "renderers": []}, "type": "DataRange1d", "id": "e7bc065b-96c1-450f-bbbb-691e3011b3fb"}, {"attributes": {"id": "8efd9781-e881-45ce-a4b7-4fff0563cd94", "doc": null, "tags": []}, "type": "BasicTickFormatter", "id": "8efd9781-e881-45ce-a4b7-4fff0563cd94"}];
         Bokeh.load_models(all_models);
-        var plots = [{'modeltype': 'Plot', 'elementid': 'b84e7474-6c8c-4ef8-a23d-2f1312b8d888', 'modelid': 'f637f540-52db-43cf-b63b-2794141c11fc'}];
+        var plots = [{'modeltype': 'Plot', 'modelid': '6c42c1aa-1fb3-49a2-adf8-bfc24fdf83d4', 'elementid': '96f0f20f-6e90-4b7e-89eb-f1c11eebae0a'}];
         for (idx in plots) {
         	var plot = plots[idx];
         	var model = Bokeh.Collections(plot.modeltype).get(plot.modelid);
@@ -3701,7 +3701,7 @@ z
         }
     });
     </script>
-<div class="plotdiv" id="b84e7474-6c8c-4ef8-a23d-2f1312b8d888"></div>
+<div class="plotdiv" id="96f0f20f-6e90-4b7e-89eb-f1c11eebae0a"></div>
 
 
 </div>
