@@ -1,0 +1,369 @@
+We start with a question.  \textbf{What is the goal of doing
+  (biological) experiments?}  There are many answers you may have for
+this.  Some examples:
+\begin{itemize}
+\item To further knowledge.
+\item To test a hypothesis.
+\item To explore and observe.
+\item To demonstrate, e.g., demonstrate feasibility.
+\end{itemize}
+
+More obnoxious answers are
+\begin{itemize}
+\item To graduate.
+\item Because your PI said so.
+\item To get data.
+\end{itemize}
+
+This question might be better addressed if we zoom out a bit and think
+about the scientific process as a whole.  In
+Fig.~\ref{fig:scientific_process}, we have a sketch of the scientific
+processes.  This cycle repeats itself as we explore nature and learn
+more.  In the boxes are milestones, and along the arrows in red text
+are the tasks that get us to these milestones.
+
+\begin{figure}[h]
+\centerline{
+        \includegraphics[width=0.9\linewidth]{figs/scientific_process.pdf}}
+      \caption{A sketch of the scientific process.  Adapted from
+        Fig. 1.1 of P. Gregory, \textit{Bayesian Logical Data Analysis
+          for the Physical Sciences}, Cambridge, 2005.}
+\label{fig:scientific_process}
+\end{figure}
+
+Let's consider the tasks and milestones.  We start in the lower left.
+
+\begin{itemize}
+\item \textit{Hypothesis invention/refinement}.  In this stage of the
+  scientific process, the researcher(s) think about nature, all that
+  they have learned, including from their own previous experiments,
+  and formulate hypotheses or theories they can pursue with
+  experiments.  This step requires innovation, and sometimes genius
+  (e.g., general relativity).
+\item \textit{Deductive inference}. Given the hypothesis, the
+  researchers deduce what must be true if the hypothesis is true.  You
+  have done a lot of this in your study to this point, e.g.,
+  \textit{given $X$ and $Y$, derive $Z$}.  Logically, this requires a
+  series of \textbf{strong syllogisms}:\\
+  \phantom{blahblah}If $A$ is true, then $B$ is true.\\
+  \phantom{blahblah}A is true.\\
+  \phantom{blahblah}Therefore B is true.\\
+  The result of deductive inference is a set of (preferably
+  quantitative) predictions that can be tested experimentally.
+\item \textit{Do experiment}. This requires \textit{work}, and also
+  its own kind of innovation.  Specifically, you need to think
+  carefully about how to construct your experiment to test the
+  hypothesis. It also usually requires money.  The result of doing
+  experiments is data.  
+\item \textit{Statistical (plausible) inference}. This step is perhaps
+  the least familiar to you, but \textit{this is the step that this
+    course is all about}.  I will talk about what statistical
+  inference is next; it's too involved for this bullet point.  But the
+  result of statistical inference is knowledge about how
+  \textit{plausible} a hypothesis and estimates of parameters under
+  that hypothesis.
+\end{itemize}
+
+
+% %%%%%%%%%%%%%%%%
+\subsection{What is statistical inference?}
+As we designed our experiment under our hypothesis, we used deductive
+logic to say, ``If $A$ is true, then $B$ is true,'' where $A$ is our
+hypothesis and $B$ is an experimental observation.  This was
+\textit{deductive} inference.
+
+Now, let's say we observe $B$.  Does this make $A$ true?  Not
+necessarily.  But it does make $A$ more \textit{plausible}.  This is
+called a \textit{weak syllogism}.  As an example, consider the
+following hypothesis/observation pair.
+\begin{align*}
+&A = \text{California is at the beginning of a megadrought.}\\
+&B = \text{2000-2014 were the driest years since California became a state.}\\
+&\text{Because } B \text{ was observed, } A \text{ is more plausible.}
+\end{align*}
+
+This is all fine and good, but we need a way to decide \textit{how
+  much more plausible} $A$ is.  In other words, we need a way to
+quantify plausibility.
+
+So, \textbf{statistical inference requires a probability theory.}
+Thus, probability theory is a generalization of logic.  Due to this
+logical connection and its crucial role in science, E. T. Jaynes says
+that probability is the ``logic of science.''
+
+
+% %%%%%%%%%%%%%%%
+\subsection{The problem of probability}
+We know what we need, a theory called probability to quantify
+plausibility.  We will not formally define probability in class, but
+use our common sense reasoning of it.  Nonetheless, it is important to
+understand that there are two dominant interpretations of probability.
+
+\paragraph{Frequentist probability.}  In the \textit{frequentist}
+definition of probability, the probability $P(A)$ represents a
+long-run frequency over a large number of identical repetitions of an
+experiment.  These repetitions can be, and often are, hypothetical.
+The event $A$ is restricted to propositions about \textit{random
+  variables}, a quantity that can very meaningfully from experiment to
+experiment.\footnote{More formally, a random variable transforms the
+  possible outcomes of an experiment to real numbers.}
+
+\paragraph{Bayesian probability.} Here, $P(A)$ directly represents the
+degree of belief, or plausibility, about $A$.  So, $A$ can be any
+logical proposition.
+
+You may have heard about a split, or even a fight, between people who
+use Bayesian statistics and frequentist statistics.  There is no need
+for a fight.  The two ways of approaching statistical inference differ
+in their definition of probability, the tool we use to quantify
+plausibility.  Either is valid.
+
+In my opinion, the Bayesian definition of probability is more
+intuitive to apply to scientific inference.  It always starts with a
+simple probabilistic expression and proceeds to quantify plausibility.
+It is conceptually cleaner to me, since we can talk about plausibility
+of anything, including parameter values.  In other words, Bayesian
+probability serves to quantify our own knowledge, or degree of
+certainty, about a hypothesis or parameter value.  Conversely, in
+frequentist statistical inference, the parameter values are fixed, and
+we can only study how repeated experiments will convert the real value
+to a real number.
+
+We will learn about some frequentist approaches in class, but we will
+generally focus on Bayesian analysis.
+
+% %%%%%%%%%%%%%%%
+\subsection{Desiderata for Bayesian probability}
+In 1946, R. Cox laid out a pair of rules based on some desired
+properties of probability as a quantifier of plausibility.  These ideas
+were expanded on by E. T. Jaynes in the 1970s.  The
+\textit{desiderata} are
+\begin{itemize}
+\item[I.] Probability is represented by real numbers.
+\item[II.] Probability must agree with rationality.  As more
+  information is supplied, Probability must rise in a continuous,
+  monotonic manner.  The deductive limit must be obtained where
+  appropriate.
+\item[III.] Probability must be consistent.
+  \begin{enumerate}
+  \item[a)] Structure consistency: If a result is reasoned in more
+    than one way, we should get the same result.
+  \item[b)] Propriety: All relevant information must be considered.
+  \item[c)] Jaynes consistency: Equivalent states of knowledge must be
+    represented by equivalent probability.
+  \end{enumerate}
+\end{itemize}
+
+Two results of these desiderata (worked out in chapter 2 of Gregory's
+book) are the \textit{sum rule} and the \textit{product rule}.
+
+% %%%%%%%%%%%%%%%
+\subsection{The sum rule, the product rule, and conditional probability}
+The \textit{sum rule} says that the probability of all events must add
+to unity.  Let $\bar{A}$ be all events \textit{except} $A$.  Then, the
+sum rule states that
+\begin{align}
+  P(A) + P(\bar{A}) = 1.
+\end{align}
+
+Now, let's say that we are interested in event $A$ happening
+\textit{given} that even $B$ happened.  So, $A$ is
+\textit{conditional} on $B$.  We denote this conditional probability
+as $P(A\mid B)$.  Given this notion of conditional probability, we can
+write the sum rule as
+\begin{align}
+  \text{\textbf{(sum rule)}} \qquad P(A\mid B) + P(\bar{A} \mid B) = 1,
+\end{align}
+for any $B$.
+
+The \textit{product rule} states that
+\begin{align}
+  P(A, B) = P(A\mid B)\, P(B),
+\end{align}
+where $P(A,B)$ is the probability of both $A$ \textit{and} $B$
+happening.  The product rule is also referred to as the definition of
+conditional probability.  It can similarly be expanded as we did the
+the product rule.
+\begin{align}
+   \text{\textbf{(product rule)}} \qquad P(A, B\mid C) = P(A\mid B, C)\, P(B \mid C),
+\end{align}
+for any $C$.
+
+% %%%%%%%%%%%%%%%
+\subsection{Application to scientific measurement}
+This is all a bit abstract.  Let's bring it into the realm of
+scientific experiment.  We'll assign meanings to these things we have
+been calling $A$, $B$, and $C$.
+\begin{align}
+A &= \text{hypothesis (or parameter value), } H_i, \\
+B &= \text{Measured data set, } D,\\
+C &= \text{All other information we know, } I.
+\end{align}
+Now, let's rewrite the product rule.
+\begin{align}
+P(H_i, D\mid I) = P(H_i \mid D, I)\, P(D \mid I).
+\end{align}
+Ahoy!  The quantity $P(H_i \mid D , I)$ is exactly what we want from
+our statistical inference.  This is the probability that a hypothesis
+is true, or a probability distribution for the values of a parameter,
+given measured data and everything we've learned.  Now, how do we
+compute it?
+
+
+% %%%%%%%%%%%%%%%
+\subsection{Bayes's Theorem}
+Note that because ``and'' is commutative,
+$P(H_i, D \mid I) = P(D, H_i \mid I)$.  So, we just apply the product
+rule to both sides of the seemingly trivial equality.
+\begin{align}
+  P(H_i \mid D, I)\, P(D \mid I) =  P(H_i, D \mid I) 
+  = P(D, H_i \mid I) = P(D \mid H_i, I)\, P(H_i \mid I).
+\end{align}
+If we take the terms at the beginning and end of this equality and
+rearrange, we get
+\begin{align}
+\text{\textbf{(Bayes's theorem)}} \qquad  P(H_i \mid D, I) = \frac{P(D \mid H_i, I)\, P(H_i \mid I)}{P(D \mid I)}.
+\end{align}
+This result is called \textbf{Bayes's theorem}.  This is far more
+instructive in terms of how to compute our goal, which is the left
+hand side.  The quantities on the right hand side all have meaning.
+We will talk about the meaning of each term in turn, and this is
+easier to do using their names.  Each item in Bayes's theorem has a
+name.
+
+\begin{align}
+\text{posterior} = \frac{\text{likelihood} \times \text{prior}}{\text{evidence}}.
+\end{align}
+
+\paragraph{The prior probability.}  First, consider the prior,
+$P(H_i \mid I)$.  As probability is a measure of plausibility, or how
+believable a hypothesis is, we should be able to write this down based
+on $I$.\footnote{I say this flippantly.  In fact, specifying prior
+  probabilities is one of the most studied and most controversial
+  aspects of Bayesian statistics.}  This represents the
+plausibility about hypothesis $H_i$ given everything we know
+\textit{before} we did the experiment to get the data.
+
+\paragraph{The likelihood.}
+The likelihood, $P(D\mid H_i,I)$, describes how likely it is to
+acquire the observed data, \textit{given that the hypothesis} $H_i$
+\textit{is true}.  It also contains information about what we expect
+from the data, given our measurement method.  Is there noise in the
+instruments we are using?  How do we model that noise?  These are
+contained in the likelihood.
+
+\paragraph{The evidence.}  I will not talk much about this here,
+except to say that it can be computed from the likelihood and prior,
+and is also called the \textit{marginal likelihood}, a name whose
+meaning will become clear in the next section.
+
+\paragraph{The posterior probability.} This is what we are after.  How
+plausible is the hypothesis, given that we have measured some new
+data?  It is calculated directly from the likelihood and prior (since
+the evidence is also computed from them).  Computing the posterior
+distribution constitutes the bulk of our tasks in this course.
+
+
+% %%%%%%%%%%%%%%%
+\subsection{Marginalization}
+A moment ago, I mentioned that the evidence can be computed from the
+likelihood and the prior.  To see this, we apply the sum rule to the
+posterior probability.
+\begin{align}
+1 &= P(H_j\mid D,I) + P(\bar{H}_j | D,I) \\
+&= P(H_j\mid D,I) + \sum_{i\ne j}P(H_i\mid D,I) \\
+&= \sum_iP(H_i\mid D,I),
+\end{align}
+for some hypothesis $H_j$.  Now, Bayes's theorem gives us an
+expression for $P(H_i\mid D, I)$, so we can compute the sum.
+\begin{align}
+\sum_iP(H_i\mid D,I) = \sum_i\frac{P(D \mid H_i, I)\, P(H_i \mid I)}{P(D \mid I)}
+= \frac{1}{P(D\mid I)}\sum_i P(D \mid H_i, I)\, P(H_i \mid I) = 1.
+\end{align}
+Therefore, we can compute the evidence by summing over the priors and
+likelihoods of all possible hypotheses.
+\begin{align}
+P(D\mid I) = \sum_i P(D \mid H_i, I)\, P(H_i \mid I).
+\end{align}
+This process of eliminating a variable (in this case the hypotheses)
+from a probability by summing is called \textit{marginalization}.
+
+Note that if the space of hypotheses is continuous, e.g., if the
+``hypothesis'' is a parameter value which we'll call $\theta$, we can
+replace the summation with an integral.\footnote{There are some
+  mathematical subtleties.  These are discussed at length in Jaynes's
+  book, \textit{Probability Theory: the logic of science}.}
+\begin{align}
+P(D\mid I) = \int \mathrm{d}\theta\,P(D\mid \theta, I)\, P(\theta \mid I).
+\end{align}
+
+% %%%%%%%%%%%%%%%
+\subsection{A note on the word ``model''}
+You may have noticed the terms ``model 1,'' ``model 2,'' and ``model
+3'' in Fig.~\ref{fig:scientific_process}.  Being biologists who are
+doing data analysis, the word ``model'' is used to mean three
+different things in our work.  So, for the purposes of this course, we
+need to clearly define what we are talking about when we use the work
+``model.''
+
+\paragraph{Model 1.}  These models are the typical cartoons we see in
+text books or in discussion sections of biological papers.  They are a
+sketch of what we think might be happening in a system of interest,
+but they do not provide quantifiable predictions.
+
+\paragraph{Model 2.} These models give quantifiable predictions that
+must be true if the hypothesis (which is sketched as a ``model 1'') is
+true. In many cases, getting to predictions from a hypothesis is easy.
+For example, if I hypothesis that protein A binds protein B, a
+quantifiable prediction would be that they are colocalized when I
+image them.  However, sometimes harder work and deeper thought is
+needed to generate quantitative predictions.  This often requires
+``mathematizing'' the cartoon.  This is how a model 2 is derived from
+a model 1.  Oftentimes when biological physicists refer to a
+``model,'' they are talking about model 2.
+
+\paragraph{Model 3.} Essentially, model 3 specifies the likelihood.
+As a simple example, consider the measurement of the length of a
+\textit{C. elegans} eggs.  A plausible model 3 would be that the egg
+lengths are Gaussian distributed (and therefore are described by a
+mean and a standard deviation).  The model 3 can include any
+mathematization of cartoons we did to generate model 2, and can also
+contain any information about any possible effects we might see in a
+measurement.
+
+
+% %%%%%%%%%%%%%%%
+\subsection{Bayes's theorem as a model for learning}
+We will close today's lecture with a discussion of Bayes's theorem as
+as model for learning.  Let's say we did an experiment and got data
+set $D_1$ as a test of hypothesis $H$.  Then, our posterior
+distribution is
+\begin{align}
+P(H\mid D_1, I) = \frac{P(D_1 \mid H, I)\, P(H \mid I)}{P(D_1 \mid I)}.
+\label{eq:l01_bayes}
+\end{align}
+Now, let's say we did another experiment and got data $D_2$.  We
+already know $D_1$ ahead of this experiment, do our prior is
+$P(H\mid D_1, I)$, which is the posterior from the first experiment.
+So, we have
+\begin{align}
+  P(H\mid D_1, D_2, I) = \frac{P(D_2 \mid D_1, H, I)\, P(H \mid D_1, I)}{P(D_2 \mid D_1, I)}.
+\end{align}
+Now, we plug in Bayes's theorem applied to our first data set,
+equation \eqref{eq:l01_bayes}, giving
+\begin{align}
+P(H\mid D_1, D_2, I) = \frac{P(D_2 \mid D_1, H, I)\,P(D_1 \mid H, I)\, P(H \mid I)}{P(D_2 \mid D_1, I)\, P(D_1 \mid I)}.
+\label{eq:l01_combined}
+\end{align}
+By the product rule, the denominator is $P(D_1, D_2 \mid I)$.  Also by
+the product rule,
+\begin{align}
+P(D_2 \mid D_1, H, I)\,P(D_1 \mid H, I) = P(D_1, D_2 \mid H, I).
+\end{align}
+Inserting these expressions into equation \eqref{eq:l01_combined}
+yields
+\begin{align}
+  P(H\mid D_1, D_2, I) = \frac{P(D_1, D_2 \mid H, I)\,P(H\mid I)}{P(D_1, D_2 \mid I)}.
+\end{align}
+So, acquiring more data gave us more information about our hypothesis,
+as if we just combined $D_1$ and $D_2$ into a single data set.
