@@ -238,6 +238,9 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     else:
         df_sort = df.copy()
 
+    # Convert labels to string to allow categorical axis labels
+    df_sort[label] = df_sort[label].astype(str)
+
     # Get the categories
     cats = list(df_sort[label].unique())
 
