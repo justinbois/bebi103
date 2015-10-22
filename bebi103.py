@@ -323,3 +323,48 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     p.circle(outx, outy, size=6, color='black')
 
     return p
+
+
+def run_ensemble_emcee(p_dict, n_walkers, n_burn, n_steps, threads=None):
+    """
+    Run emcee.
+
+    Parameters
+    ----------
+    p_dict : collections.OrderedDict
+        Each entry is a tuple with the function used to generate
+        starting points for the parameter and the arguments for
+        the function.  The starting point function must have the
+        call signature f(*args, n_walkers).
+    n_walkers : int
+        Number of walkers
+    n_burn : int
+        Number of burn steps
+    n_steps : int
+        Number of MCMC samples to take
+    threads : int
+        Number of cores to use in calculation
+
+    Returns
+    -------
+    emcee.EnsembleSampler instance with chains.
+    """
+
+    # p0[i,j] is the starting point for walk i along variable j.
+    p0 = np.empty((n_walkers, n_dim))
+    for i, key in enumerate(params):
+        p0[:,i] = params[key][0](*(params[key][1] + (n_walkers,)))
+
+    # Set up the EnsembleSampler instance
+    if threads is not None:
+        sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post, args=args,
+                                        threads=threads)
+    else:
+        sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post, args=args)
+    # Do burn-in
+    pos, prob, state = sampler.run_mcmc(p0, n_burn, storechain=False)
+
+    # Sample again, starting from end burn-in state
+    _ = sampler.run_mcmc(pos, n_steps)
+
+    return sampler
