@@ -142,8 +142,8 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
     # Get data range
     if data_range is None:
         data_range = (df[data_col].min(), df[data_col].max())
-    elif (data_range[0] < df[data_col].min()) \
-            or (data_range[1] > df[data_col].max()):
+    elif (data_range[0] > df[data_col].min()) \
+            or (data_range[1] < df[data_col].max()):
         raise RuntimeError('Data out of specified range.')
 
     # Get colors
@@ -160,8 +160,8 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
 
     # Set up figure; need to reverse y_range to make axis matrix index
     p = bokeh.plotting.figure(
-               x_range=list(df_[i_col].unique()),
-               y_range=list(reversed(list(df_[j_col].unique()))),
+               x_range=list(df_[j_col].unique()),
+               y_range=list(reversed(list(df_[i_col].unique()))),
                x_axis_location='above', plot_width=plot_width,
                plot_height=plot_height, toolbar_location='left',
                tools=tools)
