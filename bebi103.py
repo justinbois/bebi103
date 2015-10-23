@@ -8,6 +8,8 @@ import collections
 
 import numpy as np
 
+import emcee
+
 import bokeh.models
 import bokeh.plotting
 import seaborn as sns
@@ -325,23 +327,30 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     return p
 
 
-def run_ensemble_emcee(p_dict, n_walkers, n_burn, n_steps, threads=None):
+def run_ensemble_emcee(log_post, p_dict, n_walkers, n_burn, n_steps,
+                       args=(), threads=None):
     """
     Run emcee.
 
     Parameters
     ----------
+    log_post : function
+        The function that computes the log posterior.  Must be of
+        the form log_post(p, *args), where p is a NumPy array of
+        parameters that are sampled by the MCMC sampler.
     p_dict : collections.OrderedDict
         Each entry is a tuple with the function used to generate
         starting points for the parameter and the arguments for
         the function.  The starting point function must have the
-        call signature f(*args, n_walkers).
+        call signature f(*args_for_function, n_walkers).
     n_walkers : int
         Number of walkers
     n_burn : int
         Number of burn steps
     n_steps : int
         Number of MCMC samples to take
+    args : tuple
+        Arguments passed to log_post
     threads : int
         Number of cores to use in calculation
 
@@ -350,10 +359,12 @@ def run_ensemble_emcee(p_dict, n_walkers, n_burn, n_steps, threads=None):
     emcee.EnsembleSampler instance with chains.
     """
 
+    n_dim = len(p_dict)
+
     # p0[i,j] is the starting point for walk i along variable j.
     p0 = np.empty((n_walkers, n_dim))
-    for i, key in enumerate(params):
-        p0[:,i] = params[key][0](*(params[key][1] + (n_walkers,)))
+    for i, key in enumerate(p_dict):
+        p0[:,i] = p_dict[key][0](*(p_dict[key][1] + (n_walkers,)))
 
     # Set up the EnsembleSampler instance
     if threads is not None:
@@ -361,7 +372,8 @@ def run_ensemble_emcee(p_dict, n_walkers, n_burn, n_steps, threads=None):
                                         threads=threads)
     else:
         sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post, args=args)
-    # Do burn-in
+
+        # Do burn-in
     pos, prob, state = sampler.run_mcmc(p0, n_burn, storechain=False)
 
     # Sample again, starting from end burn-in state
