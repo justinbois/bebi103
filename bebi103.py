@@ -5,8 +5,10 @@ Author: Justin Bois
 """
 
 import collections
+import warnings
 
 import numpy as np
+import pandas as pd
 
 import emcee
 
@@ -327,8 +329,8 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     return p
 
 
-def run_ensemble_emcee(log_post, p_dict, n_walkers, n_burn, n_steps,
-                       args=(), threads=None):
+def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
+                       p0=None, columns=None, args=(), threads=None):
     """
     Run emcee.
 
@@ -338,17 +340,26 @@ def run_ensemble_emcee(log_post, p_dict, n_walkers, n_burn, n_steps,
         The function that computes the log posterior.  Must be of
         the form log_post(p, *args), where p is a NumPy array of
         parameters that are sampled by the MCMC sampler.
-    p_dict : collections.OrderedDict
-        Each entry is a tuple with the function used to generate
-        starting points for the parameter and the arguments for
-        the function.  The starting point function must have the
-        call signature f(*args_for_function, n_walkers).
-    n_walkers : int
-        Number of walkers
     n_burn : int
         Number of burn steps
     n_steps : int
         Number of MCMC samples to take
+    n_walkers : int
+        Number of walkers
+    p_dict : collections.OrderedDict
+        Each entry is a tuple with the function used to generate
+        starting points for the parameter and the arguments for
+        the function.  The starting point function must have the
+        call signature f(*args_for_function, n_walkers).  Ignored
+        if p0 is not None.
+    p0 : array
+        n_dim by n_walkers array of initial starting values.
+        p0[i,j] is the starting point for walk i along variable j.
+        If provided, p_dict is ignored.
+    columns : list of strings
+        Name of parameters.  These will be the column headings in the
+        returned DataFrame.  If None, either inferred from p_dict or
+        assigned sequential integers.
     args : tuple
         Arguments passed to log_post
     threads : int
@@ -356,27 +367,203 @@ def run_ensemble_emcee(log_post, p_dict, n_walkers, n_burn, n_steps,
 
     Returns
     -------
-    emcee.EnsembleSampler instance with chains.
+    Pandas DataFrame with columns given by flattened MCMC chains.
+    Also has a column 'lnpost' containing the log of the posterior.
     """
 
-    n_dim = len(p_dict)
+    if p0 is None and p_dict is None:
+        raise RuntimeError('Must supply either p0 or p_dict.')
 
-    # p0[i,j] is the starting point for walk i along variable j.
-    p0 = np.empty((n_walkers, n_dim))
-    for i, key in enumerate(p_dict):
-        p0[:,i] = p_dict[key][0](*(p_dict[key][1] + (n_walkers,)))
+    # Infer n_dim and n_walkers (and check inputs)
+    if p0 is None:
+        if n_walkers is None:
+            raise RuntimeError('n_walkers must be specified if p0 is None')
+
+        if type(p_dict) is not collections.OrderedDict:
+            raise RuntimeError('p_dict must be collections.OrderedDict.')
+
+        n_dim = len(p_dict)
+    else:
+        n_walkers, n_dim = p0.shape
+        if p_dict is not None:
+            warnings.RuntimeWarning('p_dict is being ignored.')
+
+    # Infer columns
+    if columns is None:
+        if p_dict is not None:
+            columns = list(p_dict.keys())
+        else:
+            columns = list(range(n_dim))
+    elif len(columns) != n_dim:
+        raise RuntimeError('len(columns) must equal number of parameters.')
+
+    # Build starting points of walkers
+    if p0 is None:
+        p0 = np.empty((n_walkers, n_dim))
+        for i, key in enumerate(p_dict):
+            p0[:,i] = p_dict[key][0](*(p_dict[key][1] + (n_walkers,)))
 
     # Set up the EnsembleSampler instance
     if threads is not None:
-        sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post, args=args,
-                                        threads=threads)
+        sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post,
+                                        args=args, threads=threads)
     else:
-        sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post, args=args)
+        sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post,
+                                        args=args)
 
-        # Do burn-in
+    # Do burn-in
     pos, prob, state = sampler.run_mcmc(p0, n_burn, storechain=False)
 
     # Sample again, starting from end burn-in state
     _ = sampler.run_mcmc(pos, n_steps)
 
-    return sampler
+    # Make DataFrame for results
+    df = pd.DataFrame(data=sampler.flatchain, columns=columns)
+    df['lnprob'] = sampler.flatlnprobability
+
+    return df
+
+
+def extract_1d_hist(samples, nbins=100, density=True):
+    """
+    Compute a 1d histogram with x-values at bin centers.
+    Meant to be used with MCMC samples.
+
+    Parameters
+    ----------
+    samples : array
+        1D array of MCMC samples
+    nbins : int
+        Number of bins in histogram
+    density : bool, optional
+        If False, the result will contain the number of samples
+        in each bin.  If True, the result is the value of the
+        probability *density* function at the bin, normalized such that
+        the *integral* over the range is 1. Note that the sum of the
+        histogram values will not be equal to 1 unless bins of unity
+        width are chosen; it is not a probability *mass* function.
+
+    Returns
+    -------
+    count : array, shape (nbins,)
+        The counts, appropriately weighted depending on the
+        `density` kwarg, for the histogram.
+    x : array, shape (nbins,)
+        The positions of the bin centers.
+    """
+
+    # Obtain histogram
+    count, bins = np.histogram(trace, bins=nbins, density=density)
+
+    # Make the bins into the bin centers, not the edges
+    x = (bins[:-1] + bins[1:]) / 2.0
+
+    return count, x
+
+
+def extract_2d_hist(samples_x, samples_y, nbins=100, density=True,
+                    meshgrid=False):
+    """
+    Compute a 2d histogram with x,y-values at bin centers.
+    Meant to be used with MCMC samples.
+
+    Parameters
+    ----------
+    samples_x : array
+        1D array of MCMC samples for x-axis
+    samples_y : array
+        1D array of MCMC samples for y-axis
+    nbins : int
+        Number of bins in histogram. The same binning is
+        used in the x and y directions.
+    density : bool, optional
+        If False, the result will contain the number of samples
+        in each bin.  If True, the result is the value of the
+        probability *density* function at the bin, normalized such that
+        the *integral* over the range is 1. Note that the sum of the
+        histogram values will not be equal to 1 unless bins of unity
+        width are chosen; it is not a probability *mass* function.
+    meshgrid : bool, options
+        If True, the returned `x` and `y` arrays are two-dimensional
+        as constructed with np.meshgrid().  If False, `x` and `y`
+        are returned as 1D arrays.
+
+    Returns
+    -------
+    count : array, shape (nbins, nbins)
+        The counts, appropriately weighted depending on the
+        `density` kwarg, for the histogram.
+    x : array, shape either (nbins,) or (nbins, nbins)
+        The positions of the bin centers on the x-axis.
+    y : array, shape either (nbins,) or (nbins, nbins)
+        The positions of the bin centers on the y-axis.
+    """
+    # Obtain histogram
+    count, x_bins, y_bins = np.histogram2d(samples_x, samples_y, bins=nbins,
+                                           normed=density)
+
+    # Make the bins into the bin centers, not the edges
+    x = (x_bins[:-1] + x_bins[1:]) / 2.0
+    y = (y_bins[:-1] + y_bins[1:]) / 2.0
+
+    # Make mesh grid out of x_bins and y_bins
+    if meshgrid:
+        y, x = np.meshgrid(x, y)
+
+    return count.transpose(), x, y
+
+
+def norm_cumsum_2d(sample_x, sample_y, nbins=100, meshgrid=False):
+    """
+    Returns 1 - the normalized cumulative sum of two sets of samples.
+
+    Parameters
+    ----------
+    samples_x : array
+        1D array of MCMC samples for x-axis
+    samples_y : array
+        1D array of MCMC samples for y-axis
+    nbins : int
+        Number of bins in histogram. The same binning is
+        used in the x and y directions.
+    meshgrid : bool, options
+        If True, the returned `x` and `y` arrays are two-dimensional
+        as constructed with np.meshgrid().  If False, `x` and `y`
+        are returned as 1D arrays.
+
+    Returns
+    -------
+    norm_cumcum : array, shape (nbins, nbins)
+        1 - the normalized cumulative sum of two sets of samples.
+        I.e., an isocontour on this surface at level alpha encompasses
+        a fraction alpha of the total probability.
+    x : array, shape either (nbins,) or (nbins, nbins)
+        The positions of the bin centers on the x-axis.
+    y : array, shape either (nbins,) or (nbins, nbins)
+        The positions of the bin centers on the y-axis.
+
+    Notes
+    -----
+    .. To make a contour plot with contour lines drawn to contain
+       68.27, 95.45, and 99.73% of the total probability, use the
+       output of this function as:
+       plt.contourf(x, y, norm_cumsum, levels=(0.6827, 0.9545, 0.9973))
+    """
+
+    # Compute the histogram
+    count, x, y = extract_2d_hist(sample_x, sample_y, nbins=nbins,
+                                  density=False, meshgrid=meshgrid)
+    # Remember the shape
+    shape = count.shape
+    count = count.ravel()
+
+    # Inverse sort the histogram
+    isort = np.argsort(count)[::-1]
+    unsort = np.argsort(isort)
+
+    # Compute the cumulative sum and normalize
+    count_cumsum = count[isort].cumsum()
+    count_cumsum /= count_cumsum[-1]
+
+    # Normalized, reshaped cumulative sum
+    return count_cumsum[unsort].reshape(shape), x, y
