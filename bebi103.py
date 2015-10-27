@@ -483,8 +483,9 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
     Returns
     -------
     Pandas DataFrame with columns given by flattened MCMC chains.
-    Also has a column 'lnpost' containing the log of the posterior.
-    Optionally, the sampler is returned in addition.
+    Also has a column 'lnprob' containing the log of the posterior
+    and 'chain', which is the chain ID.  Optionally, the sampler
+    is returned in addition.
     """
 
     if p0 is None and p_dict is None:
