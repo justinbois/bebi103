@@ -42,3 +42,14 @@ def test_bokeh_matplot():
         return True
     else:
         return False
+
+# To go in run_ensemble_sampler:
+# assert np.allclose(sampler.chain[0,:,0], df[df.chain==0][df.columns[0]])
+# assert np.allclose(sampler.chain[1,:,0], df[df.chain==1][df.columns[0]])
+# assert np.allclose(sampler.chain[13,:,1], df[df.chain==13][df.columns[1]])
+# assert np.allclose(sampler.chain[45,:,1], df[df.chain==45][df.columns[1]])
+
+# To go in run_pt_sampler:
+# inds = (df['chain'] == 0) & (df['beta_ind'] == 2)
+# assert np.allclose(sampler.chain[2, 0, :, 0], df[inds][df.columns[0]])
+# assert np.allclose(sampler.lnprobability[2, 0], df[inds]['lnprob'])

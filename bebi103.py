@@ -330,7 +330,8 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
 
 
 def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
-                       p0=None, columns=None, args=(), threads=None):
+                       p0=None, columns=None, args=(), threads=None,
+                      return_sampler=False):
     """
     Run emcee.
 
@@ -364,11 +365,15 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
         Arguments passed to log_post
     threads : int
         Number of cores to use in calculation
+    return_sampler : bool, default False
+        If True, return sampler as well as DataFrame with results.
 
     Returns
     -------
     Pandas DataFrame with columns given by flattened MCMC chains.
-    Also has a column 'lnpost' containing the log of the posterior.
+    Also has a column 'lnprob' containing the log of the posterior
+    and 'chain', which is the chain ID.  Optionally, the sampler is
+    returned in addition.
     """
 
     if p0 is None and p_dict is None:
@@ -420,8 +425,139 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
     # Make DataFrame for results
     df = pd.DataFrame(data=sampler.flatchain, columns=columns)
     df['lnprob'] = sampler.flatlnprobability
+    df['chain'] = np.concatenate([i * np.ones(n_steps, dtype=int)
+                                                for i in range(n_walkers)])
 
-    return df
+    if return_sampler:
+        return df, sampler
+    else:
+        return df
+
+
+def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
+                 n_walkers=None, p_dict=None, p0=None, columns=None,
+                 loglargs=(), logpargs=(), threads=None,
+                 return_sampler=False):
+    """
+    Run emcee.
+
+    Parameters
+    ----------
+    log_like : function
+        The function that computes the log likelihood.  Must be of
+        the form log_like(p, *llargs), where p is a NumPy array of
+        parameters that are sampled by the MCMC sampler.
+    log_prior : function
+        The function that computes the log prior.  Must be of
+        the form log_post(p, *lpargs), where p is a NumPy array of
+        parameters that are sampled by the MCMC sampler.
+    n_burn : int
+        Number of burn steps
+    n_steps : int
+        Number of MCMC samples to take
+    n_temps : int
+        The number of temperatures to use in PT sampling.
+    n_walkers : int
+        Number of walkers
+    p_dict : collections.OrderedDict
+        Each entry is a tuple with the function used to generate
+        starting points for the parameter and the arguments for
+        the function.  The starting point function must have the
+        call signature f(*args_for_function, n_walkers).  Ignored
+        if p0 is not None.
+    p0 : array
+        n_dim by n_walkers array of initial starting values.
+        p0[i,j] is the starting point for walk i along variable j.
+        If provided, p_dict is ignored.
+    columns : list of strings
+        Name of parameters.  These will be the column headings in the
+        returned DataFrame.  If None, either inferred from p_dict or
+        assigned sequential integers.
+    args : tuple
+        Arguments passed to log_post
+    threads : int
+        Number of cores to use in calculation
+    return_sampler : bool, default False
+        If True, return sampler as well as DataFrame with results.
+
+    Returns
+    -------
+    Pandas DataFrame with columns given by flattened MCMC chains.
+    Also has a column 'lnpost' containing the log of the posterior.
+    Optionally, the sampler is returned in addition.
+    """
+
+    if p0 is None and p_dict is None:
+        raise RuntimeError('Must supply either p0 or p_dict.')
+
+    # Infer n_dim and n_walkers (and check inputs)
+    if p0 is None:
+        if n_walkers is None:
+            raise RuntimeError('n_walkers must be specified if p0 is None')
+
+        if type(p_dict) is not collections.OrderedDict:
+            raise RuntimeError('p_dict must be collections.OrderedDict.')
+
+        n_dim = len(p_dict)
+    else:
+        n_temps, n_walkers, n_dim = p0.shape
+        if p_dict is not None:
+            warnings.RuntimeWarning('p_dict is being ignored.')
+
+    # Infer columns
+    if columns is None:
+        if p_dict is not None:
+            columns = list(p_dict.keys())
+        else:
+            columns = list(range(n_dim))
+    elif len(columns) != n_dim:
+        raise RuntimeError('len(columns) must equal number of parameters.')
+
+    # Build starting points of walkers
+    if p0 is None:
+        p0 = np.empty((n_temps, n_walkers, n_dim))
+        for i, key in enumerate(p_dict):
+            p0[:,:,i] = p_dict[key][0](
+                            *(p_dict[key][1] + ((n_temps, n_walkers),)))
+
+    # Set up the PTSampler instance
+    if threads is not None:
+        sampler = emcee.PTSampler(n_temps, n_walkers, n_dim, log_like,
+                                  log_prior, loglargs=loglargs,
+                                  logpargs=logpargs, threads=threads)
+    else:
+        sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post,
+                                        args=args)
+
+    # Do burn-in
+    pos, prob, state = sampler.run_mcmc(p0, n_burn, storechain=False)
+
+    # Sample again, starting from end burn-in state
+    _ = sampler.run_mcmc(pos, n_steps)
+
+    # Compute thermodynamic integral
+    lnZ, dlnZ = sampler.thermodynamic_integration_log_evidence(fburnin=0)
+
+    # Make DataFrame for results
+    df = pd.DataFrame(data=sampler.flatchain.reshape(
+                            (n_temps*n_walkers*n_steps, n_dim)),
+                      columns=columns)
+    df['lnlike'] = sampler.lnlikelihood.flatten()
+    df['lnprob'] = sampler.lnprobability.flatten()
+
+    beta_inds = [i * np.ones(n_steps * n_walkers, dtype=int)
+                        for i, _ in enumerate(sampler.betas)]
+    df['beta_ind'] = np.concatenate(beta_inds)
+
+    chain_inds = [j * np.ones(n_steps, dtype=int)
+                      for i, _ in enumerate(sampler.betas)
+                             for j in range(n_walkers)]
+    df['chain'] = np.concatenate(chain_inds)
+
+    if return_sampler:
+        return df, sampler.betas, lnZ, dlnZ, sampler
+    else:
+        return df, sampler.betas, lnZ, dlnZ
 
 
 def extract_1d_hist(samples, nbins=100, density=True):
