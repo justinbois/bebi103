@@ -92,7 +92,8 @@ def data_to_hex_color(x, palette, x_range=[0, 1]):
 
 
 def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
-                  colormap='RdBu_r', plot_width=1000, plot_height=1000):
+                  label_ticks=True, colormap='RdBu_r', plot_width=1000,
+                  plot_height=1000):
     """
     Create Bokeh plot of a matrix.
 
@@ -113,6 +114,8 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
         the color.  Default is the range of the inputted data.
     n_colors : int, default = 21
         Number of colors to be used in colormap.
+    label_ticks : bool, default = True
+        If False, do not put tick labels
     colormap : str, default = 'RdBu_r'
         Any of the allowed seaborn colormaps.
     plot_width : int, default 1000
@@ -177,7 +180,11 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
     p.grid.grid_line_color = None
     p.axis.axis_line_color = None
     p.axis.major_tick_line_color = None
-    p.axis.major_label_text_font_size = '8pt'
+    if label_ticks:
+        p.axis.major_label_text_font_size = '8pt'
+    else:
+        p.axis.major_label_text_color = None
+        p.axis.major_label_text_font_size = '0pt'
     p.axis.major_label_standoff = 0
     p.xaxis.major_label_orientation = np.pi/3
 
@@ -704,3 +711,41 @@ def norm_cumsum_2d(sample_x, sample_y, nbins=100, meshgrid=False):
 
     # Normalized, reshaped cumulative sum
     return count_cumsum[unsort].reshape(shape), x, y
+
+
+def hpd(trace, mass_frac) :
+    """
+    Returns highest probability density region given by
+    a set of samples.
+
+    Parameters
+    ----------
+    trace : array
+        1D array of MCMC samples for a single variable
+    mass_frac : float with 0 < mass_frac <= 1
+        The fraction of the probability to be included in
+        the HPD.  For example, `massfrac` = 0.95 gives a
+        95% HPD.
+
+    Returns
+    -------
+    output : array, shape (2,)
+        The bounds of the HPD
+    """
+    # Get sorted list
+    d = np.sort(np.copy(trace))
+
+    # Number of total samples taken
+    n = len(trace)
+
+    # Get number of samples that should be included in HPD
+    n_samples = np.floor(mass_frac * n).astype(int)
+
+    # Get width (in units of data) of all intervals with n_samples samples
+    int_width = d[n_samples:] - d[:n-n_samples]
+
+    # Pick out minimal interval
+    min_int = np.argmin(int_width)
+
+    # Return interval
+    return np.array([d[min_int], d[min_int+n_samples]])
