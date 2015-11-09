@@ -443,7 +443,7 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
 
 def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
                  n_walkers=None, p_dict=None, p0=None, columns=None,
-                 loglargs=(), logpargs=(), threads=None,
+                 loglargs=(), logpargs=(), threads=None, return_lnZ=False,
                  return_sampler=False):
     """
     Run emcee.
@@ -484,15 +484,30 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
         Arguments passed to log_post
     threads : int
         Number of cores to use in calculation
+    return_lnZ : bool, default False
+        If True, additionally return lnZ and dlnZ.
     return_sampler : bool, default False
-        If True, return sampler as well as DataFrame with results.
+        If True, additionally return sampler.
 
     Returns
     -------
-    Pandas DataFrame with columns given by flattened MCMC chains.
-    Also has a column 'lnprob' containing the log of the posterior
-    and 'chain', which is the chain ID.  Optionally, the sampler
-    is returned in addition.
+    df : pandas.DataFrame
+        First columns give flattened MCMC chains, with columns
+        named with the variable being sampled as a string.
+        Other columns are:
+          'chain':    ID of chain
+          'beta':     Inverse temperature
+          'beta_ind': Index of beta in list of betas
+          'lnlike':   Log likelihood
+          'lnprob':   Log posterior probability (with beta multiplying
+                      log likelihood
+    lnZ : float, optional
+        ln Z(1), which is equal to the evidence of the
+        parameter estimation problem.
+    dlnZ : float, optional
+        The estimated error in the lnZ calculation.
+    sampler : emcee.PTSampler instance, optional
+        The sampler instance.
     """
 
     if p0 is None and p_dict is None:
@@ -534,8 +549,9 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
                                   log_prior, loglargs=loglargs,
                                   logpargs=logpargs, threads=threads)
     else:
-        sampler = emcee.EnsembleSampler(n_walkers, n_dim, log_post,
-                                        args=args)
+        sampler = emcee.PTSampler(n_temps, n_walkers, n_dim, log_like,
+                                  log_prior, loglargs=loglargs,
+                                  logpargs=logpargs)
 
     # Do burn-in
     pos, prob, state = sampler.run_mcmc(p0, n_burn, storechain=False)
@@ -557,15 +573,22 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
                         for i, _ in enumerate(sampler.betas)]
     df['beta_ind'] = np.concatenate(beta_inds)
 
+    df['beta'] = sampler.betas[df['beta_ind']]
+
     chain_inds = [j * np.ones(n_steps, dtype=int)
                       for i, _ in enumerate(sampler.betas)
                              for j in range(n_walkers)]
     df['chain'] = np.concatenate(chain_inds)
 
-    if return_sampler:
-        return df, sampler.betas, lnZ, dlnZ, sampler
+    if return_lnZ:
+        if return_sampler:
+            return df, lnZ, dlnZ, sampler
+        else:
+            return df, lnZ, dlnZ
+    elif return_sampler:
+        return df, sampler
     else:
-        return df, sampler.betas, lnZ, dlnZ
+        return df
 
 
 def extract_1d_hist(samples, nbins=100, density=True):
