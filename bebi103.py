@@ -7,8 +7,12 @@ Author: Justin Bois
 import collections
 import warnings
 
+import matplotlib.path as path
 import numpy as np
 import pandas as pd
+
+import skimage.io
+import skimage.measure
 
 import emcee
 
@@ -17,6 +21,9 @@ import bokeh.plotting
 import seaborn as sns
 
 
+# ########################################################################## #
+#                     COLOR CONVERSION UTILITIES                             #
+# ########################################################################## #
 def rgb_frac_to_hex(rgb_frac):
     """
     Convert fractional RGB values to hexidecimal color string.
@@ -91,6 +98,9 @@ def data_to_hex_color(x, palette, x_range=[0, 1]):
     return rgb_frac_to_hex(palette[int(f * len(palette))])
 
 
+# ########################################################################## #
+#                           BOKEH UTILITIES                                  #
+# ########################################################################## #
 def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
                   label_ticks=True, colormap='RdBu_r', plot_width=1000,
                   plot_height=1000):
@@ -336,9 +346,13 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     return p
 
 
+
+# ########################################################################## #
+#                            MCMC UTILITIES                                  #
+# ########################################################################## #
 def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
                        p0=None, columns=None, args=(), threads=None,
-                      return_sampler=False):
+                       return_sampler=False):
     """
     Run emcee.
 
@@ -772,3 +786,64 @@ def hpd(trace, mass_frac) :
 
     # Return interval
     return np.array([d[min_int], d[min_int+n_samples]])
+
+
+# ########################################################################## #
+#                    IMAGE PROCESSING UTILITIES                              #
+# ########################################################################## #
+def verts_to_roi(verts, size_i, size_j):
+    """
+    Converts list of vertices to an ROI and ROI bounding box
+
+    Parameters
+    ----------
+    verts : array_like, shape (n_verts, 2)
+        List of vertices of a polygon with no crossing lines.  The units
+        describing the positions of the vertices are interpixel spacing.
+    size_i : int
+        Number of pixels in the i-direction (number of rows) in
+        the image
+    size_j : int
+        Number of pixels in the j-direction (number of columns) in
+        the image
+
+    Returns
+    -------
+    roi : array_like, Boolean, shape (size_i, size_j)
+        roi[i,j] is True if pixel (i,j) is in the ROI.
+        roi[i,j] is False otherwise
+    roi_bbox : tuple of slice objects
+        To get a subimage with the bounding box of the ROI, use
+        im[roi_bbox].
+    roi_box : array_like, shape is size of bounding box or ROI
+        A mask for the ROI with the same dimension as the bounding
+        box.  The indexing starts at zero at the upper right corner
+        of the box.
+    """
+
+    # Make list of all points in the image in units of pixels
+    i = np.arange(size_i)
+    j = np.arange(size_j)
+    ii, jj = np.meshgrid(j, i)
+    pts = np.array(list(zip(ii.ravel(), jj.ravel())))
+
+    # Make a path object from vertices
+    p = path.Path(verts)
+
+    # Get list of points that are in roi
+    in_roi = p.contains_points(pts)
+
+    # Convert it to an image
+    roi = in_roi.reshape((size_i, size_j)).astype(np.bool)
+
+    # Get bounding box of ROI
+    regions = skimage.measure.regionprops(roi)
+    bbox = regions[0].bbox
+    roi_bbox = np.s_[bbox[0]:bbox[2]+1, bbox[1]:bbox[3]+1]
+
+    # Get ROI mask for just within bounding box
+    roi_box = roi[roi_bbox]
+
+    # Return boolean in same shape as image
+    return (roi, roi_bbox, roi_box)
+
