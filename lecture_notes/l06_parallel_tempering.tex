@@ -126,7 +126,7 @@ values of $\beta$ that we sampled to get the integral.  We therefore
 can compute the odds ratio of two models $M_i$ and $M_j$ as
 \begin{align}
 O_{ij} = \frac{P(M_i\mid I)}{P(M_j\mid I)}\,\frac{Z_i(1)}{Z_j(1)}
-= \frac{P(M_i\mid I)}{P(M_j\mid I)}\,\frac{\int_0^1\mathrm{d}\beta\,\left\langle \ln P(D\mid \mathbf{a}_i, M_i, I)\right\rangle_\beta}{\int_0^1\mathrm{d}\beta\,\left\langle \ln P(D\mid \mathbf{a}_j, M_j, I)\right\rangle_\beta},
+= \frac{P(M_i\mid I)}{P(M_j\mid I)}\,\exp\left\{\frac{\int_0^1\mathrm{d}\beta\,\left\langle \ln P(D\mid \mathbf{a}_i, M_i, I)\right\rangle_\beta}{\int_0^1\mathrm{d}\beta\,\left\langle \ln P(D\mid \mathbf{a}_j, M_j, I)\right\rangle_\beta}\right\},
 \end{align}
 where the last ratio is via numerical quadrature on results computed
 directly from our PTMCMC traces using equation
