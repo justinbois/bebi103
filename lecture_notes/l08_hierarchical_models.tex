@@ -1,0 +1,234 @@
+In this lecture, we will investigate \textbf{hierarchical models}, in
+which some model parameters are dependent on others in specific ways.
+This is best learned by example.
+
+% %%%%%%%%%%%%%%%%%%
+\subsection{A hierarchical model example}
+In
+\href{http://bebi103.caltech.edu/2015/tutorials/t3b_boolean_data.html}{Tutorial
+  3b}, we studied reversals under exposure to blue light in
+\textit{C. elegans} with Channelrhodopsin in two different neurons.
+Let's consider one of the strains which contains a Channelrhodopsin in
+the ASH sensory neuron.  We found that 9 out of 35 worms reversed
+under exposure to blue light.  We used this measurement to estimate
+the probability $p$ of reversal.  Specifically, we found that the
+posterior probability of reversal given $r$ our of $n$ trials showed
+reversals was\footnote{In Tutorial 3b, we used $n_r$ for the number of
+  reversals.  We use $r$ here because we will have some more
+  subscripts and we want to keep notation clean.}
+\begin{align}
+P(p\mid r, n, I) = \left\{\begin{array}{ccl}
+\displaystyle{\frac{(n+1)!}{(n-r)!r!}\,p^{r}(1-p)^{n-r}} && 0\le p \le 1 \\[1em]
+0 & & \text{otherwise}.
+\end{array}
+\right.
+\label{eq:boolean_posterior}
+\end{align}
+This posterior assumed a uniform prior $P(p\mid I)$ on $0\le p \le 1$,
+and a binomial likelihood, $P(r\mid n, p , I)$.
+
+Next year, we will do the experiment again.  Actually, we could image
+doing the experiment over and over again, each time getting a value of
+$r$ and $n$.  Conditions may change from experiment to experiment.
+For example, we may have different microscope set-ups, slight
+differences in the strain of worms we're using, etc.  We are left with
+some choices on how to model the data.
+
+
+% %%%%%%%%%%%%%%%%%%
+\subsubsection{Pooled data: identical parameters}
+We could pool all of the data together.  In other words, let's say we
+measure $r_1$ out of $n_1$ reversals in the first set of experiments,
+$r_2$ out of $n_2$ reversals in the second set, etc., up to $k$ total
+experiments.  We could pool all of the data together to get
+\begin{align}
+r = \sum_{i=1}^k r_i \text{ out of } n = \sum_{i=1}^k n_i \text{ reversals}.
+\end{align}
+We then compute our posterior as in equation
+\eqref{eq:boolean_posterior}.  Here, the assumption is that the result
+in each experiment are governed by \textit{identical parameters}.
+That is to say that we assume $p_1 = p_2 = \cdots = p_k = p$.
+
+This is similar to what we did in section \ref{sec:l01_learning}, in
+which we looked at how a single hypothesis (or parameter value) is
+informed by more data.
+
+
+% %%%%%%%%%%%%%%%%%%
+\subsubsection{Independent parameters}
+As an alternative, we could instead say that the parameters in each
+experiment are totally independent of each other.  In this case, we
+assume that $p_1$, $p_2$, $\ldots$, $p_k$ are all independent of each
+other.  Thus, the posterior probability is
+\begin{align}
+P(\mathbf{p}\mid \mathbf{r},\mathbf{n}, I) = \prod_{i=1}^k
+\frac{(n_i+1)!}{(n_i-r_i)!r_i!}\,p_i^{r_i}(1-p_i)^{n_i-r_i},
+\end{align}
+where $\mathbf{p} = \{p_1, p_2, \ldots p_k\}$, with $\mathbf{n}$ and
+$\mathbf{r}$ similarly defined, and the posterior is understood to be
+zero if any the $p_i$'s fall our of the interval $[0,1]$.  
+
+When we make this assumption, we often report a value of $p$ that is
+given by the mean of the $p_i$'s with some error bar.
+
+
+% %%%%%%%%%%%%%%%%%%
+\subsubsection{Best of both worlds: a hierarchical model}
+Each of these extremes have their advantages.  We are often trying to
+estimate a parameter that is more universal that out experiments,
+e.g., something that describes worms with Channelrhodopsin in the ASH
+neuron generally.  So, pooling the experiments makes sense.  On the
+other hand, we have reason to assume that there is going to be a
+different value of $p$ in different experiments, as biological systems
+are highly variable, not to mention measurement variations.  So, how
+can we capture both of these effects.
+
+We can consider a model in which there is a ``master'' reversal
+probability, which we'll call $q$ to avoid too many $p$'s, and the
+values of $p_i$ may vary from this $p$ according to some probability
+distribution, $P(p_i\mid q, I)$.  So now, we have parameters
+$p_1, p_2, \ldots, p_k$ and $q$.  So, the posterior can be written
+using Bayes's theorem,
+\begin{align}
+P(q,\mathbf{p}\mid \mathbf{r}, \mathbf{n}, I) 
+= \frac{P(\mathbf{r},\mathbf{n}\mid q, \mathbf{p}, I)\,
+P(q, \mathbf{p}\mid I)}{P(\mathbf{n}, \mathbf{r}\mid I)}.
+\end{align}
+Note, though, that the observed values of $r$ do not depend directly
+on $q$, only on $\mathbf{p}$.  In other words, they only depend
+indirectly on $q$.  So, we can write
+$P(\mathbf{r},\mathbf{n}\mid q, \mathbf{p}, I) =
+P(\mathbf{r},\mathbf{n}\mid \mathbf{p}, I)$.  Thus, we have
+\begin{align}
+P(q,\mathbf{p}\mid \mathbf{r}, \mathbf{n}, I) 
+= \frac{P(\mathbf{r},\mathbf{n}\mid \mathbf{p}, I)\,
+P(q, \mathbf{p}\mid I)}{P(\mathbf{n}, \mathbf{r}\mid I)}.
+\end{align}
+Next, we can rewrite the prior using the definition of conditional
+probability.
+\begin{align}
+P(q,\mathbf{p}\mid I) = P(\mathbf{p}\mid q,I)\, P(q\mid I).
+\end{align}
+Substituting this back into our expression for the posterior, we have
+\begin{align}
+P(q,\mathbf{p}\mid \mathbf{r}, \mathbf{n}, I) 
+= \frac{P(\mathbf{r},\mathbf{n}\mid \mathbf{p}, I)\,
+P(\mathbf{p}\mid q,I)\, P(q\mid I)}{P(\mathbf{n}, \mathbf{r}\mid I)}.
+\end{align}
+Now, if we read off the numerator of this equation, we see a chain of
+dependencies.  The experimental results $\mathbf{r}$ depend on
+parameters $\mathbf{p}$.  Parameters $\mathbf{p}$ depend on
+\textit{hyperparameter} $q$.  Hyperparameter $q$ then has some prior
+distribution.  Any model that can be written as a chain of
+dependencies like this is called a \textbf{hierarchical model}, and
+the parameters that do not directly influence the data are called
+\textbf{hyperparameters}.
+
+So, the hierarchical model captures both the experiment-to-experiment
+variability, as well as the master regulator of outcomes.  Note that
+the product $P(\mathbf{p}\mid q,I)\, P(q\mid I)$ comprises the prior,
+and it is therefore independent of the data.
+
+
+% %%%%%%%%%%%%%%%%%%
+\subsection{Exchangeability}
+The conditional probability, $P(\mathbf{p}\mid q, I)$, can take any
+reasonable form.  In the case where we have no reason to believe that
+we can distinguish any one $p_i$ from another prior to the experiment,
+then the label ``$i$'' applied to the experiment may be exchanged with
+the label of any other experiment.  I.e.,
+$P(p_1, p_2, \ldots, p_k \mid q, I)$ is invariant to permutations of
+the indices.  Parameters behaving this way are said to be
+\textbf{exchangeable}.  A common (simple) exchangeable distribution is
+\begin{align}
+P(\mathbf{p}\mid q, I) = \prod_{i=1}^k P(p_i\mid q, I),
+\end{align}
+which means that each of the parameters is an independent sample out
+of a distribution $P(p_i\mid q)$, which we often take to be the same
+for all $i$.  This is reasonable to do in the worm reversal example.
+
+
+% %%%%%%%%%%%%%%%%%%
+\subsection{Choice of the conditional distribution/prior}
+We need to specify out prior, which for this hierarchical model means
+that we have to specify the conditional distribution,
+$P(p_i\mid q, I)$, as well as $P(q\mid I)$ For the latter, we will
+take it to be uniform on $[0, 1]$.  For the conditional distribution,
+we will assume it is beta-distributed, which is defined on the
+interval $[0,1]$ and can be peaked.  The beta distribution can be
+written as
+\begin{align}
+P(p\mid \alpha, \beta) = \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}\,
+p^{\alpha-1}(1-p)^{\beta-1},
+\end{align}
+where it is parametrized by positive constants $\alpha$ and $\beta$.
+If $\alpha$ and $\beta$ are both greater than unity, the distribution
+is peaked, and the mode is
+\begin{align}
+  p^* \equiv \omega = \frac{\alpha - 1}{\alpha + \beta - 2}.
+\end{align}
+The ``concentration,'' $\kappa = \alpha + \beta$, of the distribution
+describes its spread.  As $\kappa$ gets larger, the distribution
+becomes tighter.  So, we might want to think of the conditional
+distribution in terms of $\omega$ and $\kappa$.  We can convert back
+to $\alpha$ and $\beta$ using
+\begin{align}
+  \alpha &= \omega(\kappa - 2) + 1 \\
+  \beta &= (1-\omega)(\kappa - 2) + 1.
+\end{align}
+We have $0 < \omega < 1$ and $2 < \kappa$.  A reasonable model would
+be to take $\omega = q$ with some concentration $\kappa$.  This gives
+an additional hyperparameter, $\kappa$, which describes
+experiment-to-experiment variability.  We will take
+$P(\kappa\mid I) \propto 1/\kappa$, as we typically do for scale
+parameters.  Thus, our full posterior is
+\begin{align}
+P(q, \kappa,\mathbf{p}\mid \mathbf{r}, \mathbf{n},I) \propto
+P(\mathbf{r},\mathbf{n}\mid \mathbf{p}, I)\,
+\kappa^{-1}\,\left(\prod_{i=1}^k P(p_i\mid q,\kappa)\right),
+\end{align}
+nonzero on $0\le q,\mathbf{p} \le 1$ and $\kappa > 2$, where
+\begin{align}
+P(p_i\mid q, \kappa) =  \frac{\Gamma(\kappa)}{\Gamma(q(\kappa - 2) + 1)\Gamma((1-q)(\kappa - 2) + 1)}\,
+p^{q(\kappa - 2)}(1-p)^{(1-q)(\kappa - 2)}.
+\end{align}
+As before, we have a binomial likelihood, where we assume the
+experiments are independent.
+\begin{align}
+P(\mathbf{r},\mathbf{n}\mid \mathbf{p}, I) = \prod_{i=1}^k \frac{n_i!}{(n_i-r_i)!r_i!}\,
+p_i^{r_i}(1-p_i)^{n_i-r_i}.
+\end{align}
+
+
+% %%%%%%%%%%%%%%%%%%
+\subsection{Implementation}
+In some cases, we can do some macho integration and work out
+analytical results for the posterior of a hierarchical model.  This
+usually involves choosing conjugate priors.  Most often, though, we
+need to resort to numerical methods.  To see the worm reversal problem
+solved with a hierarchical model, see the implementation
+\href{http://bebi103.caltech.edu/2015/tutorials/l08_hierarchical_models.html}{here}.
+
+
+% %%%%%%%%%%%%%%%%%%
+\subsection{Generalization}
+The worm reversal problem is easily generalized.  You can imagine
+having more levels of the hierarchy.  This is just more steps in the
+chain of dependencies that are factored in the prior.  For general
+parameters $\boldsymbol{\theta}$ and hyperparameters
+$\boldsymbol{\phi}$, we have
+\begin{align}
+P(\boldsymbol{\theta}, \boldsymbol{\phi} \mid D, I) = \frac{P(D\mid \boldsymbol{\theta}, I)\, P(\boldsymbol{\theta} \mid \boldsymbol{\phi}, I)\,P(\boldsymbol{\phi}\mid I)}
+{P(D\mid I)}
+\end{align}
+for a two-level hierarchical model.  As we have seen in the course,
+the work is all in coming up with the models for the likelihood
+$P(D\mid \boldsymbol{\theta}, I)$ and prior,
+$P(\boldsymbol{\theta} \mid \boldsymbol{\phi},
+I)\,P(\boldsymbol{\phi}\mid I)$.
+For coming up with the conditional portion of the prior,
+$P(\boldsymbol{\theta} \mid \boldsymbol{\phi}, I)$, we often assume a
+Gaussian distribution because this often describes
+experiment-to-experiment variability.  Bayes's theorem gives you the
+posterior, and it is then ``just'' a matter of computing it of
+sampling from it.
