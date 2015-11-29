@@ -11,7 +11,7 @@ import warnings
 import matplotlib.path as path
 import numpy as np
 import pandas as pd
-import scipt.odr
+import scipy.odr
 import scipy.stats as st
 
 import skimage.io
@@ -99,6 +99,67 @@ def data_to_hex_color(x, palette, x_range=[0, 1]):
     f = (x - x_range[0]) / (x_range[1] - x_range[0])
 
     return rgb_frac_to_hex(palette[int(f * len(palette))])
+
+
+def im_merge_cmy(im_cyan, im_magenta, im_yellow=None):
+    """
+    Merge channels to make RGB image that has cyan, magenta, and
+    yellow.
+
+    Parameters
+    ----------
+    im_cyan: array_like
+        Image represented in cyan channel.  Must be same shape
+        as `im_magenta` and `im_yellow`.
+    im_magenta: array_like
+        Image represented in magenta channel.  Must be same shape
+        as `im_yellow` and `im_yellow`.
+    im_yellow: array_like
+        Image represented in yellow channel.  Must be same shape
+        as `im_cyan` and `im_magenta`.
+
+    Returns
+    -------
+    output : array_like, dtype float, shape (*im_cyan.shape, 3)
+        RGB image the give CMY coloring of image
+
+    Notes
+    -----
+    ..  All input images are streched so that their pixel intensities
+        go from 0 to 1.
+    """
+    im_cyan_scaled = (im_cyan - im_cyan.min()) \
+                            / (im_cyan.max() - im_cyan.min())
+    im_magenta_scaled = (im_magenta - im_magenta.min()) \
+                            / (im_magenta.max() - im_magenta.min())
+
+    if im_yellow is None:
+        im_yellow_scaled = np.zeros_like(im_cyan)
+    else:
+        im_yellow_scaled = (im_yellow - im_yellow.min()) \
+                                / (im_yellow.max() - im_yellow.min())
+
+    # Convert images to RGB with magenta, cyan, and yellow channels
+    im_cyan_scaled_rgb = np.dstack((np.zeros_like(im_cyan_scaled),
+                                    im_cyan_scaled,
+                                    im_cyan_scaled))
+    im_magenta_scaled_rgb = np.dstack((im_magenta_scaled,
+                                       np.zeros_like(im_magenta_scaled),
+                                       im_magenta_scaled))
+    im_yellow_scaled_rgb = np.dstack((im_yellow_scaled,
+                                      im_yellow_scaled,
+                                      np.zeros_like(im_yellow_scaled)))
+
+    # Merge together
+    merged_image = im_cyan_scaled_rgb + im_magenta_scaled_rgb \
+                        + im_yellow_scaled_rgb
+
+    # Scale each channel to be between zero and 1
+    merged_image[:,:,0] /= merged_image[:,:,0].max()
+    merged_image[:,:,1] /= merged_image[:,:,1].max()
+    merged_image[:,:,2] /= merged_image[:,:,2].max()
+
+    return merged_image
 
 
 # ########################################################################## #
@@ -956,11 +1017,13 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=1000, thresh_r=0.0,
 
         # Toss results into class for returning
         return CostesColocalization(
+            im_1=im_1, im_2=im_2, roi=roi, roi_method=roi_method,
             psf_width=psf_width, n_scramble=n_scramble, thresh_r=thresh_r,
             thresh_1=thresh_1, thresh_2=thresh_2, a=a, b=b, M_1=M_1,
             M_2=M_2, r_scr=r_scr, pearson_r=pearson_r, p_coloc=p_coloc)
     else:
         return CostesColocalization(
+            im_1=im_1, im_2=im_2, roi=roi, roi_method=roi_method,
             psf_width=psf_width, n_scramble=n_scramble, thresh_r=None,
             thresh_1=None, thresh_2=None, a=None, b=None, M_1=None,
             M_2=None, r_scr=r_scr, pearson_r=pearson_r, p_coloc=p_coloc)
@@ -1182,10 +1245,3 @@ def im_to_blocks(im, width, roi=None, roi_method='all'):
                 for i in range(0, im.shape[0], width)
                     for j in range(0, im.shape[1], width)
                         if roi_test(roi[i:i+width, j:j+width])]
-#     blocks = []
-#     for i in range(0, im.shape[0], width):
-#         for j in range(0, im.shape[1], width):
-#             if roi_test(roi[i:i+width, j:j+width]):
-#                 blocks.append(im[i:i+width, j:j+width])
-
-#     return blocks
