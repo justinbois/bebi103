@@ -415,7 +415,7 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
 #                            MCMC UTILITIES                                  #
 # ########################################################################## #
 def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
-                       p0=None, columns=None, args=(), threads=None,
+                       p0=None, columns=None, args=(), threads=None, thin=1,
                        return_sampler=False):
     """
     Run emcee.
@@ -450,6 +450,9 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
         Arguments passed to log_post
     threads : int
         Number of cores to use in calculation
+    thin : int
+        The number of iterations to perform between saving the
+        state to the internal chain.
     return_sampler : bool, default False
         If True, return sampler as well as DataFrame with results.
 
@@ -502,15 +505,18 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
                                         args=args)
 
     # Do burn-in
-    pos, prob, state = sampler.run_mcmc(p0, n_burn, storechain=False)
+    if n_burn > 0:
+        pos, _, _ = sampler.run_mcmc(p0, n_burn, storechain=False)
+    else:
+        pos = p0
 
     # Sample again, starting from end burn-in state
-    _ = sampler.run_mcmc(pos, n_steps)
+    _ = sampler.run_mcmc(pos, n_steps, thin=thin)
 
     # Make DataFrame for results
     df = pd.DataFrame(data=sampler.flatchain, columns=columns)
     df['lnprob'] = sampler.flatlnprobability
-    df['chain'] = np.concatenate([i * np.ones(n_steps, dtype=int)
+    df['chain'] = np.concatenate([i * np.ones(n_steps//thin, dtype=int)
                                                 for i in range(n_walkers)])
 
     if return_sampler:
@@ -521,8 +527,8 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
 
 def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
                  n_walkers=None, p_dict=None, p0=None, columns=None,
-                 loglargs=(), logpargs=(), threads=None, return_lnZ=False,
-                 return_sampler=False):
+                 loglargs=(), logpargs=(), threads=None, thin=1,
+                 return_lnZ=False, return_sampler=False, return_pos=False):
     """
     Run emcee.
 
@@ -552,8 +558,8 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
         if p0 is not None.
     p0 : array
         n_walkers by n_dim array of initial starting values.
-        p0[i,j] is the starting point for walk i along variable j.
-        If provided, p_dict is ignored.
+        p0[k,i,j] is the starting point for walk i along variable j
+        for temperature k.  If provided, p_dict is ignored.
     columns : list of strings
         Name of parameters.  These will be the column headings in the
         returned DataFrame.  If None, either inferred from p_dict or
@@ -562,10 +568,15 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
         Arguments passed to log_post
     threads : int
         Number of cores to use in calculation
+    thin : int
+        The number of iterations to perform between saving the
+        state to the internal chain.
     return_lnZ : bool, default False
         If True, additionally return lnZ and dlnZ.
     return_sampler : bool, default False
         If True, additionally return sampler.
+    return_pos : bool, default False
+        If False, return position of the sampler.
 
     Returns
     -------
@@ -586,6 +597,8 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
         The estimated error in the lnZ calculation.
     sampler : emcee.PTSampler instance, optional
         The sampler instance.
+    pos : ndarray, shape (ntemps, nwalkers, ndim)
+        Last position of the walkers.
     """
 
     if p0 is None and p_dict is None:
@@ -632,39 +645,54 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
                                   logpargs=logpargs)
 
     # Do burn-in
-    pos, prob, state = sampler.run_mcmc(p0, n_burn, storechain=False)
+    if n_burn > 0:
+        pos, _, _ = sampler.run_mcmc(p0, n_burn, storechain=False)
+    else:
+        pos = p0
 
     # Sample again, starting from end burn-in state
-    _ = sampler.run_mcmc(pos, n_steps)
+    _ = sampler.run_mcmc(pos, n_steps, thin=thin)
 
     # Compute thermodynamic integral
     lnZ, dlnZ = sampler.thermodynamic_integration_log_evidence(fburnin=0)
 
     # Make DataFrame for results
+    n_steps_thin = sampler.flatchain.shape[1] // n_walkers
     df = pd.DataFrame(data=sampler.flatchain.reshape(
-                            (n_temps*n_walkers*n_steps, n_dim)),
+                            (n_temps*n_walkers*n_steps_thin, n_dim)),
                       columns=columns)
     df['lnlike'] = sampler.lnlikelihood.flatten()
     df['lnprob'] = sampler.lnprobability.flatten()
 
-    beta_inds = [i * np.ones(n_steps * n_walkers, dtype=int)
+    beta_inds = [i * np.ones(n_steps_thin * n_walkers, dtype=int)
                         for i, _ in enumerate(sampler.betas)]
     df['beta_ind'] = np.concatenate(beta_inds)
 
     df['beta'] = sampler.betas[df['beta_ind']]
 
-    chain_inds = [j * np.ones(n_steps, dtype=int)
+    chain_inds = [j * np.ones(n_steps_thin, dtype=int)
                       for i, _ in enumerate(sampler.betas)
                              for j in range(n_walkers)]
     df['chain'] = np.concatenate(chain_inds)
 
     if return_lnZ:
         if return_sampler:
-            return df, lnZ, dlnZ, sampler
+            if return_pos:
+                return df, lnZ, dlnZ, sampler, pos
+            else:
+                return df, lnZ, dlnZ, sampler
         else:
-            return df, lnZ, dlnZ
+            if return_pos:
+                return df, lnZ, dlnZ, pos
+            else:
+                return df, lnZ, dlnZ
     elif return_sampler:
-        return df, sampler
+        if return_pos:
+            return df, sampler, pos
+        else:
+            return df, sampler
+    elif return_pos:
+        return df, pos
     else:
         return df
 
