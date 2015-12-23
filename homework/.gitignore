@@ -1,3 +1,5 @@
+*.csv
+*.txt
 *.html
 *.png
 *.jpg
