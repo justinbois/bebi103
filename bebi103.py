@@ -204,7 +204,7 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
 
     Examples
     --------
-    >>> a = np.array([[1, 2, 3],[4, 5, 6],[7, 8, 9]])
+    >>> a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     >>> data = np.array(np.unravel_index(range(9), a.shape) + (a.ravel(),)).T
     >>> df = pd.DataFrame(data, columns=['i', 'j', 'data'])
     >>> bokeh.plotting.output_file('test_matplot.html')
@@ -842,7 +842,7 @@ def norm_cumsum_2d(sample_x, sample_y, nbins=100, meshgrid=False):
     return count_cumsum[unsort].reshape(shape), x, y
 
 
-def hpd(trace, mass_frac) :
+def hpd(trace, mass_frac):
     """
     Returns highest probability density region given by
     a set of samples.
