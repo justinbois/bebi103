@@ -842,7 +842,7 @@ def norm_cumsum_2d(sample_x, sample_y, nbins=100, meshgrid=False):
     return count_cumsum[unsort].reshape(shape), x, y
 
 
-def hpd(trace, mass_frac) :
+def hpd(trace, mass_frac):
     """
     Returns highest probability density region given by
     a set of samples.

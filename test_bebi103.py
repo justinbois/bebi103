@@ -5,6 +5,7 @@ import bokeh.plotting
 
 import bebi103
 
+
 def test_bokeh_boxplot():
     labels = list('ADBACBABDABDBDBCBABCBADBADBBADBACBADBAD')
     values = np.array([1.67,  0.23,  2.51,  1.06,  0.22,
@@ -29,7 +30,7 @@ def test_bokeh_boxplot():
 
 
 def test_bokeh_matplot():
-    a = np.array([[1, 2, 3],[4, 5, 6],[7, 8, 9]])
+    a = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     data = np.array(np.unravel_index(range(9), a.shape) + (a.ravel(),)).T
     df = pd.DataFrame(data, columns=['i', 'j', 'data'])
     bokeh.plotting.output_file('test_matplot.html')
