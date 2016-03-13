@@ -61,7 +61,7 @@ def rgb_frac_to_hex(rgb_frac):
                                            int(rgb_frac[2] * 255))
 
 
-def data_to_hex_color(x, palette, x_range=[0, 1]):
+def data_to_hex_color(x, palette, x_range=[0, 1], na_value='#000000'):
     """
     Convert a value to a hexidecimal color according to
     color palette.
@@ -94,6 +94,8 @@ def data_to_hex_color(x, palette, x_range=[0, 1]):
         raise RuntimeError('data outside of range')
     elif x == x_range[1]:
         return rgb_frac_to_hex(palette[-1])
+    elif np.isnan(x):
+        return na_value
 
     # Fractional position of x in x_range
     f = (x - x_range[0]) / (x_range[1] - x_range[0])
