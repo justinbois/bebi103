@@ -90,12 +90,12 @@ def data_to_hex_color(x, palette, x_range=[0, 1], na_value='#000000'):
     >>> data_to_hex_color(7.1, [(1, 0, 0), (0, 1, 0), (0, 0, 1)], [0, 10])
     '#0000ff'
     """
-    if x > x_range[1] or x < x_range[0]:
+    if x is None or np.isnan(x):
+        return na_value
+    elif x > x_range[1] or x < x_range[0]:
         raise RuntimeError('data outside of range')
     elif x == x_range[1]:
         return rgb_frac_to_hex(palette[-1])
-    elif np.isnan(x):
-        return na_value
 
     # Fractional position of x in x_range
     f = (x - x_range[0]) / (x_range[1] - x_range[0])
