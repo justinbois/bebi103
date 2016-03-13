@@ -285,7 +285,7 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
 
 def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
                   plot_height=450, box_fill_color='medium_purple',
-                  background_fill='#DFDFE5',
+                  background_fill_color='#DFDFE5',
                   tools='reset,resize,hover,save,pan,box_zoom,wheel_zoom',
                   **kwargs):
     """
@@ -310,7 +310,7 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
         Height of plot in pixels.
     box_fill_color : string
         Fill color of boxes, default = 'medium_purple'
-    background_fill : str, default = '#DFDFE5'
+    background_fill_color : str, default = '#DFDFE5'
         Fill color of the plot background
     tools : str, default = 'reset,resize,hover,save,pan,box_zoom,wheel_zoom'
         Tools to show in the Bokeh toolbar
@@ -396,7 +396,8 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     q3 = q3.reindex(cats)
 
     # Build figure
-    p = bokeh.plotting.figure(x_range=cats, background_fill=background_fill,
+    p = bokeh.plotting.figure(x_range=cats,
+                              background_fill_color=background_fill_color,
                               plot_width=plot_width, plot_height=plot_height,
                               toolbar_location=toolbar_location, tools=tools,
                               **kwargs)
