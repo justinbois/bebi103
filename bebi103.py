@@ -61,7 +61,7 @@ def rgb_frac_to_hex(rgb_frac):
                                            int(rgb_frac[2] * 255))
 
 
-def data_to_hex_color(x, palette, x_range=[0, 1]):
+def data_to_hex_color(x, palette, x_range=[0, 1], na_value='#000000'):
     """
     Convert a value to a hexidecimal color according to
     color palette.
@@ -90,7 +90,9 @@ def data_to_hex_color(x, palette, x_range=[0, 1]):
     >>> data_to_hex_color(7.1, [(1, 0, 0), (0, 1, 0), (0, 0, 1)], [0, 10])
     '#0000ff'
     """
-    if x > x_range[1] or x < x_range[0]:
+    if x is None or np.isnan(x):
+        return na_value
+    elif x > x_range[1] or x < x_range[0]:
         raise RuntimeError('data outside of range')
     elif x == x_range[1]:
         return rgb_frac_to_hex(palette[-1])
@@ -167,7 +169,10 @@ def im_merge_cmy(im_cyan, im_magenta, im_yellow=None):
 # ########################################################################## #
 def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
                   label_ticks=True, colormap='RdBu_r', plot_width=1000,
-                  plot_height=1000):
+                  plot_height=1000, x_axis_location='above',
+                  toolbar_location='left',
+                  tools='reset,resize,hover,save,pan,box_zoom,wheel_zoom',
+                  **kwargs):
     """
     Create Bokeh plot of a matrix.
 
@@ -196,6 +201,14 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
         Width of plot in pixels.
     plot_height : int, default 1000
         Height of plot in pixels.
+    x_axis_location : str, default = 'above'
+        Location of the x-axis around the plot
+    toolbar_location : str, default = 'left'
+        Location of the Bokeh toolbar around the plot
+    tools : str, default = 'reset,resize,hover,save,pan,box_zoom,wheel_zoom'
+        Tools to show in the Bokeh toolbar
+    **kwargs
+        Arbitrary keyword arguments passed to bokeh.plotting.figure
 
     Returns
     -------
@@ -237,15 +250,13 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
     # Data source
     source = bokeh.plotting.ColumnDataSource(df_)
 
-    tools = 'reset,resize,hover,save,pan,box_zoom,wheel_zoom'
-
     # Set up figure; need to reverse y_range to make axis matrix index
     p = bokeh.plotting.figure(
                x_range=list(df_[j_col].unique()),
                y_range=list(reversed(list(df_[i_col].unique()))),
-               x_axis_location='above', plot_width=plot_width,
-               plot_height=plot_height, toolbar_location='left',
-               tools=tools)
+               x_axis_location=x_axis_location, plot_width=plot_width,
+               plot_height=plot_height, toolbar_location=toolbar_location,
+               tools=tools, **kwargs)
 
     # Populate colored squares
     p.rect(j_col, i_col, 1, 1, source=source, color='color', line_color=None)
@@ -273,7 +284,10 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
 
 
 def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
-                  plot_height=450, box_fill_color='medium_purple'):
+                  plot_height=450, box_fill_color='medium_purple',
+                  background_fill_color='#DFDFE5',
+                  tools='reset,resize,hover,save,pan,box_zoom,wheel_zoom',
+                  **kwargs):
     """
     Make a Bokeh box plot from a tidy DataFrame.
 
@@ -296,6 +310,12 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
         Height of plot in pixels.
     box_fill_color : string
         Fill color of boxes, default = 'medium_purple'
+    background_fill_color : str, default = '#DFDFE5'
+        Fill color of the plot background
+    tools : str, default = 'reset,resize,hover,save,pan,box_zoom,wheel_zoom'
+        Tools to show in the Bokeh toolbar
+    **kwargs
+        Arbitrary keyword arguments passed to bokeh.plotting.figure
 
     Returns
     -------
@@ -376,9 +396,11 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     q3 = q3.reindex(cats)
 
     # Build figure
-    p = bokeh.plotting.figure(background_fill='#DFDFE5',
-                              plot_width=plot_width,
-                              plot_height=plot_height, x_range=cats)
+    p = bokeh.plotting.figure(x_range=cats,
+                              background_fill_color=background_fill_color,
+                              plot_width=plot_width, plot_height=plot_height,
+                              toolbar_location=toolbar_location, tools=tools,
+                              **kwargs)
     p.ygrid.grid_line_color = 'white'
     p.xgrid.grid_line_color = None
     p.ygrid.grid_line_width = 2
