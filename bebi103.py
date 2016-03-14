@@ -250,10 +250,19 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
     # Data source
     source = bokeh.plotting.ColumnDataSource(df_)
 
+    # only reverse the y-axis (and put the x-axis on top,
+    # if the data is categorical:
+    if False:
+        y_range=list(reversed(list(df_[i_col].unique())))
+        x_axis_location = 'above'
+    else:
+        y_range=list(df_[i_col].unique())
+        x_axis_location = 'bottom'
+
     # Set up figure; need to reverse y_range to make axis matrix index
     p = bokeh.plotting.figure(
                x_range=list(df_[j_col].unique()),
-               y_range=list(reversed(list(df_[i_col].unique()))),
+               y_range=y_range,
                x_axis_location=x_axis_location, plot_width=plot_width,
                plot_height=plot_height, toolbar_location=toolbar_location,
                tools=tools, **kwargs)
