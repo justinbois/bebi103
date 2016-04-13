@@ -34,16 +34,26 @@ def test_bokeh_matplot():
     a[1, 1] = None
     data = np.array(np.unravel_index(range(9), a.shape) + (a.ravel(),)).T
     df = pd.DataFrame(data, columns=['i', 'j', 'data'])
+
     bokeh.plotting.output_file('test_matplot.html')
-    p = bebi103.bokeh_matplot(df, 'i', 'j', 'data', n_colors=9,
-                              colormap='RdBu_r', plot_width=200,
-                              plot_height=200)
-    bokeh.plotting.show(p)
-    y_n = input('Visual inspection ok? ')
+    # Numerical x-axis
+    p_numerical = bebi103.bokeh_matplot(df, 'i', 'j', 'data', n_colors=9,
+                                        colormap='RdBu_r', plot_width=200,
+                                        plot_height=200)
+
+    # Categorical x-axis, i.e. column indices (labels are strings)
+    df.j = df.j.astype(str)
+    p_categorical = bebi103.bokeh_matplot(df, 'i', 'j', 'data', n_colors=9,
+                                          colormap='RdBu_r', plot_width=200,
+                                          plot_height=200)
+
+    bokeh.plotting.show(bokeh.io.vplot(p_categorical, p_numerical))
+    y_n = input('Visual inspection ok? (X-Axis -> Top: above, Bottom: below)')
     if y_n in ['y', 'Y', '1']:
         return True
     else:
         return False
+
 
 # To go in run_ensemble_sampler:
 # assert np.allclose(sampler.chain[0,:,0], df[df.chain==0][df.columns[0]])

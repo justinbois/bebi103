@@ -7,6 +7,7 @@ Author: Justin Bois
 import collections
 import random
 import warnings
+import numbers
 
 import matplotlib.path as path
 import numpy as np
@@ -169,7 +170,7 @@ def im_merge_cmy(im_cyan, im_magenta, im_yellow=None):
 # ########################################################################## #
 def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
                   label_ticks=True, colormap='RdBu_r', plot_width=1000,
-                  plot_height=1000, x_axis_location='above',
+                  plot_height=1000, x_axis_location='auto',
                   toolbar_location='left',
                   tools='reset,resize,hover,save,pan,box_zoom,wheel_zoom',
                   **kwargs):
@@ -201,8 +202,11 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
         Width of plot in pixels.
     plot_height : int, default 1000
         Height of plot in pixels.
-    x_axis_location : str, default = 'above'
-        Location of the x-axis around the plot
+    x_axis_location : str, default = None
+        Location of the x-axis around the plot. If 'auto' and first
+        element of `df[i_col]` is numerical, x-axis will be placed below
+        with the lower left corner as the origin. Otherwise, above
+        with the upper left corner as the origin.
     toolbar_location : str, default = 'left'
         Location of the Bokeh toolbar around the plot
     tools : str, default = 'reset,resize,hover,save,pan,box_zoom,wheel_zoom'
@@ -250,16 +254,21 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
     # Data source
     source = bokeh.plotting.ColumnDataSource(df_)
 
-    # only reverse the y-axis (and put the x-axis on top,
-    # if the data is categorical:
-    if False:
-        y_range=list(reversed(list(df_[i_col].unique())))
-        x_axis_location = 'above'
-    else:
-        y_range=list(df_[i_col].unique())
-        x_axis_location = 'bottom'
+    # only reverse the y-axis and put the x-axis on top
+    # if the x-axis is categorical:
+    if x_axis_location == 'auto':
+        if isinstance(df[j_col].iloc[0], numbers.Number):
+            y_range = list(df_[i_col].unique())
+            x_axis_location = 'below'
+        else:
+            y_range = list(reversed(list(df_[i_col].unique())))
+            x_axis_location = 'above'
+    elif x_axis_location == 'above':
+        y_range = list(reversed(list(df_[i_col].unique())))
+    elif x_axis_location == 'below':
+        y_range = list(df_[i_col].unique())
 
-    # Set up figure; need to reverse y_range to make axis matrix index
+    # Set up figure
     p = bokeh.plotting.figure(
                x_range=list(df_[j_col].unique()),
                y_range=y_range,
@@ -408,7 +417,7 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     p = bokeh.plotting.figure(x_range=cats,
                               background_fill_color=background_fill_color,
                               plot_width=plot_width, plot_height=plot_height,
-                              toolbar_location=toolbar_location, tools=tools,
+                              tools=tools,
                               **kwargs)
     p.ygrid.grid_line_color = 'white'
     p.xgrid.grid_line_color = None
