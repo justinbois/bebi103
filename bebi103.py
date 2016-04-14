@@ -131,16 +131,16 @@ def im_merge_cmy(im_cyan, im_magenta, im_yellow=None):
     ..  All input images are streched so that their pixel intensities
         go from 0 to 1.
     """
-    im_cyan_scaled = (im_cyan - im_cyan.min()) \
-                            / (im_cyan.max() - im_cyan.min())
-    im_magenta_scaled = (im_magenta - im_magenta.min()) \
-                            / (im_magenta.max() - im_magenta.min())
+    im_cyan_scaled = \
+        (im_cyan - im_cyan.min()) / (im_cyan.max() - im_cyan.min())
+    im_magenta_scaled = \
+        (im_magenta - im_magenta.min()) / (im_magenta.max() - im_magenta.min())
 
     if im_yellow is None:
         im_yellow_scaled = np.zeros_like(im_cyan)
     else:
-        im_yellow_scaled = (im_yellow - im_yellow.min()) \
-                                / (im_yellow.max() - im_yellow.min())
+        im_yellow_scaled = \
+            (im_yellow - im_yellow.min()) / (im_yellow.max() - im_yellow.min())
 
     # Convert images to RGB with magenta, cyan, and yellow channels
     im_cyan_scaled_rgb = np.dstack((np.zeros_like(im_cyan_scaled),
@@ -154,13 +154,13 @@ def im_merge_cmy(im_cyan, im_magenta, im_yellow=None):
                                       np.zeros_like(im_yellow_scaled)))
 
     # Merge together
-    merged_image = im_cyan_scaled_rgb + im_magenta_scaled_rgb \
-                        + im_yellow_scaled_rgb
+    merged_image = \
+        im_cyan_scaled_rgb + im_magenta_scaled_rgb + im_yellow_scaled_rgb
 
     # Scale each channel to be between zero and 1
-    merged_image[:,:,0] /= merged_image[:,:,0].max()
-    merged_image[:,:,1] /= merged_image[:,:,1].max()
-    merged_image[:,:,2] /= merged_image[:,:,2].max()
+    merged_image[:, :, 0] /= merged_image[:, :, 0].max()
+    merged_image[:, :, 1] /= merged_image[:, :, 1].max()
+    merged_image[:, :, 2] /= merged_image[:, :, 2].max()
 
     return merged_image
 
@@ -269,12 +269,13 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
         y_range = list(df_[i_col].unique())
 
     # Set up figure
-    p = bokeh.plotting.figure(
-               x_range=list(df_[j_col].unique()),
-               y_range=y_range,
-               x_axis_location=x_axis_location, plot_width=plot_width,
-               plot_height=plot_height, toolbar_location=toolbar_location,
-               tools=tools, **kwargs)
+    p = bokeh.plotting.figure(x_range=list(df_[j_col].unique()),
+                              y_range=y_range,
+                              x_axis_location=x_axis_location,
+                              plot_width=plot_width,
+                              plot_height=plot_height,
+                              toolbar_location=toolbar_location,
+                              tools=tools, **kwargs)
 
     # Populate colored squares
     p.rect(j_col, i_col, 1, 1, source=source, color='color', line_color=None)
@@ -289,14 +290,13 @@ def bokeh_matplot(df, i_col, j_col, data_col, data_range=None, n_colors=21,
         p.axis.major_label_text_color = None
         p.axis.major_label_text_font_size = '0pt'
     p.axis.major_label_standoff = 0
-    p.xaxis.major_label_orientation = np.pi/3
+    p.xaxis.major_label_orientation = np.pi / 3
 
     # Build hover tool
     hover = p.select(dict(type=bokeh.models.HoverTool))
-    hover.tooltips = collections.OrderedDict([
-    ('i', '  @' + i_col),
-    ('j', '  @' + j_col),
-    (data_col, '  @' + data_col)])
+    hover.tooltips = collections.OrderedDict([('i', '  @' + i_col),
+                                              ('j', '  @' + j_col),
+                                              (data_col, '  @' + data_col)])
 
     return p
 
@@ -377,14 +377,14 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
 
     # Compute interquartile region and upper and lower bounds for outliers
     iqr = q3 - q1
-    upper_cutoff = q3 + 1.5*iqr
-    lower_cutoff = q1 - 1.5*iqr
+    upper_cutoff = q3 + 1.5 * iqr
+    lower_cutoff = q1 - 1.5 * iqr
 
     # Find the outliers for each category
     def outliers(group):
         cat = group.name
-        outlier_inds = (group[value] > upper_cutoff[cat]) \
-                                     | (group[value] < lower_cutoff[cat])
+        outlier_inds = (group[value] > upper_cutoff[cat]) | \
+                       (group[value] < lower_cutoff[cat])
         return group[value][outlier_inds]
 
     # Apply outlier finder
@@ -429,7 +429,7 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     p.segment(cats, lower, cats, q1, line_width=2, line_color="black")
 
     # boxes
-    p.rect(cats, (q3 + q1)/2, 0.5, q3 - q1, fill_color="mediumpurple",
+    p.rect(cats, (q3 + q1) / 2, 0.5, q3 - q1, fill_color="mediumpurple",
            alpha=0.7, line_width=2, line_color="black")
 
     # median (almost-0 height rects simpler than segments)
@@ -448,7 +448,6 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     p.circle(outx, outy, size=6, color='black')
 
     return p
-
 
 
 # ########################################################################## #
@@ -534,7 +533,7 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
     if p0 is None:
         p0 = np.empty((n_walkers, n_dim))
         for i, key in enumerate(p_dict):
-            p0[:,i] = p_dict[key][0](*(p_dict[key][1] + (n_walkers,)))
+            p0[:, i] = p_dict[key][0](*(p_dict[key][1] + (n_walkers,)))
 
     # Set up the EnsembleSampler instance
     if threads is not None:
@@ -556,8 +555,8 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
     # Make DataFrame for results
     df = pd.DataFrame(data=sampler.flatchain, columns=columns)
     df['lnprob'] = sampler.flatlnprobability
-    df['chain'] = np.concatenate([i * np.ones(n_steps//thin, dtype=int)
-                                                for i in range(n_walkers)])
+    df['chain'] = np.concatenate([i * np.ones(n_steps // thin, dtype=int)
+                                  for i in range(n_walkers)])
 
     if return_sampler:
         return df, sampler
@@ -671,8 +670,8 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
     if p0 is None:
         p0 = np.empty((n_temps, n_walkers, n_dim))
         for i, key in enumerate(p_dict):
-            p0[:,:,i] = p_dict[key][0](
-                            *(p_dict[key][1] + ((n_temps, n_walkers),)))
+            p0[:, :, i] = p_dict[key][0](
+                *(p_dict[key][1] + ((n_temps, n_walkers),)))
 
     # Set up the PTSampler instance
     if threads is not None:
@@ -698,21 +697,22 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
 
     # Make DataFrame for results
     n_steps_thin = sampler.flatchain.shape[1] // n_walkers
-    df = pd.DataFrame(data=sampler.flatchain.reshape(
-                            (n_temps*n_walkers*n_steps_thin, n_dim)),
-                      columns=columns)
+    df = pd.DataFrame(
+        data=sampler.flatchain.reshape(
+            (n_temps * n_walkers * n_steps_thin, n_dim)),
+        columns=columns)
     df['lnlike'] = sampler.lnlikelihood.flatten()
     df['lnprob'] = sampler.lnprobability.flatten()
 
     beta_inds = [i * np.ones(n_steps_thin * n_walkers, dtype=int)
-                        for i, _ in enumerate(sampler.betas)]
+                 for i, _ in enumerate(sampler.betas)]
     df['beta_ind'] = np.concatenate(beta_inds)
 
     df['beta'] = sampler.betas[df['beta_ind']]
 
     chain_inds = [j * np.ones(n_steps_thin, dtype=int)
-                      for i, _ in enumerate(sampler.betas)
-                             for j in range(n_walkers)]
+                  for i, _ in enumerate(sampler.betas)
+                  for j in range(n_walkers)]
     df['chain'] = np.concatenate(chain_inds)
 
     if return_lnZ:
@@ -911,13 +911,13 @@ def hpd(trace, mass_frac):
     n_samples = np.floor(mass_frac * n).astype(int)
 
     # Get width (in units of data) of all intervals with n_samples samples
-    int_width = d[n_samples:] - d[:n-n_samples]
+    int_width = d[n_samples:] - d[:n - n_samples]
 
     # Pick out minimal interval
     min_int = np.argmin(int_width)
 
     # Return interval
-    return np.array([d[min_int], d[min_int+n_samples]])
+    return np.array([d[min_int], d[min_int + n_samples]])
 
 
 # ########################################################################## #
@@ -971,7 +971,7 @@ def verts_to_roi(verts, size_i, size_j):
     # Get bounding box of ROI
     regions = skimage.measure.regionprops(roi)
     bbox = regions[0].bbox
-    roi_bbox = np.s_[bbox[0]:bbox[2]+1, bbox[1]:bbox[3]+1]
+    roi_bbox = np.s_[bbox[0]:bbox[2] + 1, bbox[1]:bbox[3] + 1]
 
     # Get ROI mask for just within bounding box
     roi_box = roi[roi_bbox]
@@ -984,6 +984,7 @@ class CostesColocalization(object):
     """
     Generic class just to store attributes
     """
+
     def __init__(self, **kw):
         self.__dict__ = kw
 
@@ -1309,7 +1310,7 @@ def im_to_blocks(im, width, roi=None, roi_method='all'):
         roi_test = np.any
 
     # Construct list of blocks
-    return [im[i:i+width, j:j+width]
-                for i in range(0, im.shape[0], width)
-                    for j in range(0, im.shape[1], width)
-                        if roi_test(roi[i:i+width, j:j+width])]
+    return [im[i:i + width, j:j + width]
+            for i in range(0, im.shape[0], width)
+            for j in range(0, im.shape[1], width)
+            if roi_test(roi[i:i + width, j:j + width])]
