@@ -1,1 +1,0 @@
-scp -r index.html people.html policies.html readings.html homework.html handouts.html schedule.html tutorials.html links.html styles.css images/ downloads/ homework/ staff_zone/ tutorials/ data/ handouts/ bebi103@its.caltech.edu:~/public_html/2014/
