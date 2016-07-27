@@ -1,0 +1,10 @@
+.ipynb_checkpoints/
+*.csv
+*.svg
+*.pdf
+*.npy
+*.html
+sandbox/
+images/
+live_tutorials/
+student_homeworks/
