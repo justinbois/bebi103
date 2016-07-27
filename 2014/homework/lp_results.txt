@@ -1,0 +1,14 @@
+Timer unit: 1e-06 s
+
+Total time: 0.34488 s
+File: <ipython-input-173-bcb04802abbb>
+Function: neg_log_like_single_curve at line 40
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    40                                           def neg_log_like_single_curve(a_bk, beta, t, area, model):
+    41                                               """
+    42                                               Negative log likelihood for a single growth event
+    43                                               """
+    44     18695        39026      2.1     11.3      a, bk = a_bk
+    45     18695       305854     16.4     88.7      return np.log(1 + (resid(a, bk, t, area, model) / beta)**2).sum()                 + len(t) * np.log(np.pi * beta)

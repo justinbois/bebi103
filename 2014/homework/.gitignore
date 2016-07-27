@@ -3,5 +3,6 @@
 *.svg
 *.pdf
 *.npy
+*.html
 sandbox/
 images/
