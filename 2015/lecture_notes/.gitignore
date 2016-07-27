@@ -1,0 +1,6 @@
+figs/
+*.log
+*.bst
+*.aux
+*.pdf
+*.out

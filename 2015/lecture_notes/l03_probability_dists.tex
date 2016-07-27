@@ -1,0 +1,404 @@
+We have talked about the three levels of building a model in the
+biological sciences.
+\begin{itemize}
+\item[\textbf{Model 1}] A cartoon or verbal phenomenological
+  description of the system of interest.
+\item[\textbf{Model 2}] A mathematization of Model 1.
+\item[\textbf{Model 3}] A description of what we expect from an
+  experiment, given our model.  In the Bayesian context, this is
+  specification of the likelihood and prior.
+\end{itemize}
+
+We have talked briefly about specifying priors.  We endeavor to
+be uninformative when we do not know much about model parameters or
+about the hypothesis in question.  We found in the homework that while
+we should try to be a uninformative as possible (using maximum entropy
+ideas), we can be a bit sloppy with our prior definitions, provided we
+have many data so that the likelihood can overcome any prior
+sloppiness.
+
+To specify a likelihood, we need to be careful, as this is very much
+at the heart of our model.  Specifying the likelihood amounts to
+choosing a probability distribution that describes how the data will
+look under your model.  In many cases, you need to derive the
+likelihood (or even numerically compute it when it cannot be written
+in closed form).  In many practical cases, though, the choice of
+likelihood is among standard probability distributions.  These
+distributions all have ``stories'' associated with them.  If your data
+and model match the story of a distribution, you know that this is the
+distribution to choose for your likelihood.
+
+% %%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Review on probability distributions}
+Before we begin talking about distributions, let's remind ourselves
+what probability distributions are.  We cut some corners in our
+definitions here, but these definitions are functional for most of our
+data analysis purposes.
+
+A \textbf{probability mass function} (PMF), $P(x)$, describes the
+probability of a discrete variable obtaining value $x$.  The variable
+$x$ takes on discrete values, so the \textbf{normalization condition}
+is
+\begin{align}
+\sum_x P(x) = 1.
+\end{align}
+
+A \textbf{probability distribution function} (PDF), which we shall
+also call $P(x)$, is defined such that the probability that a
+continuous variable $x$ is $a \le x \le b$ is
+\begin{align}
+\int_a^b \mathrm{d}x\,P(x).
+\end{align}
+
+\subsubsection{Moments}
+PMFs and PDFs have \textbf{moments}.  The way they are defined can
+vary, but we will define the $n$th moment for a PMF as
+\begin{align}
+\left\langle x^n \right\rangle = \sum_i x_i^n P(x_i),
+\end{align}
+and for a PDF as
+\begin{align}
+\left\langle x^n \right\rangle = \int \mathrm{d}x\, x^n P(x).
+\end{align}
+These moments are often used to compute summary statistics.
+\begin{align}
+\text{mean} &= \langle x \rangle \\
+\text{variance} &= \left\langle x^2 \right\rangle - \langle x \rangle^2
+= \left\langle(x - \langle x \rangle)^2 \right\rangle \\
+\text{skew} &= \frac{\left\langle(x - \langle x \rangle)^3 \right\rangle}
+{\left\langle(x - \langle x \rangle)^2 \right\rangle^{\frac{3}{2}}} \\
+\text{Pearson kurtosis} &= \frac{\left\langle(x - \langle x \rangle)^4 \right\rangle}
+{\left\langle(x - \langle x \rangle)^2 \right\rangle^2} \\
+\text{Fisher kurtosis} &= \frac{\left\langle(x - \langle x \rangle)^4 \right\rangle}
+{\left\langle(x - \langle x \rangle)^2 \right\rangle^2} - 3.
+\end{align}
+
+We will present PMFs and PDFs for distributions below.  We only show
+the univariate forms; the multivariate version are easily derived or
+looked up.
+
+
+\subsubsection{Sampling}
+Given that we know a probability distribution, we can take
+\textbf{samples} out of it.  This means that we can randomly draw
+numbers and the probability that we draw a certain number $x$ is
+proportional to the PMF or PDF, $P(x)$.  As we will soon see, sampling
+out of a distribution is often easier than computing the distribution
+over a range of values because many of those values are zero. 
+
+% %%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Discrete distributions and their stories}
+
+\subsubsection{Bernoulli}
+\paragraph{Story.} A single trial with either a success ($x = 1$) or
+failure ($x=0$) is performed.  The Bernoulli distribution defines the
+probability of getting each outcome.
+\paragraph{Parameter.} The Bernoulli distribution is parametrized by a
+single value, $p$, the probability that the trial is successful.
+These trials are called \textbf{Bernoulli trials}.
+\paragraph{Example.} Check to see if a given bacteria is competent,
+given that it has probability $p$ of being competent.
+\paragraph{Probability mass function.}
+\begin{align}
+P(x;p) = \left\{ \begin{array}{ccc}
+1-p & & x = 0 \\[0.5em]
+p & & x = 1 \\[0.5em]
+0 & & \text{otherwise.}
+\end{array}
+\right.
+\end{align}
+
+
+\subsubsection{Geometric}
+\paragraph{Story.} We perform a series of Bernoulli trials until we
+get a success.  We have $k$ failures before the success.
+\paragraph{Parameter.} The Geometric distribution is parametrized by a
+single value, $p$, the probability that the Bernoulli trial is
+successful.
+\paragraph{Example.} Consider actin polymerization.  At each time
+step, an actin monomer may add to the filament (``failure''), or an
+actin monomer may fall off (``success'') with (usually very low)
+probability $p$.  The length of actin filaments are geometrically
+distributed.
+\paragraph{Probability mass function.}
+\begin{align}
+P(k;p) = (1-p)^k p.
+\end{align}
+The Geometric distribution is only defined for non-negative
+integer $k$.
+
+
+
+\subsubsection{Negative binomial}
+\paragraph{Story.} We perform a series of Bernoulli trials until we
+get $r$ successes.  The number of failures, $n$, before we get $r$
+successes is negative binomially distributed.
+\paragraph{Parameters.} There are two parameters: the probability $p$
+of success for each Bernoulli trial, and the desired number of
+successes, $r$.
+\paragraph{Example.} Bursty gene expression can give mRNA count
+distributions that are negative binomially distributed.  Here,
+``success'' is that a burst in gene expression stops.  So, the
+parameter $p$ is related to the length of a burst in expression (lower
+$p$ means a longer burst).  The parameter $r$ is related to the
+frequency of the bursts.  If multiple bursts are possible within the
+lifetime of mRNA, then $r > 1$.  Then, the number of ``failures'' is
+the number of mRNA transcripts that are made in the characteristic
+lifetime of mRNA.
+\paragraph{Probability mass function.}
+\begin{align}
+P(n;r,p) = \begin{pmatrix}
+n+r-1 \\
+r-1
+\end{pmatrix}
+p^r (1-p)^n.
+\end{align}
+Here, we use a combinatorial notation;
+\begin{align}
+  \begin{pmatrix}
+n+r-1 \\
+r-1
+\end{pmatrix} = \frac{(n+r-1)!}{(r-1)!\,n!}.
+\end{align}
+Note that if $r = 1$, this distribution reduces to the Geometric
+distribution.
+
+
+
+\subsubsection{Binomial}
+\paragraph{Story.} We perform $n$ Bernoulli trials.  The number of
+successes, $k$, is binomially distributed.
+\paragraph{Parameters.} There are two parameters: the probability $p$
+of success for each Bernoulli trial, and the number of trials, $n$.
+\paragraph{Example.} Distribution of plasmids between daughter cells
+in cell division.  Each of the $n$ plasmids as a chance $p$ of being
+in daughter cell 1 (``success'').  The number of plasmids, $k$, in
+daughter cell 1 is binomially distributed.
+\paragraph{Probability mass function.}
+\begin{align}
+P(k;n,p) = \begin{pmatrix}
+n \\
+k
+\end{pmatrix}
+p^k (1-p)^{n-k}.
+\end{align}
+
+
+
+\subsubsection{Poisson}
+\paragraph{Story.}  Rare events occur with a rate $\lambda$ per unit
+time.  There is no ``memory'' of previous events; i.e., that rate is
+independent of time.  There are $k$ event that occur in unit time.
+\paragraph{Parameter.} The single parameter is the rate $\lambda$ of
+the rare events occurring.
+\paragraph{Example.} The number of mutations in a strand of DNA per
+unit length (since mutations are rare) are Poisson distributed.
+\paragraph{Probability mass function.}
+\begin{align}
+P(k;\lambda) = \frac{\lambda^k}{k!}\,\mathrm{e}^{-\lambda}.
+\end{align}
+\paragraph{Note.}
+The Poisson distribution is a limit of the binomial distribution in
+which the number of trials goes to infinity, but the expected number
+of successes, $np$, stays fixed.  Thus, 
+\begin{align}
+P_\mathrm{Poisson}(k;\lambda) \approx P_\mathrm{Binomial}(k;n, p),
+\end{align}
+with $\lambda = np$.  Considering the biological example of mutations,
+this is binomially distributed: There are $n$ bases, each with a
+probability $p$ of mutation, so the number of mutations, $k$ is
+binomially distributed.  Since $p$ is small, it is approximately
+Poisson distributed.
+
+
+\subsubsection{Hypergeometric}
+\paragraph{Story.} Consider an urn with $w$ white balls and $b$ black
+balls.  Draw $n$ balls from this urn without replacement.  The number
+white balls drawn, $k$ is hypergeometrically distributed.
+\paragraph{Parameters.} There are three parameters: the number of
+draws $n$, the number of white balls $w$, and the number of black
+balls $b$.
+\paragraph{Example.} There are $N$ finches on an island, and $n_t$ of
+them are tagged.  You capture $n$ finches.  The number of tagged
+finches $k$ is hypergeometrically distributed, $P(k;n_t, N-n_t, n)$,
+as defined below.
+\paragraph{Probability mass function.}
+\begin{align}
+P(k;w, b, n) = \frac{\begin{pmatrix}w\\k\end{pmatrix}\begin{pmatrix}b\\n-k\end{pmatrix}}
+{\begin{pmatrix}w+b\\n\end{pmatrix}}.
+\end{align}
+\paragraph{Note.} This distribution is analogous to the Binomial
+distribution, except that the Binomial distribution describes draws
+from an urn with replacement.  In the analogy, $p = w/(w+b)$.
+
+
+% %%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Continuous distributions and their stories}
+
+\subsubsection{Uniform}
+\paragraph{Story.} Any outcome in a given range has equal probability.
+\paragraph{Parameters.} The Uniform distribution is not defined on an
+infinite or semi-infinite domain, so bounds, $x_\mathrm{min}$ and
+$x_\mathrm{max}$ are necessary parameters.
+\paragraph{Example.} Anything in which all possibilities are equally
+likely.
+\paragraph{Probability density function.}
+\begin{align}
+P(x;x_\mathrm{min}, x_\mathrm{max}) = \left\{ \begin{array}{ccc}
+\frac{1}{x_\mathrm{max} - x_\mathrm{min}} & & x_\mathrm{min} \le x \le x_\mathrm{max} \\[0.5em]
+0 & & \text{otherwise.}
+\end{array}
+\right.
+\end{align}
+
+
+
+\subsubsection{Gaussian  (a.k.a. Normal)}
+\paragraph{Story.} Any quantity that emerges from a large number of
+subprocesses tends to be Gaussian distributed provided none of the
+subprocesses is very broadly distributed.
+\paragraph{Parameters.} The Gaussian distribution has two parameters,
+the mean $\mu$, which determines the location of its peak, and the
+standard deviation $\sigma$, which is strictly positive (the
+$\sigma\to 0$ limit defines a Dirac delta function) and determines the
+width of the peak.
+\paragraph{Example.} We measure the length of many \textit{C. elegans}
+eggs.  The lengths are Gaussian distributed.
+\paragraph{Probability density function.}
+\begin{align}
+P(x;\mu, \sigma) = \frac{1}{\sqrt{2\pi \sigma^2}}\,\mathrm{e}^{-(x-\mu)^2/2\sigma^2}.
+\end{align}
+\paragraph{Note.} This is a limiting distribution in the sense of the
+central limit theorem, but also in that many distributions have a
+Gaussian distribution as a limit.  This is seen by formally taking
+limits of, e.g., the Gamma, Student-t, Binomial distributions, which
+allows direct comparison of parameters.
+
+
+\subsubsection{Log-normal}
+\paragraph{Story.} If $\ln x$ is Gaussian distributed, $x$ is
+log-normally distributed.
+\paragraph{Parameters.} As for a Gaussian, there are two parameters,
+the mean logarithm, $\ln \mu$, and the variance $\sigma^2$.
+\paragraph{Example.} A measure of fold change in gene expression can
+be log-normally distributed.
+\paragraph{Probability density function.}
+\begin{align}
+P(x;\mu, \sigma) = \frac{1}{x\sqrt{2\pi \sigma^2}}\,\mathrm{e}^{-(\ln x - \ln \mu)^2/2\sigma^2}.
+\end{align}
+
+
+\subsubsection{Von Mises}
+\paragraph{Story.} Gaussian, except on a periodic domain.
+\paragraph{Parameters.} As for a Gaussian, with $\mu$ being the
+location of the peak, and $\beta$ being analogous to the variance.
+\paragraph{Example.} Repeated measurements on a periodic domain, e.g.,
+the location of an ingression along the azimuthal angle of a
+developing embryo.
+\paragraph{Probability density function.}
+\begin{align}
+P(\theta;\mu, \beta) = \frac{1}{2\pi I_0(\beta)}\,\mathrm{e}^{\beta \cos(\theta - \mu)},
+\end{align}
+where $I_0(\beta)$ is a modified Bessel function of the first kind.
+
+
+\subsubsection{Chi-square}
+\paragraph{Story.} If $X_1$,
+$X_2$, $\ldots$, $X_n$ are Gaussian distributed,
+$X_1^2 + X_2^2 + \cdots + X_n^2$ is $\chi^2$-distributed.
+\paragraph{Parameters.} There is only one parameter, the degrees of
+freedom $n$.
+\paragraph{Probability density function.}
+\begin{align}
+  P(x;n) \equiv \chi^2_n(x;n) = \frac{1}{2^{n/2}\Gamma\left(\frac{n}{2}\right)}\,
+x^{\frac{n}{2}-1}\,\mathrm{e}^{-x/2}.
+\end{align}
+
+
+\subsubsection{Student -t/Cauchy}
+\paragraph{Story.}  We get this distribution whenever we marginalize
+an unknown $\sigma$ out of a Gaussian distribution with a Jeffreys
+distribution for $\sigma$.
+\paragraph{Parameters.} The Student-t distribution is peaked, and its
+peak is located at $m$.  The peak's width is dictated by parameter
+$s$.  Finally, we define the ``degrees of freedom'' as $n$.
+\paragraph{Example.} The story says it all!
+\paragraph{Probability density function.}
+\begin{align}
+P(x;m, s, n) = \frac{\Gamma\left(\frac{n}{2}\right)}{\Gamma\left(\frac{n+1}{2}\right)}\,
+\frac{\sqrt{\pi n s^2}}{\left(1 + \frac{(x-m)^2}{ns^2}\right)^{\frac{n+1}{2}}}.
+\end{align}
+\paragraph{Note.} For $n\to \infty$, we get a Gaussian distribution.
+When $n = 1$, we get the \textbf{Cauchy distribution},
+\begin{align}
+P(x;m, s) = \left[\pi s \left(\frac{x-m}{s}\right)^2\right]^{-1}.
+\end{align}
+
+
+
+\subsubsection{Aside: Poisson processes}
+A \textbf{Poisson} process is a sequence of ``arrivals'' or events at
+different points on a timeline such that the number of point in a
+particular interval are Poisson distributed.  This means that the
+amount of time between any two arrivals is independent of all other
+inter-arrival times.
+
+
+\subsubsection{Exponential}
+\paragraph{Story.} This is the waiting time for an arrival from a
+Poisson process.  I.e., the inter-arrival time of a Poisson process is
+exponentially distributed.
+\paragraph{Parameter.} The single parameter is the average arrival
+rate, $r$.
+\paragraph{Example.} The time between conformational switches in a
+protein is exponentially distributed (under simple mass action
+kinetics).
+\paragraph{Probability density function.}
+\begin{align}
+P(x;r) = r \mathrm{e}^{-rx}.
+\end{align}
+\paragraph{Note.} The Exponential distribution is the continuous
+analog of the Geometric distribution.  The ``rate'' in the Exponential
+distribution is analogous to the probability of success of the
+Bernoulli trial.
+
+
+\subsubsection{Gamma}
+\paragraph{Story.} The amount of time we have to wait for $a$ arrivals
+of a Poisson process.  More concretely, if we have events, $X_1$,
+$X_2$, $\ldots$, $X_a$ that are exponentially distributed,
+$X_1 + X_2 + \cdots + X_a$ is gamma distributed.
+\paragraph{Parameters.} The number of arrivals, $a$, and the rate of
+arrivals, $r$.
+\paragraph{Example.} Any multistep process where each step happens at
+the same rate.  This is common in molecular rearrangements, and we
+will use it in class to describe the nature of processes triggering
+microtubule catastrophe.
+\paragraph{Probability density function.}
+\begin{align}
+P(x;r) = \frac{1}{\Gamma(a)}\,\frac{(rx)^a}{x}\,\mathrm{e}^{-rx},
+\end{align}
+where $\Gamma(a)$ is the gamma function.
+\paragraph{Note.} The Gamma distribution is the continuous
+analog of the Negative Binomial distribution.
+
+
+
+\subsubsection{Weibull}
+\paragraph{Story.} Distribution of $x = y^\beta$ if $y$ is
+exponentially distributed.  For $\beta > 1$, the longer we have
+waited, the more likely the event is to come, and vice versa for
+$\beta < 1$.
+\paragraph{Parameters.} There are two parameters, both strictly
+positive: the shape parameter $\beta$, which dictates the shape of the
+curve, and the scale parameter $\lambda$, which dictates the rate of
+arrivals of the event.
+\paragraph{Example.} This is a model for aging.  The longer an
+organism lives, the more likely it is to die.
+\paragraph{Probability density function.}
+\begin{align}
+P(x;\lambda, \beta) = \frac{\beta}{\lambda}\left(\frac{x}{\lambda}\right)^{\beta - 1}\,
+\mathrm{e}^{-(x/\lambda)^\beta}.
+\end{align}
+
+
