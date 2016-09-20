@@ -32,9 +32,9 @@
 	  <li><a href="readings.html">readings</a></li>
 	  <li><a href="tutorials.html">tutorials</a></li>
 	  <li><a href="homework.html">homework</a></li>
-	  <li><a href="handouts.html">handouts</a></li>
 	  <li><a href="links.html">links</a></li>
-	  <li class="last"><a href="https://piazza.com/caltech/fall2015/bebi103/home">piazza</a></li>
+	  <li><a href="https://github.com/bebi103">github group</a></li>
+	  <li class="last"><a href="https://piazza.com/caltech/fall2016/bebi103/home">piazza</a></li>
 	</ol>
       </div>
 
@@ -46,37 +46,29 @@
 	<h1>Meetings</h1>
 	<p>
 	  We have weekly lectures Wednesday mornings from 10-10:50 AM
-	  in 100 Broad.  On Mondays, you may attend one of the two lab
-	  sessions, either 1-4pm or 7-10pm, both in 328 SFL.
+	  in 100 Broad. On Mondays, you may attend one of the two lab
+	  sessions, either 1-4pm or 7-10pm, both in 200 Broad.
 	  Bring your laptop and charger.  You should always attend the
 	  same lab session (either 1pm or 7pm), unless you have a
 	  conflict and let the course instructors know.</p>
 
 	<br />
 
-	<p>
-	  Attendance at lecture and participation in lab sessions are
-	  mandatory; 20% of your grade depends on it.
-	</p>
-	<br />
-
     <h1>Lab sessions</h1>
-          <p>In each three-hour lab session, you are expected to actively work through the
-              tutorials with the instructors.  As such, you will
-              be writing live code in a <font style="font-family:courier">.py</font> file.
-              This file must be emailed to <b><font style="font-family:courier">bebi103 at caltech dot edu</font></b>
-              at the end of each lab session to get credit for attendance in the lab session.
-              The subject line of the email should be
-              "<b><font style="font-family:courier">lastname firstname tutorial # yy/mm/dd</font></b>",
-              where the <font style="font-family:courier">#</font> sign is replaced by the lab session number.
-          </p>
+          <p>With the exception of the first lab session and a few sessions that include some lecture material, the lab sessions are spent working on the week's homework, which always includes working with real data sets, with your groupmates. You are expected to be working diligently during this time, and it is a golden opportunity to do so. The course staff will be there to help you.
+          </p><br/>
+          <p>Prior to each lab session, you must go through the tutorials listed on the course website for the week. These will give you the requisite skills you need to work on the homework problems of the week. To verify completion of the tutorials ahead of time, you will need to commit a small exercise to your personal tutorials repository in the GitHub group.</p><br/>
+
+    <h1>The BE/Bi 103 GitHub group</h1>
+    <p>A <a href="https://github.com/bebi103">BE/Bi 103 GitHub group</a> is set up for the class. You will be part of the group through your GitHub account. You will have two official repositories for the class (though you are welcome to set up more for your own use).</p>
+    <ul class="publist">
+	  <li> You will have your own repository that can only be viewed by you and the course staff. This is for submitting your tutorial exercises.</li>
+      <li> You will have a homework repository for your homework group (see below). All members of the group and course staff will have access. This is for collaborating on and submitting your homework.</li>
+    </ul>
+    <p>All homeworks and tutorial exercises are submitted by pushing to these GitHub repositories.</p><br/>
 
 	<h1>Homework</h1>
-	<p>Homework will be assigned roughly weekly.  The homework
-	  assignments will typically have one or two short questions
-	  about the theory behind the analysis featured in the problem
-	  set, but will mainly consist of actually working up real (and
-	  in some rare cases contrived) data.</p>
+	<p>With the exception of Thanksgiving week, there are weekly homework assignments. These consist almost entirely of working up real data sets.</p>
 	<br />
 	<p> Data analysis is almost always a collaborative effort in
 	  both research and industry.  Therefore, you will be assigned
@@ -86,26 +78,14 @@
 	  apply.</p>
 	<br />
 	<ul class="publist">
-	  <li>Each homework will have a defined due date and time,
-	    usually at the beginning of class.  Late homeworks are
+	  <li>Each homework has a defined due date and time. Your group must push their completed homework to your group's homework repository with the commit message "<b><font style="font-family:courier">hw# submission</font></b>," where <b><font style="font-family:courier">#</font></b> is the homework assignment number, before this time. Late homeworks are
 	    accepted with a 10% deduction for every day they are
 	    late.  For example, if the homework is due at 1pm on
-	    Monday, and you turn it in late but before 1pm on
-	    Tuesday, your maximum score will be 90%.  You may not
-	    work on late homework during class.</li>
-    <li>Each homework <i>problem </i> must be submitted as single
-	    Jupyter notebook and also as the notebook converted to
-	    HTML.  Images from plots should be shown as high
-	    resolution PNGs.  The file names must be
-        <b><font style="font-family:courier">group#_hw#_prob#.ipynb</font></b> and <b><font style="font-family:courier">group#_hw#_prob#.html</font></b>,
-        where the first <font style="font-family:courier">#</font> symbol is replaced by your assigned group number.
-        The subsequent <font style="font-family:courier">#</font> symbols are replaced with the
-        obvious values.  The notebooks comprising the homework should be zipped into
-        a single file named <b><font style="font-family:courier">group#_hw#.zip</font></b>.
-        Your homework must be emailed to
-        <b><font style="font-family:courier">bebi103 at caltech dot edu</font></b>
-        ahead of the due time.  The subject line of the email should be the
-        same as the file name, minus the suffix.</li>
+	    Wednesday, and you turn it in late but before 1pm on
+	    Thursday, your maximum score will be 90%.</li>
+    <li>Each homework <i>problem</i> must be comitted as single
+	    Jupyter notebook. The file names must be
+        <b><font style="font-family:courier">hw#_prob#.ipynb</font></b>.</li>
     <li>All code you wrote to do your assignment must be included in the notebook.
         Code from imported packages that you did not write (e.g., modules
         distributed by the class instructors) need not be displayed in the notebook.
@@ -132,9 +112,8 @@
 	    solutions and be able to repeat them by
 	    yourself.</i></li>
 	  <li>Where appropriate, you need to give detailed discussion
-	    of analysis choices you have made.  As an example, you may
-	    choose to use wavelets to denoise temporal data instead of
-	    a Gaussian filter.  You need to justify that choice.</li>
+	    of analysis choices you have made. As an example, you may
+	    choose to model error in measurement with a Cauchy distribution instead of Gaussian. You need to justify that choice.</li>
 	  <li>There is seldom a single right way to analyze a set of
 	    data.  You are encouraged to try different approaches to
 	    analysis.  If you perform an analysis and find problems
@@ -150,13 +129,13 @@
 	<p>80% of your grade is determined from homework.  Everyone in
 	your group will get the same grade on the homework.</p><br />
 
-	<p>20% of your grade is determined from participation in the
+	<p>20% of your grade is determined from submission of your tutorial exercises and participation in the
 	lab sessions.  You are expected to work together with the
 	course instructors and fellow students as we go through the
 	tutorials with your full attention.</p><br />
 
 	<h1>Collaboration policy and Honor Code</h1>
-	<p>Most importantly, much of the data we will use in this
+	<p>Most importantly, some of the data we will use in this
 	course is unpublished, generously given to us by researchers
 	both from Caltech and from other institutions.  They have
 	given us their data in good faith that it will be used only in
@@ -167,7 +146,7 @@
 	<p>Since the homework is done in assigned groups, you
 	obviously should collaborate heavily with the other members of
 	your group.  You are free to discuss the homework with other
-	groups, including via <a href="https://piazza.com/caltech/fall2015/bebi103/home">Piazza</a>, but the work you submit must be the work of your own
+	groups, including via <a href="https://piazza.com/caltech/fall2016/bebi103/home">Piazza</a>, but the work you submit must be the work of your own
 	group.</p><br />
 
 	<p>You may not consult solutions of homework problems from
@@ -183,7 +162,7 @@
 	The problems are too open ended and the techniques are too
 	varied.</p><br />
 
-	<h1>Excused absenses/extensions</h1>
+	<h1>Excused absences/extensions</h1>
 	<p>Under certain circumstances, missed lab or lecture sessions
 	will be excused and extensions given on the homework.  The
 	reasons for the excuses or extensions must be compelling, such
@@ -193,7 +172,7 @@
     <h1>Course communications</h1>
           <p>You are free to contact the <a href="people.html">course staff</a> at any time,
           but we encourage you to use the
-          <a href="https://piazza.com/caltech/fall2015/bebi103/home">class Piazza page</a>
+          <a href="https://piazza.com/caltech/fall2016/bebi103/home">class Piazza page</a>
           for questions course topics and homework.  Most of our mass communication with
           you will be through Piazza, so be sure to set your Piazza account to give
           you email alerts if necessary.</p>
@@ -201,7 +180,7 @@
       </div> <!-- End of content div -->
 
       <div id="footer">
-	<p>Last updated: November 9, 2015</p>
+	<p>Last updated: September 19, 2016</p>
       </div>
     </div><!-- end of wrap div -->
 </body></html>
