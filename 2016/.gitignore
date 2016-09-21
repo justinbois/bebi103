@@ -1,6 +1,4 @@
 data/
 images/
-tutorials/
-homework/
 protected/
-*.ipynb
+.ipynb_checkpoints/
