@@ -79,21 +79,19 @@
   	    late.  For example, if the homework is due at 1pm on
   	    Sunday, and you turn it in late but before 1pm on
   	    Tuesday, your maximum score will be 80%.</li>
-       <li>The commit containing your final submission must be tagged with "<b><font style="font-family:courier">hw#_submission</font></b>," where <b><font style="font-family:courier">#</font></b> is the homework assignment number. For example, to tag homework 1, you would do <b><font style="font-family:courier">git tag -a hw1_submission -m "Submission of homework 1"</font></b> on the command line.</li>
+       <li>The commit containing your final submission must be tagged with "<b><font style="font-family:courier">hw#_submission</font></b>," where <b><font style="font-family:courier">#</font></b> is the homework assignment number.
     <li>Each homework <i>problem</i> must be committed as single
 	    Jupyter notebook. The file names must be
-        <b><font style="font-family:courier">hw#_prob#.ipynb</font></b>.</li>
+        <b><font style="font-family:courier">hw#.#.ipynb</font></b>. For example, homework problem 3.2 is in the file <b><font style="font-family:courier">hw3.2.ipynb</font></b>.</li>
     <li>All code you wrote to do your assignment must be included in the notebook.
         Code from imported packages that you did not write (e.g., modules
         distributed by the class instructors) need not be displayed in the notebook.
         We will run the code in your notebook; all code must run to get credit.
 	  </li>
         <li>Since we are running your code to check it, you must have the following
-        path structure for the data used in the homework.  Within the directory of your
-        Jupyter notebook, you should have a subdirectory called <b><font style="font-family:courier">data</font></b>.
-        This directory contains any data files downloaded for the homework with the file names unaltered.  If the data
+        path structure for the data sets used in the homework. There must be a directory <b><font style="font-family:courier">data/</font></b> in the root of your team's repository. This directory contains any data files downloaded for the homework with the file names unaltered.  If the data
         were distributed in a ZIP file, the file must have been unzipped in the <b><font style="font-family:courier">data</font></b>
-        subdirectory and the file names and file names unaltered.</li>
+        directory and the file names and file names unaltered. So, the path to the <b><font style="font-family:courier">data/</font></b> directory from your <b><font style="font-family:courier">homework/</font></b> is <b><font style="font-family:courier">../data/</font></b>.</li>
 	<li>All of your results must be clearly explained and all
 	    graphics clearly presented and embedded in the Jupyter
 	    notebook.</li>
