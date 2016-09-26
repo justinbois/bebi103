@@ -1,0 +1,155 @@
+\documentclass [12pt,letter]{article}
+\usepackage{setspace}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{setspace}
+% \usepackage{citesort}
+\usepackage{amsthm}
+\usepackage{textcomp}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{color}
+\usepackage{comment}
+\usepackage[colorlinks=true, urlcolor=blue, hyperfootnotes=false, hyperfigures=false, hyperindex=false, linkcolor=black]{hyperref}
+
+\setlength{\evensidemargin}{0.0cm}
+\setlength{\oddsidemargin}{0.0cm}
+\setlength{\topmargin}{0.0cm}
+%\setlength{\baselineskip}{20pt}
+\setlength{\textwidth}{17cm}
+\setlength{\textheight}{20cm}
+\setlength{\parskip}{2.5mm}
+
+% Give more spacing in equation arrays
+\setlength{\jot}{10pt}
+
+% Allow page breaks in multiline equations
+\allowdisplaybreaks
+
+% Fancy lines to separate text
+\newcommand{\nicehrule}{\begin{center}
+    \rule[2pt]{0.3\linewidth}{1pt}$\,\star\star\star\,$\rule[2pt]{0.3\linewidth}{1pt}
+    \end{center}}
+
+
+% Theorems, lemmas, definitions, and problems
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+
+\theoremstyle{plain}
+\newtheorem{lemma}{Lemma}[section]
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+
+\theoremstyle{definition}
+\newtheorem{problem}{Problem}[section]
+
+% Number equations within sections
+\numberwithin{equation}{section}
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This is where we define whether or not we will show the solutions
+% when we compile.  To show the solutions, use
+% \includecomment{solution}.  To hide the solutions, use
+% \excludecomment{solution}
+
+\includecomment{solution}
+%\excludecomment{solution}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Template}
+% \input{template}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\vspace{10cm}
+\begin{center}
+\Huge{\textbf{BE/Bi 103: Data Analysis in the Biological Sciences}} \\ \vspace{2mm}
+\Large{Justin Bois} \\ \vspace{2mm}
+\Large{Caltech} \\ \vspace{2mm}
+\Large{Fall, 2016} \\
+
+\vspace{15em}
+
+\footnotesize{\noindent{\textcopyright~2016 Justin Bois. This work is licensed under a \href{https://creativecommons.org/licenses/by/4.0/}{Creative Commons Attribution License CC-BY 4.0}.}}
+\end{center}
+
+\thispagestyle{empty}
+
+\pagebreak
+\setcounter{page}{1}
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Bayes's theorem and the logic of science}
+\label{sec:bayes_logic}
+\input{l01_bayes_logic}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \pagebreak
+%
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Parameter estimation}
+% \label{sec:parameter_estimation}
+% \input{l02_parameter_estimation}
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \pagebreak
+%
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Probability distributions and their stories}
+% \label{sec:probability_dists}
+% \input{l03_probability_dists}
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \pagebreak
+%
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Model selection}
+% \label{sec:model_selection}
+% \input{l04_model_selection}
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \pagebreak
+%
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{The theory of Markov chain Monte Carlo}
+% \label{sec:mcmc}
+% \input{l05_theory_of_mcmc}
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \pagebreak
+%
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Parellel tempering MCMC}
+% \label{sec:parellel_tempering}
+% \input{l06_parallel_tempering}
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \pagebreak
+%
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Introduction to images}
+% \label{sec:intro_to_images}
+% This lecture was presented as a Jupyter notebook, available here:
+% \url{http://bebi103.caltech.edu/2015/tutorials/l07_into_to_images.html}.
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \pagebreak
+%
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Hierarchical models}
+% \label{sec:hierarchical_models}
+% \input{l08_hierarchical_models}
+% % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\end{document}
