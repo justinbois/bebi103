@@ -1,4 +1,6 @@
-data/
-images/
-protected/
-.ipynb_checkpoints/
+figs/
+*.log
+*.bst
+*.aux
+*.pdf
+*.out
