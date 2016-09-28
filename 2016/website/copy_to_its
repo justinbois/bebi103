@@ -1,1 +1,1 @@
-scp -r index.html people.html policies.html readings.html homework.html schedule.html documents.html links.html styles.css images/ homework/ tutorials/ lecture_notes/ bebi103@ssh.caltech.edu:~/public_html/2016/
+scp -r index.html people.html policies.html readings.html homework.html schedule.html documents.html links.html styles.css images/ homework/ tutorials/ lecture_notes/ data/ bebi103@ssh.caltech.edu:~/public_html/2016/
