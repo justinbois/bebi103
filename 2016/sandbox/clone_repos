@@ -39,7 +39,7 @@ if [[ ! -d 'data' ]]; then
 fi
 
 # Set up the data folder sym links.
-for dir in *git_script/; do
+for dir in *bebi103/; do
 
   # If the students have committed their data directory, print a warning.
   if [[ -d $dir'/data' ]]; then
