@@ -10,7 +10,7 @@ for dir in *bebi103; do
   cd $dir
 
   # Get the name of the grading branch
-  GRADING_BRANCH=$(git tag | tail -1)'_grading'
+  GRADING_BRANCH=$(git tag | grep '\<.*submission\>' | tail -1)'_grading'
 
   # Switch to the grading branch if we are not already there.
   git checkout $GRADING_BRANCH
