@@ -47,7 +47,12 @@ for dir in *bebi103/; do
 
   # Create the symlink if it doesn't exist.
   elif [[ ! -h $dir'/data' ]]; then
-    ln -s data $dir'data'
+    # Descend into *bebi103
+    cd $dir
+    # Symlink the existing file (../data/) to the current directory
+    ln -s ../data/ ./
+    # Go back to above *bebi103 directories
+    cd ../
   else
     echo 'Directory "data" already exists in '$dir
   fi
