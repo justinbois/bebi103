@@ -14,7 +14,7 @@
 ORG='git@github.com:bebi103/'
 
 # Define the number of repositories.
-NUM_REPOS=1
+NUM_REPOS=18
 
 # Clone each repository
 for i in $(seq 1 $NUM_REPOS); do
