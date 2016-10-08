@@ -14,10 +14,9 @@ for dir in *bebi103/; do
   GRADING_BRANCH=$LATEST'_grading'
 
   # Check that there is a latest tag
-  # if [[ $LATEST == '']] ; then
   if [[ $LATEST == "" ]]; then
     # Tell me if there is no tag
-    echo $dir' has no tag.'
+    echo $dir' has no tag; did not create branch.'
   else
     # Checkout the latest tag and make a new branch.
     git checkout tags/$LATEST -b $GRADING_BRANCH
