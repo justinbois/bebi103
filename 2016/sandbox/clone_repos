@@ -1,0 +1,56 @@
+#! /bin/sh
+# Title: clone_repos.sh
+# Author: Griffin Chure
+# Creation Date: 2016-10-06
+# Purpose:
+# This script clones repositories from the BE/BI103 organization, adds an
+# untracked data folder to each, and finally symlinks said data folder to a
+# master data folder located in the same directory as all cloned repositories.
+#
+# For cloning to work, you must have configured git to clone using SSH. This
+# is to allow for platform independence (as different OS use different
+# credential helpers). Instructions for configuring git SSH keys can be found
+# here: https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/
+ORG='git@github.com:bebi103/'
+
+# Define the number of repositories.
+NUM_REPOS=1
+
+# Clone each repository
+for i in $(seq 1 $NUM_REPOS); do
+  # Set the team number prefix.
+  if [[ $i -lt 10 ]]; then
+    VAL=0$i
+  else
+    VAL=$i
+  fi
+
+  # See if the repository has already been cloned
+  if [ ! -d $VAL'-bebi103/' ]; then
+    git clone $ORG$VAL'-bebi103'
+  else
+    echo $VAL'-bebi103 is already cloned.'
+  fi
+done
+
+# Make root data directory if it doesn't exist.
+if [[ ! -d 'data' ]]; then
+  mkdir data
+fi
+
+# Set up the data folder sym links.
+for dir in *git_script/; do
+
+  # If the students have committed their data directory, print a warning.
+  if [[ -d $dir'/data' ]]; then
+    echo $dir' has committed their data directory!'
+
+  # Create the symlink if it doesn't exist.
+  elif [[ ! -h $dir'/data' ]]; then
+    ln -s data $dir'data'
+  else
+    echo 'Directory "data" already exists in '$dir
+  fi
+done
+
+echo "All repositories cloned"
