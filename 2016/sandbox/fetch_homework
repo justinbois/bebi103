@@ -9,12 +9,19 @@
 for dir in *bebi103/; do
   cd $dir
 
-  # Get the name of the latest tagged release.
-  LATEST=$(git tag | tail -1)
+  # Get the name of the latest tagged release that includes 'submission'
+  LATEST=$(git tag | grep '\<.*submission\>' | tail -1)
   GRADING_BRANCH=$LATEST'_grading'
 
-  # Checkout the latest tag and make a new branch.
-  git checkout tags/$LATEST -b $GRADING_BRANCH
-  echo 'Pulled latest homework from '$dir
+  # Check that there is a latest tag
+  if [[ $LATEST == "" ]]; then
+    # Tell me if there is no tag
+    echo $dir' has no tag; did not create branch.'
+  else
+    # Checkout the latest tag and make a new branch.
+    git checkout tags/$LATEST -b $GRADING_BRANCH
+    echo 'Pulled latest homework from '$dir
+  fi
+
   cd ../
 done
