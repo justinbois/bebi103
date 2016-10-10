@@ -14,7 +14,7 @@
 ORG='git@github.com:bebi103/'
 
 # Define the number of repositories.
-NUM_REPOS=1
+NUM_REPOS=18
 
 # Clone each repository
 for i in $(seq 1 $NUM_REPOS); do
@@ -39,7 +39,7 @@ if [[ ! -d 'data' ]]; then
 fi
 
 # Set up the data folder sym links.
-for dir in *git_script/; do
+for dir in *bebi103/; do
 
   # If the students have committed their data directory, print a warning.
   if [[ -d $dir'/data' ]]; then
@@ -47,7 +47,12 @@ for dir in *git_script/; do
 
   # Create the symlink if it doesn't exist.
   elif [[ ! -h $dir'/data' ]]; then
-    ln -s data $dir'data'
+    # Descend into *bebi103
+    cd $dir
+    # Symlink the existing file (../data/) to the current directory
+    ln -s ../data/ ./
+    # Go back to above *bebi103 directories
+    cd ../
   else
     echo 'Directory "data" already exists in '$dir
   fi
