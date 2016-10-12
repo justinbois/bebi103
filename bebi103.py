@@ -21,6 +21,7 @@ import skimage.measure
 import emcee
 
 import bokeh.models
+import bokeh.palettes
 import bokeh.plotting
 import seaborn as sns
 
@@ -449,13 +450,166 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
 
     return p
 
+def bokeh_imrgb(im, plot_height=400, plot_width=None,
+                tools='pan,box_zoom,wheel_zoom,reset,resize'):
+    """
+    Make a Bokeh Figure instance displaying an RGB image.
+    If the image is already 32 bit, just display it
+    """
+    # Make 32 bit image
+    if len(im.shape) == 2 and im.dtype == np.uint32:
+        im_disp = im
+    else:
+        im_disp = rgb_to_rgba32(im)
+
+    # Get shape
+    n, m = im_disp.shape
+
+    # Determine plot height and width
+    if plot_height is not None and plot_width is None:
+        plot_width = int(m/n * plot_height)
+    elif plot_height is None and plot_width is not None:
+        plot_height = int(n/m * plot_width)
+    elif plot_height is None and plot_width is None:
+        plot_heigt = 400
+        plot_width = int(m/n * plot_height)
+
+    # Set up figure with appropriate dimensions
+    p = bokeh.plotting.figure(plot_height=plot_height, plot_width=plot_width,
+                              x_range=[0, m], y_range=[0, n], tools=tools)
+
+    # Display the image, setting the origin and heights/widths properly
+    p.image_rgba(image=[im_disp], x=0, y=0, dw=m, dh=n)
+
+    return p
+
+
+def bokeh_im(im, plot_height=400, plot_width=None,
+             color_palette=bokeh.palettes.gray(256),
+             tools='pan,box_zoom,wheel_zoom,reset,resize'):
+    """
+    """
+    # Get shape
+    n, m = im.shape
+
+    # Determine plot height and width
+    if plot_height is not None and plot_width is None:
+        plot_width = int(m/n * plot_height)
+    elif plot_height is None and plot_width is not None:
+        plot_height = int(n/m * plot_width)
+    elif plot_height is None and plot_width is None:
+        plot_heigt = 400
+        plot_width = int(m/n * plot_height)
+
+    p = bokeh.plotting.figure(plot_height=plot_height, plot_width=plot_width,
+                              x_range=[0, m], y_range=[0, n], tools=tools)
+
+    # Set color mapper
+    color = bokeh.models.LinearColorMapper(color_palette)
+
+    # Display the image
+    p.image(image=[im], x=0, y=0, dw=m, dh=n, color_mapper=color)
+
+    return p
 
 # ########################################################################## #
 #                            MCMC UTILITIES                                  #
 # ########################################################################## #
-def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
-                       p0=None, columns=None, args=(), threads=None, thin=1,
-                       return_sampler=False):
+def generic_log_posterior(log_prior, log_likelihood, params, logpargs=(),
+                          loglargs=()):
+    """
+    Generic log posterior for MCMC calculations
+
+    Parameters
+    ----------
+    log_prior : function
+        Function to compute the log prior.
+        Call signature: log_prior(params, *logpargs)
+    log_likelihood : function
+        Function to compute the log prior.
+        Call signature: log_likelhood(params, *loglargs)
+    params : ndarray
+        Numpy array containing the parameters of the posterior.
+    logpargs : tuple, default ()
+        Tuple of parameters to be passed to log_prior.
+    loglargs : tuple, default ()
+        Tuple of parameters to be passed to log_likelihood.
+
+    Returns
+    -------
+    output : float
+        The logarithm of the posterior evaluated at `params`.
+    """
+    # Compute log prior
+    lp = log_prior(params, *logpargs)
+
+    # If log prior is -inf, return that
+    if lp == -np.inf:
+        return -np.inf
+
+    # Compute and return posterior
+    return lp + log_likelihood(params, *loglargs)
+
+
+def sampler_to_dataframe(sampler, columns=None):
+    """
+    Convert output of an emcee sampler to a Pandas DataFrame.
+
+    Parameters
+    ----------
+    sampler : emcee.EnsembleSampler or emcee.PTSampler instance
+        Sampler instance form which MCMC has already been run.
+
+    Returns
+    -------
+    output : DataFrame
+        Pandas DataFrame containing the samples. Each column is
+        a variable, except: 'lnlike' and 'chain' for an
+        EnsembleSampler, and 'lnlike', 'lnprop', 'beta_ind',
+        'beta', and 'chain' for a PTSampler. These contain obvious
+        values.
+    """
+
+    if columns is None:
+        columns = list(range(sampler.chain.shape[-1]))
+
+    if isinstance(sampler, emcee.EnsembleSampler):
+        n_walkers, n_steps, n_dim = sampler.chain.shape
+
+        df = pd.DataFrame(data=sampler.flatchain, columns=columns)
+        df['lnprob'] = sampler.flatlnprobability
+        df['chain'] = np.concatenate([i * np.ones(n_steps, dtype=int)
+                                                for i in range(n_walkers)])
+    elif isinstance(sampler, emcee.PTSampler):
+        n_temps, n_walkers, n_steps, n_dim = sampler.chain.shape
+
+        df = pd.DataFrame(
+            data=sampler.flatchain.reshape(
+                (n_temps * n_walkers * n_steps, n_dim)),
+            columns=columns)
+        df['lnlike'] = sampler.lnlikelihood.flatten()
+        df['lnprob'] = sampler.lnprobability.flatten()
+
+        beta_inds = [i * np.ones(n_steps * n_walkers, dtype=int)
+                     for i, _ in enumerate(sampler.betas)]
+        df['beta_ind'] = np.concatenate(beta_inds)
+
+        df['beta'] = sampler.betas[df['beta_ind']]
+
+        chain_inds = [j * np.ones(n_steps, dtype=int)
+                      for i, _ in enumerate(sampler.betas)
+                      for j in range(n_walkers)]
+        df['chain'] = np.concatenate(chain_inds)
+    else:
+        raise RuntimeError('Invalid sample input.')
+
+    return df
+
+
+def run_ensemble_emcee(log_post=None, n_burn=100, n_steps=100,
+                       n_walkers=None, p_dict=None, p0=None, columns=None,
+                       args=(), threads=None, thin=1, return_sampler=False,
+                       return_pos=False):
     """
     Run emcee.
 
@@ -465,12 +619,12 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
         The function that computes the log posterior.  Must be of
         the form log_post(p, *args), where p is a NumPy array of
         parameters that are sampled by the MCMC sampler.
-    n_burn : int
+    n_burn : int, default 100
         Number of burn steps
-    n_steps : int
+    n_steps : int, default 100
         Number of MCMC samples to take
     n_walkers : int
-        Number of walkers
+        Number of walkers, ignored if p0 is None
     p_dict : collections.OrderedDict
         Each entry is a tuple with the function used to generate
         starting points for the parameter and the arguments for
@@ -494,13 +648,21 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
         state to the internal chain.
     return_sampler : bool, default False
         If True, return sampler as well as DataFrame with results.
+    return_pos : bool, default False
+        If True, additionally return position of the sampler.
 
     Returns
     -------
-    Pandas DataFrame with columns given by flattened MCMC chains.
-    Also has a column 'lnprob' containing the log of the posterior
-    and 'chain', which is the chain ID.  Optionally, the sampler is
-    returned in addition.
+    df : pandas.DataFrame
+        First columns give flattened MCMC chains, with columns
+        named with the variable being sampled as a string.
+        Other columns are:
+          'chain':    ID of chain
+          'lnprob':   Log posterior probability
+    sampler : emcee.EnsembleSampler instance, optional
+        The sampler instance.
+    pos : ndarray, shape (nwalkers, ndim), optional
+        Last position of the walkers.
     """
 
     if p0 is None and p_dict is None:
@@ -550,18 +712,18 @@ def run_ensemble_emcee(log_post, n_burn, n_steps, n_walkers=None, p_dict=None,
         pos = p0
 
     # Sample again, starting from end burn-in state
-    _ = sampler.run_mcmc(pos, n_steps, thin=thin)
+    pos, _, _ = sampler.run_mcmc(pos, n_steps, thin=thin)
 
     # Make DataFrame for results
-    df = pd.DataFrame(data=sampler.flatchain, columns=columns)
-    df['lnprob'] = sampler.flatlnprobability
-    df['chain'] = np.concatenate([i * np.ones(n_steps // thin, dtype=int)
-                                  for i in range(n_walkers)])
+    df = sampler_to_dataframe(sampler, columns=columns)
 
-    if return_sampler:
-        return df, sampler
-    else:
-        return df
+    # Set up return
+    return_vals = (df, sampler, pos)
+    return_bool = (True, return_sampler, return_pos)
+    ret = tuple([rv for rv, rb in zip(return_vals, return_bool) if rb])
+    if len(ret) == 1:
+        return ret[0]
+    return ret
 
 
 def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
@@ -615,7 +777,7 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
     return_sampler : bool, default False
         If True, additionally return sampler.
     return_pos : bool, default False
-        If False, return position of the sampler.
+        If True, additionally return position of the sampler.
 
     Returns
     -------
@@ -628,7 +790,7 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
           'beta_ind': Index of beta in list of betas
           'lnlike':   Log likelihood
           'lnprob':   Log posterior probability (with beta multiplying
-                      log likelihood
+                      log likelihood)
     lnZ : float, optional
         ln Z(1), which is equal to the evidence of the
         parameter estimation problem.
@@ -636,7 +798,7 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
         The estimated error in the lnZ calculation.
     sampler : emcee.PTSampler instance, optional
         The sampler instance.
-    pos : ndarray, shape (ntemps, nwalkers, ndim)
+    pos : ndarray, shape (ntemps, nwalkers, ndim), optional
         Last position of the walkers.
     """
 
@@ -690,51 +852,21 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
         pos = p0
 
     # Sample again, starting from end burn-in state
-    _ = sampler.run_mcmc(pos, n_steps, thin=thin)
+    pos, _, _ = sampler.run_mcmc(pos, n_steps, thin=thin)
 
     # Compute thermodynamic integral
     lnZ, dlnZ = sampler.thermodynamic_integration_log_evidence(fburnin=0)
 
     # Make DataFrame for results
-    n_steps_thin = sampler.flatchain.shape[1] // n_walkers
-    df = pd.DataFrame(
-        data=sampler.flatchain.reshape(
-            (n_temps * n_walkers * n_steps_thin, n_dim)),
-        columns=columns)
-    df['lnlike'] = sampler.lnlikelihood.flatten()
-    df['lnprob'] = sampler.lnprobability.flatten()
+    df = sampler_to_dataframe(sampler, columns=columns)
 
-    beta_inds = [i * np.ones(n_steps_thin * n_walkers, dtype=int)
-                 for i, _ in enumerate(sampler.betas)]
-    df['beta_ind'] = np.concatenate(beta_inds)
-
-    df['beta'] = sampler.betas[df['beta_ind']]
-
-    chain_inds = [j * np.ones(n_steps_thin, dtype=int)
-                  for i, _ in enumerate(sampler.betas)
-                  for j in range(n_walkers)]
-    df['chain'] = np.concatenate(chain_inds)
-
-    if return_lnZ:
-        if return_sampler:
-            if return_pos:
-                return df, lnZ, dlnZ, sampler, pos
-            else:
-                return df, lnZ, dlnZ, sampler
-        else:
-            if return_pos:
-                return df, lnZ, dlnZ, pos
-            else:
-                return df, lnZ, dlnZ
-    elif return_sampler:
-        if return_pos:
-            return df, sampler, pos
-        else:
-            return df, sampler
-    elif return_pos:
-        return df, pos
-    else:
-        return df
+    # Set up return
+    return_vals = (df, lnZ, dlnZ, sampler, pos)
+    return_bool = (True, return_lnZ, return_lnZ, return_sampler, return_pos)
+    ret = tuple([rv for rv, rb in zip(return_vals, return_bool) if rb])
+    if len(ret) == 1:
+        return ret[0]
+    return ret
 
 
 def extract_1d_hist(samples, nbins=100, density=True):
@@ -923,6 +1055,47 @@ def hpd(trace, mass_frac):
 # ########################################################################## #
 #                    IMAGE PROCESSING UTILITIES                              #
 # ########################################################################## #
+
+def rgb_to_rgba32(im, flip=True):
+    """
+    Convert an RGB image to a 32 bit-encoded RGBA image.
+
+    Parameters
+    ----------
+    im : nd_array, shape (m, n, 3)
+        Input m by n RGB image.
+    flip : bool, default True
+        If True, up-down flit the image. This is useful
+        for display with Bokeh.
+
+    Returns
+    -------
+    output : nd_array, shape (m, n), dtype int32
+        RGB image encoded as 32-bit integers.
+
+    Notes
+    -----
+    .. The input image is converted to 8-bit and then encoded
+       as 32-bit. The main use for this function is encoding images
+       for display with Bokeh, so this data loss is ok.
+    """
+    # Ensure it has three channels
+    if len(im.shape) != 3 or im.shape[2] !=3:
+        raise RuntimeError('Input image is not RGB.')
+
+    # Get image shape
+    n, m, _ = im.shape
+
+    # Convert to 8-bit, which is expected for viewing
+    im_8 = skimage.img_as_ubyte(im)
+
+    # Add the alpha channel, which is expected by Bokeh
+    im_rgba = np.dstack((im_8, 255*np.ones_like(im_8[:,:,0])))
+
+    # Reshape into 32 bit. Must flip up/down for proper orientation
+    return np.flipud(im_rgba.view(dtype=np.int32).reshape(n, m))
+
+
 def verts_to_roi(verts, size_i, size_j):
     """
     Converts list of vertices to an ROI and ROI bounding box
@@ -1314,3 +1487,70 @@ def im_to_blocks(im, width, roi=None, roi_method='all'):
             for i in range(0, im.shape[0], width)
             for j in range(0, im.shape[1], width)
             if roi_test(roi[i:i + width, j:j + width])]
+
+# ########################################################################## #
+#                        GENERAL UTILITIES                                   #
+# ########################################################################## #
+def ecdf(data, conventional=False, buff=0.1, min_x=None, max_x=None):
+    """
+    Computes the x and y values for an ECDF of a one-dimensional
+    data set.
+
+    Parameters
+    ----------
+    data : array_like
+        Array of data to be plotted as an ECDF.
+    conventional : bool, default False
+        If True, generates x,y values for "conventional" ECDF, which
+        give staircase style ECDF when plotted as plt.plot(x, y, '-').
+        Otherwise, gives points x,y corresponding to the concave
+        corners of the conventional ECDF, plotted as
+        plt.plot(x, y, '.').
+    buff : float, default 0.1
+        How long the tails at y = 0 and y = 1 should extend as a
+        fraction of the total range of the data. Ignored if
+        `coneventional` is False.
+    min_x : float, default -np.inf
+        If min_x is greater than extent computed from `buff`, tail at
+        y = 0 extends to min_x. Ignored if `coneventional` is False.
+    max_x : float, default -np.inf
+        If max_x is less than extent computed from `buff`, tail at
+        y = 0 extends to max_x. Ignored if `coneventional` is False.
+
+    Returns
+    -------
+    x : array_like, shape (n_data, )
+        The x-values for plotting the ECDF.
+    y : array_like, shape (n_data, )
+        The y-values for plotting the ECDF.
+    """
+
+    # Get x and y values for data points
+    x, y = np.sort(data), np.arange(1, len(data)+1) / len(data)
+
+    if conventional:
+        # Set defaults for min and max tails
+        if min_x is None:
+            min_x = -np.inf
+        if max_x is None:
+            max_x = np.inf
+
+        # Set up output arrays
+        x_conv = np.empty(2*(len(x) + 1))
+        y_conv = np.empty(2*(len(x) + 1))
+
+        # y-values for steps
+        y_conv[:2] = 0
+        y_conv[2::2] = y
+        y_conv[3::2] = y
+
+        # x- values for steps
+        x_conv[0] = max(min_x, x[0] - (x[-1] - x[0])*buff)
+        x_conv[1] = x[0]
+        x_conv[2::2] = x
+        x_conv[3:-1:2] = x[1:]
+        x_conv[-1] = min(max_x, x[-1] + (x[-1] - x[0])*buff)
+
+        return x_conv, y_conv
+
+    return x, y
