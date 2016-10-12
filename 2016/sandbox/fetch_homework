@@ -9,8 +9,8 @@
 for dir in *bebi103/; do
   cd $dir
 
-  # Get the name of the latest tagged release that includes 'submission'
-  LATEST=$(git tag | grep '\<.*submission\>' | tail -1)
+  # Get the name of the latest tagged release that includes 'hw'
+  LATEST=$(git tag | grep '\<hw.*\>' | tail -1)
   GRADING_BRANCH=$LATEST'_grading'
 
   # Check that there is a latest tag
