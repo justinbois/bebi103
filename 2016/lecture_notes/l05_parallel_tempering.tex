@@ -40,7 +40,7 @@ $\{\beta_1, \beta_2, \ldots \beta_m\}$.  We then compute
 \begin{align}
 r = \min \left(1,
 \frac{\pi(\mathbf{a}_{i,j}\mid D, M_i, \beta_{j-1}, I)}{\pi(\mathbf{a}_{i,j-1}\mid D, M_i, \beta_{j-1}, I)}\,
-\frac{\pi(\mathbf{a}_{i,j}\mid D, M_i, \beta_j, I)}{\pi(\mathbf{a}_{i,j-1}\mid D, M_i, \beta_j, I)}\right).
+\frac{\pi(\mathbf{a}_{i,j-1}\mid D, M_i, \beta_j, I)}{\pi(\mathbf{a}_{i,j}\mid D, M_i, \beta_j, I)}\right).
 \end{align}
 Here, we have defined $\mathbf{a}_{i,j}$ as the value of parameter $i$ for a walker at temperature $\beta_j$.
 We then draw another uniform random number on $[0,1]$ and accept the swap
