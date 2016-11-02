@@ -194,9 +194,9 @@ In other words, the confidence interval describes the construction of the confid
 
 We will use the first definition in thinking about how to construct a confidence interval. To construct the confidence interval, then, we will repeat the experiment over and over again, each time computing $\hat{\theta}$. We will then generate an ECDF of our $\hat{\theta}$ values, and report the 2.5th and 97.5th percentile to get our 95\% confidence interval. But wait, how will we repeat the experiment so many times?
 
-Remember that the data come from a probability distribution with CDF $F(x)$. Doing an experiment where we make $n$ measurements amounts to drawing $n$ numbers out of $F(x)$\footnote{We're being loose with language here. We're drawing out of the distribution that has CDF $F(x)$, but we're saying ``draw out of F'' for shot.}. So, we could draw out of $F(x)$ over and over again. The problem is, we do now know what $F(x)$ is. However, we do have an empirical estimate for $F(x)$, names $\hat{F}(x)$. So, we could draw $n$ samples out of $\hat{F}(x)$, compute $\hat{\theta}$ from these samples, and repeat. This procedure is called \textbf{bootstrapping}.
+Remember that the data come from a probability distribution with CDF $F(x)$. Doing an experiment where we make $n$ measurements amounts to drawing $n$ numbers out of $F(x)$\footnote{We're being loose with language here. We're drawing out of the distribution that has CDF $F(x)$, but we're saying ``draw out of F'' for short.}. So, we could draw out of $F(x)$ over and over again. The problem is, we do now know what $F(x)$ is. However, we do have an empirical estimate for $F(x)$, names $\hat{F}(x)$. So, we could draw $n$ samples out of $\hat{F}(x)$, compute $\hat{\theta}$ from these samples, and repeat. This procedure is called \textbf{bootstrapping}.
 
-To get the terminology down, a \textbf{bootstrap sample}, $\mathbf{x}^*$ is a set of $n$ $x$ values drawn from $\hat{F}(x)$. A \textbf{bootstrap replicate} is the estimate $\hat{\theta}^*$ obtained from the bootstrap sample $\mathbf{x}^*$. To generate a bootstrap sample, consider an array of measured values $\mathbf{x}$. We draw $n$ values out of this array, \textit{with replacement}. This is equivalent to sampling out of $F(x)$.
+To get the terminology down, a \textbf{bootstrap sample}, $\mathbf{x}^*$ is a set of $n$ $x$ values drawn from $\hat{F}(x)$. A \textbf{bootstrap replicate} is the estimate $\hat{\theta}^*$ obtained from the bootstrap sample $\mathbf{x}^*$. To generate a bootstrap sample, consider an array of measured values $\mathbf{x}$. We draw $n$ values out of this array, \textit{with replacement}. This is equivalent to sampling out of $\hat{F}(x)$.
 
 So, the recipe for generating a bootstrap confidence interval is as follows.
 \begin{enumerate}
@@ -211,7 +211,7 @@ There are plenty of subtleties and improvements to this procedure, but this is m
 
 
 \subsection{Hypothesis tests}
-The frequentist analog to model selection are hypothesis tests. But we should be careful, it is an analog, but \textit{most definitety not the same thing}. It is important to note that frequentist hypothesis testing is different from Bayesian model selection, in that in the frequentist hypothesis tests, we will only consider how probable it is to get the observed data under a specific hypothesis, often called the \textbf{null hypothesis}. We will not assess other hypotheses or compare them. Remember that the probability of a hypothesis being true is not something that makes any sense to a frequentist.
+The frequentist analog to model selection are hypothesis tests. But we should be careful, it is an analog, but \textit{most definitety not the same thing}. It is important to note that frequentist hypothesis testing is different from Bayesian model selection, in that in the frequentist hypothesis tests, we will only consider how probable it is to get the observed data under a specific hypothesis, often called the \textbf{null hypothesis}. It is just a name for the hypothesis you are testing. We will not assess other hypotheses or compare them. Remember that the probability of a hypothesis being true is not something that makes any sense to a frequentist.
 
 A frequentist hypothesis test consists of these steps.
 \begin{enumerate}
@@ -220,9 +220,9 @@ A frequentist hypothesis test consists of these steps.
     \item[3)] \textit{Simulate} data acquisition for the scenario where the null hypothesis is true. Do this many times, computing and storing the value of the test statistic each time.
     \item[4)] The fraction of simulations for which the test statistic is at least as extreme as the test statistic computed from the measured data is called the \textbf{p-value}, which is what you report.
 \end{enumerate}
-We need to be clear on our definition here. The p-value is the probability of observing a test statistic being more extreme than what was measured if the null hypothesis is true. It is exactly that, and nothing else. It is not the probability that the null hypothesis is true.
+We need to be clear on our definition here. The p-value is the probability of observing a test statistic being at least as extreme as what was measured if the null hypothesis is true. It is exactly that, and nothing else. It is not the probability that the null hypothesis is true.
 
-Importantly, \textbf{a hypothesis test is defined by the null hypothesis, the test statistic, and what it means to be more extreme.} That uniquely defines the hypothesis test you are doing. All of the named hypothesis tests, like the Student-t test, the Mann-Whitney U-test, Welch's test, etc., describe a specific hypothesis with a specific test statistic, with a specific definition of what it means to be more extreme (one-tailed or two-tailed). I can never remember what these are, nor do I encourage you to; you can always look them up. Rather, you should just clearly write out what your test is in terms of the hypothesis, test statistic, and definition of extreme.
+Importantly, \textbf{a hypothesis test is defined by the null hypothesis, the test statistic, and what it means to be at least as extreme.} That uniquely defines the hypothesis test you are doing. All of the named hypothesis tests, like the Student-t test, the Mann-Whitney U-test, Welch's test, etc., describe a specific hypothesis with a specific test statistic, with a specific definition of what it means to be at least as extreme (one-tailed or two-tailed). I can never remember what these are, nor do I encourage you to; you can always look them up. Rather, you should just clearly write out what your test is in terms of the hypothesis, test statistic, and definition of extreme.
 
 Now, the real trick to doing a hypothesis test is step 3, in which you simulate the data acquisition assuming the null hypothesis was true. I will demonstrate two hypothesis tests and how we can simulate them. For both examples, we will consider the commonly encountered problem of performing the same measurements under two different conditions, control and test. You might have the example of Dorsal gradient widths for wild type Dorsal versus those of the Dorsal-Venus construct.
 
@@ -246,7 +246,14 @@ To simulate the null hypothesis, then, we draw bootstrap samples from $\mathbf{x
 In both of these cases, no assumptions were made about the underlying distributions. Only the empirical distributions were used; these are nonparametric hypothesis tests.
 
 \subsubsection{Interpretation of the p-value}
-If the p-value is small, the effect is said to be \textbf{statistically significant}. But what is small?
+If the p-value is small, the effect is said to be \textbf{statistically significant}. But what is small? I generally strongly discourage a bright line p-value used to deem a result statistically significant or not. You computed the p-value, it has a specific meaning; you should report it. I do not see a need to convert a computed value, the p-value, into a Boolean, True/False on whether or not we attach the word ``significant'' to the result.
+
+The question the p-value addresses is rarely the question we want to ask. For example, say we are doing a test of the null hypothesis that two sets of measurements have the same mean. In most cases, which of the following questions are we interested in asking:
+\begin{enumerate}
+    \item[1)] How different is the means of the two samples?
+    \item[2)] Would we say there is a statistically significant difference of the means of the two samples? Or, more precisely, what is the probability of observing a difference in means of the two samples at least as large as the the observed difference in means, if the two samples in fact have the same mean?
+\end{enumerate}
+The second question is convoluted and often of little scientific interest. I would say that the first question is much more relevant. To put it in perspective, say we made trillions of measurements of two difference samples and their mean differs by one part per million. This difference, though tiny, would still give a low p-value, and therefore often be deemed ``statistically significant.'' But, ultimately, is the size of the difference, or the \textit{effect size} we care about.
 
 \subsubsection{What is with all those names?}
 You have no doubt of many named frequentist hypothesis tests, like the Student-t test, Welch's t-test, the Mann-Whitney U-test, and countless others.  What is with all of those names?  It helps to think more generally about how frequentist hypothesis testing is usually done.
@@ -278,10 +285,23 @@ That said, many of the tests with names have analytical forms and can be rapidly
 There are many.
 \begin{itemize}
 \item[1)] An effect being statistically significant does not mean the effect is significant in practice or even important.  It only means exactly what it is defined to mean: an effect is unlikely to have happened by chance under the null hypothesis.  Far more important is the \textbf{effect size}.
-\item[2)] The p-value is \textbf{not} the probability that the null hypothesis is true.  It is the probability of observing the test statistic being more extreme than what was measured if the null hypothesis is true.  I.e., it is  $P(\text{more extreme than observed test stat}\mid H_0)$ and \textbf{not} $P(H_0\mid \text{more extreme than observed test stat})$.  We actually want the latter, and the p-value is often erroneously interpreted as the latter to great peril.
+\item[2)] The p-value is \textbf{not} the probability that the null hypothesis is true.  It is the probability of observing the test statistic being at least as extreme as what was measured if the null hypothesis is true.  I.e., if $H_0$ is the null hypothesis,
+\begin{align}
+    \text{p-value} = P(\text{test stat at least as extreme as observed}\mid H_0).
+\end{align}
+It is not the probability that the null hypothesis is true given that the test statistic was at least as extreme as the data.
+\begin{align}
+    \text{p-value} \ne P(H_0\mid\text{test stat at least as extreme as observed}).
+\end{align}
+We actually want the probability that the null hypothesis is true, and the p-value is often erroneously interpreted as this to great peril.
 \item[3)] Null hypothesis significance testing does not say anything about alternative hypotheses.  Rejection of the null hypothesis does not mean acceptance of any other hypotheses.
 \item[4)] P-values are not very reproducible, as we will see in the tutorials when we do ``dance of the p-values.''
-\item[5)] Rejecting a null hypothesis is also kind of odd, considering you computed $P(\text{more extreme  than observed test stat}\mid H_0)$.  This, along with point 4, means that the p-value better really low for you to reject the null hypothesis.
+\item[5)] Rejecting a null hypothesis is also kind of odd, considering you computed
+\begin{align}
+P(\text{test stat at least as extreme as observed}\mid H_0).
+\end{align}
+This does not really describe the probability that the hypothesis is true.
+This, along with point 4, means that the p-value better really low for you to reject the null hypothesis.
 \item[6)] Throughout the literature, you will see null hypothesis testing when the null hypothesis is not relevant at all.  People compute p-values because that's what they are supposed to do.  The Dorsal gradient might be an example: of course the gradients will be different; we have made a big perturbation.  Again, it gets to the point that \textbf{effect size} is waaaaay more important that a null hypothesis significance test.
 \end{itemize}
 
