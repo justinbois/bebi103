@@ -240,3 +240,49 @@ Then, we define
     y_{\mathrm{shift}, i} &= y_i - \bar{y} + \bar{z}. \\
 \end{align}
 Now, the data sets $\mathbf{x}_\mathrm{shift}$ and $\mathbf{y}_\mathrm{shift}$ have the same mean, but everything else about them is the same as $\mathbf{x}$ and $\mathbf{y}$, respectively.
+
+To simulate the null hypothesis, then, we draw bootstrap samples from $\mathbf{x}_\mathrm{shift}$ and $\mathbf{y}_\mathrm{shift}$ and compute the test statistic from the bootstrap samples, over and over again.
+
+In both of these cases, no assumptions were made about the underlying distributions. Only the empirical distributions were used; these are nonparametric hypothesis tests.
+
+\subsubsection{Interpretation of the p-value}
+If the p-value is small, the effect is said to be \textbf{statistically significant}. But what is small?
+
+\subsubsection{What is with all those names?}
+You have no doubt of many named frequentist hypothesis tests, like the Student-t test, Welch's t-test, the Mann-Whitney U-test, and countless others.  What is with all of those names?  It helps to think more generally about how frequentist hypothesis testing is usually done.
+
+To do a frequentist hypothesis test, people unfortunately do not do what I laid out above, but typically follow the following prescription (borrowing heavily from the treatment in \href{http://www.cambridge.org/us/academic/subjects/statistics-probability/statistics-physical-sciences-and-engineering/bayesian-logical-data-analysis-physical-sciences-comparative-approach-mathematica-support}{Gregory's excellent book}). \begin{itemize}
+\item[1)] Choose a null hypothesis.  This is the hypothesis you want to test the truth of.
+\item[2)] Choose a suitable test statistic that can be computed from measurements \textit{and} has a predictable distribution. For this example, we can choose as our statistic
+\begin{align}
+T &= \frac{\bar{x}_1 - \bar{x}_2 - (\mu_1 - \mu_2)}{S_D\sqrt{n_1^{-1}+n_2^{-1}}},\nonumber \\
+\text{where }S_D^2 &= \frac{(n_1 - 1)S_1^2 + (n_2-1)S_2^2}{n_1+n_2-2}, \nonumber \\
+\text{with } S_1^2 &= \frac{1}{n_1-1}\sum_{i\in D_1}(x_i - \bar{x}_1)^2,
+\end{align}
+and $S_2^2$ similarly defined.  The T statistic is the difference of the difference of the observed means and the difference of the true means, weighted by the spread in the data.  This is a reasonable statistic for determining something about means from data.  This is the appropriate statistic when $\sigma_1$ and $\sigma_2$ are both unknown but assumed to be equal.  (When they are assumed to be unequal, you need to adjust the statistic you use.  This test is called Welch's t-test.) It can be derived that this statistic has the Student-t distribution,
+\begin{align}
+P(t) &= \frac{1}{\sqrt{\pi \nu}} \frac{\Gamma\left(\frac{\nu+1}{2}\right)}{\Gamma\left(\frac{\nu}{2}\right)}
+\left(1 + \left(\frac{t^2}{\nu}\right)\right)^{-\frac{\nu + 1}{2}},\\
+\text{where } \nu &= n_1+n_2-2.
+\end{align}
+\item[3)] Evaluate the statistic from measured data.  In the case of the Student-t test, we compute $T$.
+\item[4)] Plot $P(t)$.  The area under the curve where $t > T$ is the p-value, the probability that we would observe our data under the null hypothesis.  Reject the null hypothesis if this is small.
+\end{itemize}
+As you can see from the above prescription, item 2 can be tricky.  Coming up with test statistics \textit{that also have a distribution that we can write down} is difficult.  When such a test statistic is found, the test usually gets a name. The main reason for doing things this way is that most hypothesis tests were developed before computers, so we couldn't just bootstrap our way through hypothesis tests. (The bootstrap was invented by Brad Efron in 1979.) Conversely, in the approach we have taken, sometimes referred to as ``hacker stats,'' we can invent any test statistic we want, and we can test is by numerically ``repeating'' the experiment, in accordance with the frequentist interpretation of probability.
+
+So, I would encourage you not to get caught up in names.  If someone reports a p-value with a name, simply look up what hypothesis and test statistic they are using, and that will give you an understanding of what is going on with the test.
+
+That said, many of the tests with names have analytical forms and can be rapidly computed.  Most are included in the \texttt{scipy.stats} module.  I have chosen to present a method of hypothesis testing that is intuitive with the frequentist interpretation of probability front and center.  It also allows you to design your own tests that fit a null hypothesis that you are interested in that might not be ``off-the-shelf.''
+
+\subsubsection{Warnings about hypothesis tests}
+There are many.
+\begin{itemize}
+\item[1)] An effect being statistically significant does not mean the effect is significant in practice or even important.  It only means exactly what it is defined to mean: an effect is unlikely to have happened by chance under the null hypothesis.  Far more important is the \textbf{effect size}.
+\item[2)] The p-value is \textbf{not} the probability that the null hypothesis is true.  It is the probability of observing the test statistic being more extreme than what was measured if the null hypothesis is true.  I.e., it is  $P(\text{more extreme than observed test stat}\mid H_0)$ and \textbf{not} $P(H_0\mid \text{more extreme than observed test stat})$.  We actually want the latter, and the p-value is often erroneously interpreted as the latter to great peril.
+\item[3)] Null hypothesis significance testing does not say anything about alternative hypotheses.  Rejection of the null hypothesis does not mean acceptance of any other hypotheses.
+\item[4)] P-values are not very reproducible, as we will see in the tutorials when we do ``dance of the p-values.''
+\item[5)] Rejecting a null hypothesis is also kind of odd, considering you computed $P(\text{more extreme  than observed test stat}\mid H_0)$.  This, along with point 4, means that the p-value better really low for you to reject the null hypothesis.
+\item[6)] Throughout the literature, you will see null hypothesis testing when the null hypothesis is not relevant at all.  People compute p-values because that's what they are supposed to do.  The Dorsal gradient might be an example: of course the gradients will be different; we have made a big perturbation.  Again, it gets to the point that \textbf{effect size} is waaaaay more important that a null hypothesis significance test.
+\end{itemize}
+
+Given all these problems with p-values, I generally advocate for their abandonment.  They seldom answer the question scientists are asking and lead to great confusion.
