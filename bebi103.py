@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import scipy.odr
 import scipy.stats as st
+import statsmodels.tools.numdiff as smnd
 
 import skimage.io
 import skimage.measure
@@ -906,7 +907,7 @@ def extract_1d_hist(samples, nbins=100, density=True):
     return count, x
 
 
-def extract_2d_hist(samples_x, samples_y, nbins=100, density=True,
+def extract_2d_hist(samples_x, samples_y, bins=100, density=True,
                     meshgrid=False):
     """
     Compute a 2d histogram with x,y-values at bin centers.
@@ -918,7 +919,7 @@ def extract_2d_hist(samples_x, samples_y, nbins=100, density=True,
         1D array of MCMC samples for x-axis
     samples_y : array
         1D array of MCMC samples for y-axis
-    nbins : int
+    bins : int
         Number of bins in histogram. The same binning is
         used in the x and y directions.
     density : bool, optional
@@ -944,7 +945,7 @@ def extract_2d_hist(samples_x, samples_y, nbins=100, density=True,
         The positions of the bin centers on the y-axis.
     """
     # Obtain histogram
-    count, x_bins, y_bins = np.histogram2d(samples_x, samples_y, bins=nbins,
+    count, x_bins, y_bins = np.histogram2d(samples_x, samples_y, bins=bins,
                                            normed=density)
 
     # Make the bins into the bin centers, not the edges
@@ -958,7 +959,7 @@ def extract_2d_hist(samples_x, samples_y, nbins=100, density=True,
     return count.transpose(), x, y
 
 
-def norm_cumsum_2d(sample_x, sample_y, nbins=100, meshgrid=False):
+def norm_cumsum_2d(sample_x, sample_y, bins=100, meshgrid=False):
     """
     Returns 1 - the normalized cumulative sum of two sets of samples.
 
@@ -968,7 +969,7 @@ def norm_cumsum_2d(sample_x, sample_y, nbins=100, meshgrid=False):
         1D array of MCMC samples for x-axis
     samples_y : array
         1D array of MCMC samples for y-axis
-    nbins : int
+    bins : int
         Number of bins in histogram. The same binning is
         used in the x and y directions.
     meshgrid : bool, options
@@ -996,7 +997,7 @@ def norm_cumsum_2d(sample_x, sample_y, nbins=100, meshgrid=False):
     """
 
     # Compute the histogram
-    count, x, y = extract_2d_hist(sample_x, sample_y, nbins=nbins,
+    count, x, y = extract_2d_hist(sample_x, sample_y, bins=bins,
                                   density=False, meshgrid=meshgrid)
     # Remember the shape
     shape = count.shape
@@ -1554,3 +1555,100 @@ def ecdf(data, conventional=False, buff=0.1, min_x=None, max_x=None):
         return x_conv, y_conv
 
     return x, y
+
+def approx_hess(x, f, epsilon=None, args=(), kwargs={}):
+    """
+    Parameters
+    ----------
+    x : array_like
+       value at which function derivative is evaluated
+    f : function
+       function of one array f(x, `*args`, `**kwargs`)
+    epsilon : float or array-like, optional
+       Stepsize used, if None, then stepsize is automatically chosen
+       according to EPS**(1/4)*x.
+    args : tuple
+        Arguments for function `f`.
+    kwargs : dict
+        Keyword arguments for function `f`.
+
+
+    Returns
+    -------
+    hess : ndarray
+       array of partial second derivatives, Hessian
+
+
+    Notes
+    -----
+    Equation (9) in Ridout. Computes the Hessian as::
+
+      1/(4*d_j*d_k) * ((f(x + d[j]*e[j] + d[k]*e[k]) - f(x + d[j]*e[j]
+                                                     - d[k]*e[k])) -
+                 (f(x - d[j]*e[j] + d[k]*e[k]) - f(x - d[j]*e[j]
+                                                     - d[k]*e[k]))
+
+    where e[j] is a vector with element j == 1 and the rest are zero and
+    d[i] is epsilon[i].
+
+    References
+    ----------:
+
+    Ridout, M.S. (2009) Statistical applications of the complex-step method
+        of numerical differentiation. The American Statistician, 63, 66-74
+
+    Copyright
+    ---------
+    This is an adaptation of the function approx_hess3() in
+    statsmodels.tools.numdiff. That code is BSD (3 clause) licensed as
+    follows:
+
+    Copyright (C) 2006, Jonathan E. Taylor
+    All rights reserved.
+
+    Copyright (c) 2006-2008 Scipy Developers.
+    All rights reserved.
+
+    Copyright (c) 2009-2012 Statsmodels Developers.
+    All rights reserved.
+
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+      a. Redistributions of source code must retain the above copyright notice,
+         this list of conditions and the following disclaimer.
+      b. Redistributions in binary form must reproduce the above copyright
+         notice, this list of conditions and the following disclaimer in the
+         documentation and/or other materials provided with the distribution.
+      c. Neither the name of Statsmodels nor the names of its contributors
+         may be used to endorse or promote products derived from this software
+         without specific prior written permission.
+
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED. IN NO EVENT SHALL STATSMODELS OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+    DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+    OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+    DAMAGE.
+    """
+    n = len(x)
+    h = smnd._get_epsilon(x, 4, epsilon, n)
+    ee = np.diag(h)
+    hess = np.outer(h,h)
+
+    for i in range(n):
+        for j in range(i, n):
+            hess[i, j] = (f(*((x + ee[i, :] + ee[j, :],) + args), **kwargs)
+                          - f(*((x + ee[i, :] - ee[j, :],) + args), **kwargs)
+                          - (f(*((x - ee[i, :] + ee[j, :],) + args), **kwargs)
+                          - f(*((x - ee[i, :] - ee[j, :],) + args), **kwargs))
+                          )/(4.*hess[i, j])
+            hess[j, i] = hess[i, j]
+    return hess
