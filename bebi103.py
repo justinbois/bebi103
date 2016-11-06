@@ -565,11 +565,16 @@ def sampler_to_dataframe(sampler, columns=None):
     -------
     output : DataFrame
         Pandas DataFrame containing the samples. Each column is
-        a variable, except: 'lnlike' and 'chain' for an
-        EnsembleSampler, and 'lnlike', 'lnprop', 'beta_ind',
+        a variable, except: 'lnprob' and 'chain' for an
+        EnsembleSampler, and 'lnlike', 'lnprob', 'beta_ind',
         'beta', and 'chain' for a PTSampler. These contain obvious
         values.
     """
+    invalid_column_names = ['lnprob', 'chain', 'lnlike', 'beta',
+                            'beta_ind']
+    if np.any([x in columns for x in invalid_column_names]):
+            raise RuntimeError('You cannot name columns with any of these: '
+                                    + '  '.join(invalid_column_names))
 
     if columns is None:
         columns = list(range(sampler.chain.shape[-1]))
@@ -691,6 +696,13 @@ def run_ensemble_emcee(log_post=None, n_burn=100, n_steps=100,
             columns = list(range(n_dim))
     elif len(columns) != n_dim:
         raise RuntimeError('len(columns) must equal number of parameters.')
+
+    # Check for invalid column names
+    invalid_column_names = ['lnprob', 'chain', 'lnlike', 'beta',
+                            'beta_ind']
+    if np.any([x in columns for x in invalid_column_names]):
+            raise RuntimeError('You cannot name columns with any of these: '
+                                    + '  '.join(invalid_column_names))
 
     # Build starting points of walkers
     if p0 is None:
@@ -828,6 +840,13 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
             columns = list(range(n_dim))
     elif len(columns) != n_dim:
         raise RuntimeError('len(columns) must equal number of parameters.')
+
+    # Check for invalid column names
+    invalid_column_names = ['lnprob', 'chain', 'lnlike', 'beta',
+                            'beta_ind']
+    if np.any([x in columns for x in invalid_column_names]):
+            raise RuntimeError('You cannot name columns with any of these: '
+                                    + '  '.join(invalid_column_names))
 
     # Build starting points of walkers
     if p0 is None:
