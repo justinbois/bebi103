@@ -1076,6 +1076,93 @@ def hpd(trace, mass_frac):
 #                    IMAGE PROCESSING UTILITIES                              #
 # ########################################################################## #
 
+class SimpleImageCollection(object):
+    """
+    Load a collection of images.
+
+    Parameters
+    ----------
+    load_pattern : string or list
+        If string, uses glob to generate list of files containing
+        images. If list, this is the list of files containing images.
+    load_func : callable, default skimage.io.imread
+        Function to be called to load images.
+    conserve_memory : bool, default True
+        If True, do not load all images into RAM. If False, load
+        all into a list.
+
+    Returns
+    -------
+    ic : SimpleImageCollection instance
+        ic[n] gives image n of the image collection.
+
+    Notes
+    -----
+    .. Any keyword arguments except those listed above are passed into
+    load_func as kwargs.
+    .. This is a much simplified (and therefore faster) version of
+    skimage.io.ImageCollection.
+    """
+
+    def __init__(self, load_pattern, load_func=skimage.io.imread,
+                 conserve_memory=True, **load_func_kwargs):
+        if isinstance(load_pattern, str):
+            self.fnames = glob.glob(load_pattern)
+        else:
+            self.fnames = load_pattern
+
+        self.conserve_memory = conserve_memory
+
+        if self.conserve_memory:
+            self.load_func = load_func
+            self.kwargs = load_func_kwargs
+        else:
+            self.ims = [load_func(f, **load_func_kwargs) for f in self.fnames]
+
+
+
+    def __getitem__(self, n):
+        """
+        Return selected image.
+        """
+        if self.conserve_memory:
+            return self.load_func(self.fnames[n], **self.load_func_kwargs)
+        else:
+            return self.ims[n]
+
+
+def simple_image_collection(im_glob, load_func=skimage.io.imread,
+                            conserve_memory=True, **load_func_kwargs):
+    """
+    Load a collection of images.
+
+    Parameters
+    ----------
+    load_pattern : string or list
+        If string, uses glob to generate list of files containing
+        images. If list, this is the list of files containing images.
+    load_func : callable, default skimage.io.imread
+        Function to be called to load images.
+    conserve_memory : bool, default True
+        If True, do not load all images into RAM. If False, load
+        all into a list.
+
+    Returns
+    -------
+    ic : SimpleImageCollection instance
+        ic[n] gives image n of the image collection.
+
+    Notes
+    -----
+    .. Any keyword arguments except those listed above are passed into
+    load_func as kwargs.
+    .. This is a much simplified (and therefore faster) version of
+    skimage.io.ImageCollection.
+    """
+    return SimpleImageCollection(im_glob, load_func=load_func,
+                                 conserve_memory=conserve_memory,
+                                 **load_func_kwargs)
+
 def rgb_to_rgba32(im, flip=True):
     """
     Convert an RGB image to a 32 bit-encoded RGBA image.
@@ -1162,7 +1249,7 @@ def verts_to_roi(verts, size_i, size_j):
     roi = in_roi.reshape((size_i, size_j)).astype(np.bool)
 
     # Get bounding box of ROI
-    regions = skimage.measure.regionprops(roi)
+    regions = skimage.measure.regionprops(roi.astype(np.int))
     bbox = regions[0].bbox
     roi_bbox = np.s_[bbox[0]:bbox[2] + 1, bbox[1]:bbox[3] + 1]
 
