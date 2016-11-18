@@ -158,37 +158,32 @@ written as
 P(p\mid \alpha, \beta) = \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}\,
 p^{\alpha-1}(1-p)^{\beta-1},
 \end{align}
-where it is parametrized by positive constants $\alpha$ and $\beta$.
-If $\alpha$ and $\beta$ are both greater than unity, the distribution
-is peaked, and the mode is
+where it is parametrized by positive constants $\alpha$ and $\beta$. The Beta distribution has mean and variance, respectively, of
 \begin{align}
-  p^* \equiv \omega = \frac{\alpha - 1}{\alpha + \beta - 2}.
+    q &= \frac{\alpha}{\alpha + \beta}, \\
+    \sigma^2 &= \frac{\alpha\beta}{(\alpha + \beta)^2(\alpha + \beta + 1)}.
 \end{align}
-The ``concentration,'' $\kappa = \alpha + \beta$, of the distribution
-describes its spread.  As $\kappa$ gets larger, the distribution
-becomes tighter.  So, we might want to think of the conditional
-distribution in terms of $\omega$ and $\kappa$.  We can convert back
-to $\alpha$ and $\beta$ using
+So, we could also parametrize the Beta distribution with these, noting that we can convert back to $\alpha$ and $\beta$ using
 \begin{align}
-  \alpha &= \omega(\kappa - 2) + 1 \\
-  \beta &= (1-\omega)(\kappa - 2) + 1.
+    \alpha &= \frac{q}{\sigma^2}\left(q(1-q) - \sigma^2\right), \label{eq:beta_alpha}\\
+    \beta &= \frac{1-q}{\sigma^2}\left(q(1-q) - \sigma^2\right).
+    \label{eq:beta_beta}
 \end{align}
-We have $0 < \omega < 1$ and $\kappa > 2$.  A reasonable model would
-be to take $\omega = q$ with some concentration $\kappa$.  This gives
-an additional hyperparameter, $\kappa$, which describes
-experiment-to-experiment variability.  We will take
-$P(\kappa\mid I) \propto 1/\kappa$, as we typically do for scale
-parameters.  Thus, our full posterior is
+We have $0 < q < 1$ and $0 < \sigma^2 < q(1-q)$. So, we have
+an additional hyperparameter, $\sigma^2$, which describes
+experiment-to-experiment variability.  In analogy to Gaussian distributions (which the Beta approximates for large $\alpha$ and $\beta$), we will take
+$P(\sigma^2 \mid I) \propto 1/\sigma^2$.  Thus, our full posterior is
 \begin{align}
-P(q, \kappa,\mathbf{p}\mid \mathbf{r}, \mathbf{n},I) \propto
+P(q, \sigma^2,\mathbf{p}\mid \mathbf{r}, \mathbf{n},I) \propto
 P(\mathbf{r},\mathbf{n}\mid \mathbf{p}, I)\,
-\kappa^{-1}\,\left(\prod_{i=1}^k P(p_i\mid q,\kappa)\right),
+\sigma^{-2}\,\left(\prod_{i=1}^k P(p_i\mid q,\kappa)\right),
 \end{align}
-nonzero on $0\le q,\mathbf{p} \le 1$ and $\kappa > 2$, where
+nonzero on $0\le q,\mathbf{p} \le 1$ and $0 < \sigma^2 < q(1-q)$, where
 \begin{align}
-P(p_i\mid q, \kappa) =  \frac{\Gamma(\kappa)}{\Gamma(q(\kappa - 2) + 1)\Gamma((1-q)(\kappa - 2) + 1)}\,
-p^{q(\kappa - 2)}(1-p)^{(1-q)(\kappa - 2)}.
+P(p_i\mid q, \sigma^2) =  \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}\,
+p_i^{\alpha}(1-p_i)^{\beta},
 \end{align}
+where $\alpha$ and $\beta$ are understood to be functions of $q$ and $\sigma^2$ according to equations \eqref{eq:beta_alpha} and \eqref{eq:beta_beta}.
 As before, we have a binomial likelihood, where we assume the
 experiments are independent.
 \begin{align}
