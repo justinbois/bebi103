@@ -889,6 +889,42 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
     return ret
 
 
+def lnZ(df_mcmc):
+    """
+    Compute log Z(1) from PTMCMC traces stored in DataFrame.
+
+    Parameters
+    ----------
+    df_mcmc : pandas DataFrame, as outputted from run_ptmcmc.
+        DataFrame containing output of a parallel tempering MCMC
+        run. Only need to contain columns pertinent to computing
+        ln Z, which are 'beta_int', 'lnlike', and 'beta'.
+
+    Returns
+    -------
+    output : float
+        ln Z as computed by thermodynamic integration. This is
+        equivalent to what is obtained by calling
+        `sampler.thermodynamic_integration_log_evidence(fburnin=0)`
+        where `sampler` is an emcee.PTSampler instance.
+
+    Notes
+    -----
+    .. This is useful when the DataFrame from a PTSampler is too
+       large to store in RAM.
+    """
+    # Average the log likelihood over the samples
+    log_mean = np.zeros(len(df_mcmc['beta_ind'].unique()))
+    for i, b in enumerate(df_mcmc['beta_ind'].unique()):
+        log_mean[i] = df_mcmc['lnlike'][df_mcmc['beta_ind']==b].mean()
+
+    # Set of betas (temperatures)
+    betas = np.concatenate((np.array(df_mcmc['beta'].unique()), (0,)))
+
+    # Approximate quadrature
+    return np.dot(log_mean, -np.diff(betas))
+
+
 def extract_1d_hist(samples, nbins=100, density=True):
     """
     Compute a 1d histogram with x-values at bin centers.
