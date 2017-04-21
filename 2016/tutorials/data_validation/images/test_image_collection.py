@@ -9,6 +9,7 @@ import skimage.io
 
 fnames = glob.glob('*.tif')
 pattern = re.compile('im_[0-9]{6}.tif')
+idim, jdim = 128, 128
 bitdepth = 12
 
 def get_proper_frames(fnames, pattern):
@@ -47,7 +48,7 @@ def test_dropped_frames():
 
 def test_exposure():
     """
-    Check for frames with overexposure
+    Check for frames with overexposure and unexposure.
     """
     # Get all proper file names (Should be all of them)
     frames = get_proper_frames(fnames, pattern)
@@ -66,3 +67,13 @@ def test_exposure():
     assert not unexposed and not overexposed, \
             'unexposed: ' + str(unexposed) \
                 + '  overexposed: ' + str(overexposed)
+
+
+def test_dimensions():
+    """Make sure all images have same dimensions."""
+    # Get all proper file names (Should be all of them)
+    frames = get_proper_frames(fnames, pattern)
+
+    for frame in frames:
+        im = skimage.io.imread(frame)
+        assert im.shape == (idim, jdim)
