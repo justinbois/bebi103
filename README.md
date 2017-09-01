@@ -1,10 +1,33 @@
-BE/Bi 103 Utilities
+bebi103
+===============================
 
-This package contains a set of utilities
-that are useful for BE/Bi 103 at Caltech.
+version number: 0.0.1
+author: Justin Bois
 
-The file `bebi103.py` currently contains:
-* Plotting utilities for Bokeh
-* Convenient function for running MCMC calculations with `emcee`
-* Utilities for Costes colocalization analysis
-* Utilities for setting up ROIs from mouse clicks
+Overview
+--------
+
+Python utilities foor the Caltech course BE/Bi 103: Data Analysis in the Biological Sciences.
+
+Installation / Usage
+--------------------
+
+To install use pip:
+
+    $ pip install bebi103
+
+
+Or clone the repo:
+
+    $ git clone https://github.com/justinbois/bebi103.git
+    $ python setup.py install
+    
+Contributing
+------------
+
+TBD
+
+Example
+-------
+
+TBD
