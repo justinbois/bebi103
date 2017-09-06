@@ -733,7 +733,7 @@ def norm_cumsum_2d(sample_x, sample_y, bins=100, meshgrid=False):
 
     Returns
     -------
-    norm_cumcum : array, shape (nbins, nbins)
+    norm_cumsum : array, shape (nbins, nbins)
         1 - the normalized cumulative sum of two sets of samples.
         I.e., an isocontour on this surface at level alpha encompasses
         a fraction alpha of the total probability.

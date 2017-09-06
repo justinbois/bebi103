@@ -4,6 +4,7 @@
 
 from . import viz
 from . import image
+from . import pm
 
 __author__ = """Justin Bois"""
 __email__ = 'bois@caltech.edu'
