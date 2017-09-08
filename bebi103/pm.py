@@ -1,37 +1,48 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 
 import pymc3 as pm
 
-def trace_to_df(trace, model=None, thin=1):
+def trace_to_dataframe(trace, model=None, varnames=None, 
+                       include_transformed=False):
     """
     Convert a PyMC3 trace to a Pandas DataFrame
 
     To add: Compute logp for each point using model.logp().
     """
-    # How many chains?
-    chains = trace.chains
-    data_len = len(trace.get_values(trace.varnames[0], thin=thin))
-    
-    # Set up chains as column in DataFrame
-    chains = np.concatenate(
-        [chain * np.ones(data_len // len(chains)) for chain in chains])
-    df = pd.DataFrame(data={'chain': chains})
+    # Extract the model from context if necessary
+    model = pm.modelcontext(model)
 
-    # Add samples
-    for var in trace.varnames:
-        if len(var) < 2 or var[-2:] != '__':
-            data = trace.get_values(var, thin=thin)
-            if len(data.shape) == 1:
-                df[var] = data
-            else:
-                for i in range(data.shape[1]):
-                    df[var + '_' + str(i)] = data[:,i]
+    df = pm.trace_to_dataframe(trace, chains=[0])
+    for stat in trace.statnames:
+        if stat in df.columns:
+            warnings.warn('`' + stat + '` is in the variable names.`'
+                          + ' Not adding this statistic.')
+        elif len(stat) == len(df):
+            df[stat] = trace.get_sampler_stats(stat, chains=[0])
+    if 'chain' in df.columns:
+        warnings.warn('`chain` is in the variable name.`'
+                          + ' Not adding this statistic.')
+    else:
+        df['chain'] = np.array([0]*len(df), dtype=int)
 
-    # Convert chain to integer
-    df['chain'] = df['chain'].astype(int)
+    if len(trace.chains) == 1:
+        return df      
+
+    for chain in trace.chains[1:]:
+        df_app = pm.trace_to_dataframe(trace, chains=[chain])
+        for stat in trace.statnames:
+            if stat not in df.columns and len(stat) == len(df_app):
+                df_app[stat] = trace.get_sampler_stats(stat, chains=[chain])
+        if 'chain' not in df.columns:
+            df_app['chain'] = np.array([chain]*len(df_app))
+
+        df = df.append(df_app, ignore_index=True)
 
     return df
+
 
 def waic_no_diverging(trace):
     """
