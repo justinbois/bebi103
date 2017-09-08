@@ -1,12 +1,19 @@
 import warnings
 
 import numpy as np
+import pandas as pd
+import pymc3 as pm
 import scipy.ndimage
 import skimage
+
+import matplotlib._cntr
 
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
+import datashader as ds
+import datashader.bokeh_ext
+
 
 from . import utils
 
@@ -26,14 +33,33 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF',
     data = utils._convert_data(data)
 
     # Data points on ECDF
-    x = np.sort(data)
-    y = np.arange(1, len(data)+1) / len(data)
+    x, y = _ecdf_vals(data, formal)
 
     # Instantiate Bokeh plot if not already passed in
     if p is None:
         p = bokeh.plotting.figure(
             plot_height=plot_height, plot_width=plot_width, 
             x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
+
+    if formal:
+        # Line of steps
+        p.line(x, y, **kwargs)
+
+        # Rays for ends
+        p.ray(x[0], 0, None, np.pi, **kwargs)
+        p.ray(x[-1], 1, None, 0, **kwargs)      
+    else:
+        p.circle(x, y, **kwargs)
+
+    return p
+
+
+def _ecdf_vals(data, formal=False):
+    """
+    Get x, y, values of an ECDF for plotting.
+    """
+    x = np.sort(data)
+    y = np.arange(1, len(data)+1) / len(data)
 
     if formal:
         # Set up output arrays
@@ -52,16 +78,9 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF',
         x_formal[3:-1:2] = x[1:]
         x_formal[-1] = x[-1]
 
-        # Line of steps
-        p.line(x_formal, y_formal, **kwargs)
-
-        # Rays for ends
-        p.ray(x_formal[0], 0, None, np.pi, **kwargs)
-        p.ray(x_formal[-1], 1, None, 0, **kwargs)      
+        return x_formal, y_formal
     else:
-        p.circle(x, y, **kwargs)
-
-    return p
+        return x, y
 
 
 def imshow(im, color_mapper=None, plot_height=400, 
@@ -400,30 +419,43 @@ def data_to_hex_color(x, palette, x_range=[0, 1], na_value='#000000'):
     return rgb_frac_to_hex(palette[int(f * len(palette))])
 
 
-def corner(df, datashade=True, cols=None, labels=None, plot_width=150, 
-           smooth=2, bins=50, color='black', alpha=1, 
-           plot_width_correction=50, plot_height_correction=40):
+def corner(trace, datashade=True, vars=None, labels=None, plot_width=150, 
+           smooth=2, bins=20, cmap='black', contour_color='black', 
+           hist_color='black', alpha=1, bins_2d=50, plot_ecdf=False,
+           plot_width_correction=50, plot_height_correction=40, levels=None,
+           weights=None):
     """
     Make a corner plot of MCMC results.
+
+    Parameters
+    ----------
+    trace : PyMC3 Trace or MultiTrace instance or Pandas DataFrame
+        Trace of MCMC sampler.
     """
-    if cols is None:
-        cols = df.columns[~(df.columns.isin(
+
+    if type(trace) == pd.core.frame.DataFrame:
+        df = trace
+    else:
+        df = pm.trace_to_dataframe(trace) 
+
+    if vars is None:
+        vars = df.columns[~(df.columns.isin(
                             ['chain', 'log_like', 'log_post', 'log_prior']))]
-    if len(cols) > 5:
+    if len (vars) > 6:
         raise RuntimeError(
                     'For space purposes, can show only five variables.')
         
-    for col in cols:
+    for col in vars:
         if col not in df.columns:
             raise RuntimeError(
                         'Column ' + col + ' not in the columns of DataFrame.')
             
     if labels is None:
-        labels = cols
-    elif len(labels) != len(cols):
-        raise RuntimeError('len(cols) must equal len(labels)')
+        labels = vars
+    elif len(labels) != len(vars):
+        raise RuntimeError('len(vars) must equal len(labels)')
 
-    if len(cols) == 1:
+    if len(vars) == 1:
         raise NotImplementedError('Single histogram to be implemented.')
         
     if not datashade:
@@ -434,50 +466,68 @@ def corner(df, datashade=True, cols=None, labels=None, plot_width=150,
             raise RuntimeError(
                 'Cannot render more than 10,000 samples without DataShader.')
 
-    plots = [[None for _ in range(len(cols))] for _ in range(len(cols))]
+    plots = [[None for _ in range(len(vars))] for _ in range(len(vars))]
     
-    for i, j in zip(*np.tril_indices(len(cols))):
+    for i, j in zip(*np.tril_indices(len(vars))):
         pw = plot_width
         ph = plot_width
         if j == 0:
             pw += plot_width_correction
-        if i == len(cols) - 1:
+        if i == len(vars) - 1:
             ph += plot_height_correction
             
-        x = cols[j]
+        x = vars[j]
         if i != j:
-            y = cols[i]
+            y = vars[i]
             x_range, y_range = _data_range(df, x, y)
             plots[i][j] = bokeh.plotting.figure(
                     x_range=x_range, y_range=y_range,
                     plot_width=pw, plot_height=ph)
             if datashade:
-                _ = ds_bokeh_ext.InteractiveImage(
-                                plots[i][j], _create_image, df=df, x=x, y=y)
+                _ = datashader.bokeh_ext.InteractiveImage(
+                    plots[i][j], _create_points_image, df=df, x=x, y=y, 
+                    cmap=cmap)
             else:
                 plots[i][j].circle(df[x], df[y], size=2, 
-                                   alpha=alpha, color=color)
-            xs, ys = _get_contour_lines(df[x].values, df[y].values, 
-                                        smooth=smooth)
-            plots[i][j].multi_line(xs, ys, line_color=color, line_width=2)
+                                   alpha=alpha, color=cmap)
+            xs, ys = _get_contour_lines(
+                df[x].values, df[y].values, bins=bins_2d, smooth=smooth, 
+                levels=levels, weight=weights)
+            plots[i][j].multi_line(xs, ys, line_color=contour_color, 
+                                   line_width=2)
         else:
-            f, e = np.histogram(df[x], bins=bins, density=True)
-            e0 = np.empty(2*len(e))
-            f0 = np.empty(2*len(e))
-            e0[::2] = e
-            e0[1::2] = e
-            f0[0] = 0
-            f0[-1] = 0
-            f0[1:-1:2] = f
-            f0[2:-1:2] = f
-            
-            x_range, _ = _data_range(df, x, x)
-            plots[i][i] = bokeh.plotting.figure(x_range=x_range,
-                                                plot_width=pw, plot_height=ph)
-            plots[i][i].line(e0, f0, line_width=2, color='black')
+            if plot_ecdf:
+                x_range, _ = _data_range(df, x, x)
+                plots[i][i] = bokeh.plotting.figure(
+                        x_range=x_range, y_range=[-0.02, 1.02], 
+                        plot_width=pw, plot_height=ph)
+                if datashade:
+                    x_ecdf, y_ecdf = _ecdf_vals(df[x], formal=True)
+                    df_ecdf = pd.DataFrame(data={x: x_ecdf, 'ECDF': y_ecdf}) 
+                    _ = datashader.bokeh_ext.InteractiveImage(
+                            plots[i][i],_create_line_image, df=df_ecdf, 
+                            x=x, y='ECDF', cmap=hist_color)
+                else:
+                    plots[i][i] = ecdf(df[x], p=plots[i][i], formal=True,
+                                       line_width=2, line_color=hist_color)
+            else:
+                x_range, _ = _data_range(df, x, x)
+                plots[i][i] = bokeh.plotting.figure(
+                            x_range=x_range, plot_width=pw, plot_height=ph)
+                f, e = np.histogram(df[x], bins=bins, density=True)
+                e0 = np.empty(2*len(e))
+                f0 = np.empty(2*len(e))
+                e0[::2] = e
+                e0[1::2] = e
+                f0[0] = 0
+                f0[-1] = 0
+                f0[1:-1:2] = f
+                f0[2:-1:2] = f
+                
+                plots[i][i].line(e0, f0, line_width=2, color=hist_color)
 
     # Link axis ranges
-    for i in range(1,len(cols)):
+    for i in range(1,len(vars)):
         for j in range(i):
             plots[i][j].x_range = plots[j][j].x_range
             plots[i][j].y_range = plots[i][i].x_range
@@ -485,35 +535,51 @@ def corner(df, datashade=True, cols=None, labels=None, plot_width=150,
     # Label axes
     for i, label in enumerate(labels):
         plots[-1][i].xaxis.axis_label = label
+
     for i, label in enumerate(labels[1:]):
         plots[i+1][0].yaxis.axis_label = label
+
+    if plot_ecdf:
+        plots[0][0].yaxis.axis_label = 'ECDF'
         
     # Take off tick labels
-    for i in range(len(cols)-1):
+    for i in range(len(vars)-1):
         for j in range(i+1):
             plots[i][j].xaxis.major_label_text_font_size = '0pt'
-    plots[0][0].yaxis.major_label_text_font_size = '0pt'
-    for i in range(1, len(cols)):
+
+    if not plot_ecdf:
+        plots[0][0].yaxis.major_label_text_font_size = '0pt'
+
+    for i in range(1, len(vars)):
         for j in range(1, i+1):
             plots[i][j].yaxis.major_label_text_font_size = '0pt'
     
-    grid = bokeh.layouts.gridplot(plots)
+    grid = bokeh.layouts.gridplot(plots, toolbar_location='left',
+                                  toolbar_sticky=False)
     return grid
 
 
 def _data_range(df, x, y, margin=0.02):
     x_range = df[x].max() - df[x].min()
     y_range = df[y].max() - df[y].min()
-    return ([df[x].min() - x_range*margin, df[x].max()+ - x_range*margin],
-            [df[y].min() - y_range*margin, df[y].max()+ - y_range*margin])
+    return ([df[x].min() - x_range*margin, df[x].max() + x_range*margin],
+            [df[y].min() - y_range*margin, df[y].max() + y_range*margin])
 
 
-def _create_image(x_range, y_range, w, h, df, x, y):
+def _create_points_image(x_range, y_range, w, h, df, x, y, cmap):
     cvs = ds.Canvas(x_range=x_range, y_range=y_range, plot_height=int(h), 
                     plot_width=int(w))
     agg = cvs.points(df, x, y, agg=ds.reductions.count())
     return ds.transfer_functions.dynspread(ds.transfer_functions.shade(
-                                        agg, cmap='black', how='linear'))
+                                        agg, cmap=cmap, how='linear'))
+
+
+def _create_line_image(x_range, y_range, w, h, df, x, y, cmap=None):
+    cvs = ds.Canvas(x_range=x_range, y_range=y_range, plot_height=int(h), 
+                    plot_width=int(w))
+    agg = cvs.line(df, x, y, agg=ds.reductions.count())
+    return ds.transfer_functions.dynspread(ds.transfer_functions.shade(
+                                               agg, cmap=cmap))
 
 
 def _get_contour_lines(x, y, smooth=4, levels=None, bins=50, weights=None):
@@ -586,14 +652,16 @@ def _get_contour_lines(x, y, smooth=4, levels=None, bins=50, weights=None):
         Y1[-1] + np.array([1, 2]) * np.diff(Y1[-2:]),
     ])
 
-    contour_set = plt.contour(X2, Y2, H2.T, V)
+    # Set up contour object
+    X2, Y2 = np.meshgrid(X2, Y2)
+    c = matplotlib._cntr.Cntr(X2, Y2, H2.transpose())
     xs = []
     ys = []
-
-    for level, cset in zip(V, contour_set.collections):
-        for path in cset.get_paths():
-            data = np.split(path.vertices, np.where(path.codes==1)[0][1:])[0]
-            xs.append(data[:,0])
-            ys.append(data[:,1])
+    for level in V:
+        paths = c.trace(level)
+        n_lines = len(paths) // 2
+        for line in paths[:n_lines]:
+            xs.append(line[:,0])
+            ys.append(line[:,1])
             
     return xs, ys
