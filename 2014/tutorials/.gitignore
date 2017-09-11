@@ -1,7 +1,0 @@
-*.csv
-*.pdf
-*.html
-.ipynb_checkpoints/
-data/
-images/
-tutorial_sandbox/
