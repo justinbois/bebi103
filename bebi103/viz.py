@@ -492,7 +492,7 @@ def corner(trace, datashade=True, vars=None, labels=None, plot_width=150,
                                    alpha=alpha, color=cmap)
             xs, ys = _get_contour_lines(
                 df[x].values, df[y].values, bins=bins_2d, smooth=smooth, 
-                levels=levels, weight=weights)
+                levels=levels, weights=weights)
             plots[i][j].multi_line(xs, ys, line_color=contour_color, 
                                    line_width=2)
         else:
