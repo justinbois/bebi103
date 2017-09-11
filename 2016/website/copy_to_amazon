@@ -1,1 +1,0 @@
-aws s3 cp ./ s3://bebi103.caltech.edu/2016/ --recursive --exclude "protected/" --exclude "copy*" --exclude ".gitignore" --exclude ".DS_Store"

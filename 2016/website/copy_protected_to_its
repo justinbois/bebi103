@@ -1,1 +1,0 @@
-scp -r protected/homework/ protected/hw_solutions protected/tutorials/ protected/data bebi103@ssh.caltech.edu:~/public_html/2016/protected/
