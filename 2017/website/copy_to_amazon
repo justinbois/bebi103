@@ -1,0 +1,2 @@
+aws s3 cp ./ s3://bebi103.caltech.edu/2017/ --recursive --exclude "protected/" --exclude "copy*" --exclude ".gitignore" --exclude ".DS_Store" --exclude "data/";
+aws s3 cp ./data/* s3://bebi103.caltech.edu/data/ --recursive;
