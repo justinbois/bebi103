@@ -4,23 +4,21 @@ import numpy as np
 import pandas as pd
 
 import pymc3 as pm
+import pymc3.stats
 
 def trace_to_dataframe(trace, model=None, varnames=None, 
-                       include_transformed=False):
+                       include_transformed=False, log_post=False):
     """
     Convert a PyMC3 trace to a Pandas DataFrame
 
     To add: Compute logp for each point using model.logp().
     """
-    # Extract the model from context if necessary
-    model = pm.modelcontext(model)
-
     df = pm.trace_to_dataframe(trace, chains=[0])
-    for stat in trace.statnames:
+    for stat in trace.stat_names:
         if stat in df.columns:
             warnings.warn('`' + stat + '` is in the variable names.`'
                           + ' Not adding this statistic.')
-        elif len(stat) == len(df):
+        else:
             df[stat] = trace.get_sampler_stats(stat, chains=[0])
     if 'chain' in df.columns:
         warnings.warn('`chain` is in the variable name.`'
@@ -33,22 +31,22 @@ def trace_to_dataframe(trace, model=None, varnames=None,
 
     for chain in trace.chains[1:]:
         df_app = pm.trace_to_dataframe(trace, chains=[chain])
-        for stat in trace.statnames:
-            if stat not in df.columns and len(stat) == len(df_app):
+        for stat in trace.stat_names:
+            if stat not in df_app.columns:
                 df_app[stat] = trace.get_sampler_stats(stat, chains=[chain])
-        if 'chain' not in df.columns:
+        if 'chain' not in df_app.columns:
             df_app['chain'] = np.array([chain]*len(df_app))
 
         df = df.append(df_app, ignore_index=True)
 
+    if log_post:
+        # Extract the model from context if necessary
+        model = pm.modelcontext(model)
+
+        logp = pymc3.stats._log_post_trace(trace, model).sum(axis=1)
+        df['log_posterior'] = logp
+
     return df
-
-
-def waic_no_diverging(trace):
-    """
-    Compute the WAIC taking out diverging samples.
-    """
-    pass
 
 
 def Jeffreys(name, min_val=None, max_val=None, shape=None):
