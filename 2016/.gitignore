@@ -1,9 +1,0 @@
-data/
-data
-figs/
-live_notebooks/
-*.log
-*.bst
-*.aux
-*.pdf
-*.out

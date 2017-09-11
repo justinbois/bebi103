@@ -1,5 +1,0 @@
-AuthName "Restricted to enrollees only" 
-AuthType Basic 
-AuthUserFile /home/bebi103/.htpasswd 
-AuthGroupFile /dev/null 
-require valid-user
