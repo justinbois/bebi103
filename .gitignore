@@ -7,3 +7,7 @@ data_for_notebooks/
 .ipynb_checkpoints/
 .DS_Store
 *~
+*.html
+__pycache__
+.cache
+
