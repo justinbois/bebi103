@@ -49,7 +49,7 @@ def trace_to_dataframe(trace, model=None, varnames=None,
     return df
 
 
-def Jeffreys(name, min_val=None, max_val=None, shape=None):
+def Jeffreys(name, lower=None, upper=None, shape=None):
     """
     Create a Jeffreys prior for a scale parameter.
 
@@ -57,9 +57,9 @@ def Jeffreys(name, min_val=None, max_val=None, shape=None):
     ----------
     name : str
         Name of the variable.
-    min_val : float, > 0
+    lower : float, > 0
         Minimum value the variable can take.
-    max_val : float, > `min_val`
+    upper : float, > `lower`
         Maximum value the variable can take.
     shape: int or tuple of ints, default 1
         Shape of array of variables. If 1, then a single scalar.
@@ -72,22 +72,22 @@ def Jeffreys(name, min_val=None, max_val=None, shape=None):
     # Check inputs
     if type(name) != str:
         raise RuntimeError('`name` must be a string.')
-    if min_val is None or max_val is None:
-        raise RuntimeError('`min_val` and `max_val` must be provided.')
-    if min_val <= 0:
-        raise RuntimeError('`min_val` must be > 0.')
-    if max_val <= min_val:
-        raise RuntimeError('`max_val` must be > `min_val`.')
+    if lower is None or upper is None:
+        raise RuntimeError('`lower` and `upper` must be provided.')
+    if lower <= 0:
+        raise RuntimeError('`lower` must be > 0.')
+    if upper <= lower:
+        raise RuntimeError('`upper` must be > `lower`.')
 
     # Set up Jeffreys prior
     if shape is None:
         log_var = pm.Uniform('log_' + name, 
-                             lower=np.log(min_val), 
-                             upper=np.log(max_val))
+                             lower=np.log(lower), 
+                             upper=np.log(upper))
     else:
         log_var = pm.Uniform('log_' + name, 
-                             lower=np.log(min_val), 
-                             upper=np.log(max_val),
+                             lower=np.log(lower), 
+                             upper=np.log(upper),
                              shape=shape)
     var = pm.Deterministic(name, pm.math.exp(log_var))
 
