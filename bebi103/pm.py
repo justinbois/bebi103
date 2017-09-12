@@ -48,50 +48,94 @@ def trace_to_dataframe(trace, model=None, varnames=None,
 
     return df
 
-
-def Jeffreys(name, lower=None, upper=None, shape=None):
-    """
-    Create a Jeffreys prior for a scale parameter.
+class Jeffreys(pm.Continuous):
+   """
+    Jeffreys prior for a scale parameter.
 
     Parameters
     ----------
-    name : str
-        Name of the variable.
     lower : float, > 0
         Minimum value the variable can take.
     upper : float, > `lower`
         Maximum value the variable can take.
-    shape: int or tuple of ints, default 1
-        Shape of array of variables. If 1, then a single scalar.
 
     Returns
     -------
     output : pymc3 distribution
         Distribution for Jeffreys prior.
     """
-    # Check inputs
-    if type(name) != str:
-        raise RuntimeError('`name` must be a string.')
-    if lower is None or upper is None:
-        raise RuntimeError('`lower` and `upper` must be provided.')
-    if lower <= 0:
-        raise RuntimeError('`lower` must be > 0.')
-    if upper <= lower:
-        raise RuntimeError('`upper` must be > `lower`.')
 
-    # Set up Jeffreys prior
-    if shape is None:
-        log_var = pm.Uniform('log_' + name, 
-                             lower=np.log(lower), 
-                             upper=np.log(upper))
-    else:
-        log_var = pm.Uniform('log_' + name, 
-                             lower=np.log(lower), 
-                             upper=np.log(upper),
-                             shape=shape)
-    var = pm.Deterministic(name, pm.math.exp(log_var))
+    def __init__(self, lower=None, upper=None, transform='interval',
+                 *args, **kwargs):
+        # Check inputs
+        if lower is None or upper is None:
+            raise RuntimeError('`lower` and `upper` must be provided.')
+        if lower <= 0:
+            raise RuntimeError('`lower` must be > 0.')
+        if upper <= lower:
+            raise RuntimeError('`upper` must be > `lower`.')
 
-    return var
+        if transform == 'interval':
+            transform = pm.distributions.transforms.interval(lower, upper)
+        super(Jeffreys, self).__init__(transform=transform, *args, **kwargs)        
+        self.lower = lower = pm.theanof.floatX(tt.as_tensor_variable(lower))
+        self.upper = upper = pm.theanof.floatX(tt.as_tensor_variable(upper))
+        
+        self.mean = (upper - lower) / tt.log(upper/lower)
+        self.median = tt.sqrt(lower * upper)
+        self.mode = lower
+        
+    def logp(self, value):
+        lower = self.lower
+        upper = self.upper
+        return pm.distributions.dist_math.bound(
+                    -tt.log(tt.log(upper/lower)) - tt.log(value),
+                    value >= lower, value <= upper)
+
+
+# def Jeffreys(name, lower=None, upper=None, shape=None):
+#     """
+#     Create a Jeffreys prior for a scale parameter.
+
+#     Parameters
+#     ----------
+#     name : str
+#         Name of the variable.
+#     lower : float, > 0
+#         Minimum value the variable can take.
+#     upper : float, > `lower`
+#         Maximum value the variable can take.
+#     shape: int or tuple of ints, default 1
+#         Shape of array of variables. If 1, then a single scalar.
+
+#     Returns
+#     -------
+#     output : pymc3 distribution
+#         Distribution for Jeffreys prior.
+#     """
+#     # Check inputs
+#     if type(name) != str:
+#         raise RuntimeError('`name` must be a string.')
+#     if lower is None or upper is None:
+#         raise RuntimeError('`lower` and `upper` must be provided.')
+#     if lower <= 0:
+#         raise RuntimeError('`lower` must be > 0.')
+#     if upper <= lower:
+#         raise RuntimeError('`upper` must be > `lower`.')
+
+#     # Set up Jeffreys prior
+#     if shape is None:
+#         log_var = pm.Uniform('log_' + name, 
+#                              lower=np.log(lower), 
+#                              upper=np.log(upper))
+#     else:
+#         log_var = pm.Uniform('log_' + name, 
+#                              lower=np.log(lower), 
+#                              upper=np.log(upper),
+#                              shape=shape)
+#     var = pm.Deterministic(name, pm.math.exp(log_var))
+
+#     return var
 
 
 def ReparametrizedNormal(name, mu=None, sd=None, shape=1):
@@ -170,3 +214,21 @@ def ReparametrizedCauchy(name, alpha=None, beta=None, shape=1):
     var = pm.Deterministic(name, alpha + var_reparam * beta)
 
     return var
+
+
+def chol_to_cov(chol, cov_prefix):
+    """
+    Convert flattened Cholesky matrix to covariance.
+    """
+    n = int(np.round((-1 + np.sqrt(8*chol.shape[1] + 1)) / 2))
+    sigma = np.zeros_like(chol)
+    inds = np.tril_indices(n)
+    for i, r in enumerate(chol):
+        L =  np.zeros((n, n))
+        L[inds] = r
+        sig = np.dot(L, L.T)
+        sigma[i] = sig[inds]
+
+    cols = ['{0:s}__{1:d}__{2:d}'.format(cov_prefix, i, j) 
+                for i, j in zip(*inds)]
+    return pd.DataFrame(columns=cols, data=sigma)
