@@ -5,6 +5,7 @@ import pandas as pd
 
 import pymc3 as pm
 import pymc3.stats
+import theano.tensor as tt
 
 def trace_to_dataframe(trace, model=None, varnames=None, 
                        include_transformed=False, log_post=False):
@@ -48,8 +49,9 @@ def trace_to_dataframe(trace, model=None, varnames=None,
 
     return df
 
+
 class Jeffreys(pm.Continuous):
-   """
+    """
     Jeffreys prior for a scale parameter.
 
     Parameters
@@ -64,7 +66,6 @@ class Jeffreys(pm.Continuous):
     output : pymc3 distribution
         Distribution for Jeffreys prior.
     """
-
     def __init__(self, lower=None, upper=None, transform='interval',
                  *args, **kwargs):
         # Check inputs
@@ -220,6 +221,8 @@ def chol_to_cov(chol, cov_prefix):
     """
     Convert flattened Cholesky matrix to covariance.
     """
+    chol = np.array(chol)
+
     n = int(np.round((-1 + np.sqrt(8*chol.shape[1] + 1)) / 2))
     sigma = np.zeros_like(chol)
     inds = np.tril_indices(n)
