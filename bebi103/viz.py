@@ -18,7 +18,7 @@ import datashader.bokeh_ext
 from . import utils
 
 def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', 
-         title=None, plot_height=300, plot_width=400, 
+         title=None, plot_height=300, plot_width=450, legend=None,
          formal=False, **kwargs):
     """
     Create a plot of an ECDF.
@@ -27,8 +27,33 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF',
     ----------
     data : array_like
         One-dimensional array of data. Nan's are ignored.
-    """
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
+    y_axis_label : str, default 'ECDF'
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    legend : str, default None
+        Legend text for the plotted ECDF.
+    formal : bool, default False
+        If True, make a plot of a formal ECDF (staircase). If False,
+        plot the ECDF as dots.
+    kwargs
+        Any kwargs to be passed to either p.circle or p.line, for
+        `formal` being False or True, respectively.
 
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with ECDF.
+    """
     # Check data to make sure legit
     data = utils._convert_data(data)
 
@@ -57,6 +82,21 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF',
 def _ecdf_vals(data, formal=False):
     """
     Get x, y, values of an ECDF for plotting.
+
+    Parameters
+    ----------
+    data : ndarray
+        One dimensional Numpay array with data.
+    formal : bool, default False
+        If True, generate x and y values for formal ECDF (staircase). If
+        False, generate x and y values for ECDF as dots.
+
+    Returns
+    -------
+    x : ndarray
+        x-values for plot
+    y : ndarray
+        y-values for plot
     """
     x = np.sort(data)
     y = np.arange(1, len(data)+1) / len(data)
@@ -81,6 +121,76 @@ def _ecdf_vals(data, formal=False):
         return x_formal, y_formal
     else:
         return x, y
+
+
+def jitter(df, cat, val, p=None, x_axis_label=None, y_axis_label=None, 
+           title=None, plot_height=300, plot_width=400, 
+           palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
+           formal=False, show_legend=False, jitter_width=0.5, 
+           order=None, **kwargs):
+    """
+    Make a jitter plot, default palette matches HoloViews.
+    """
+    if order is not None:
+        if len(order) > len(set(order)):
+            raise RuntimeError('Nonunique entries in `order`.')
+
+    if p is None:
+        if y_axis_label is None:
+            y_axis_label = val
+            
+        p = bokeh.plotting.figure(
+            plot_height=plot_height, plot_width=plot_width, 
+            x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
+
+    # Number of categorical variables
+    n = len(df[cat].unique())
+        
+    labels = {}
+    for i, g in enumerate(df.groupby(cat)):
+        if order is None:
+            x = i
+        elif g[0] not in order:
+            raise RuntimeError('Entry ' + g[0], ' not in `order`.')
+        else:
+            x = order.index(g[0])
+
+        if n > len(palette):
+            p.circle(x={'value': x, 
+                        'transform': bokeh.models.Jitter(width=jitter_width)},
+                     y=g[1][val], **kwargs)
+        else:
+            p.circle(x={'value': x, 
+                        'transform': bokeh.models.Jitter(width=jitter_width)},
+                     y=g[1][val], color=palette[x], **kwargs)
+        labels[x] = g[0]
+        
+    p.xaxis.ticker = np.arange(len(df[cat].unique()))
+    p.xaxis.major_label_overrides = labels
+    p.xgrid.visible = False
+        
+    return p
+
+
+def redim(fig, df, dims=None, margin=0.05):
+    """
+    Redimension data for HoloViews figure.
+    """
+    if dims is None:
+        dims = [dim.label for dim in fig.ddims]
+
+    redim_dict = {}
+    for dim in dims:
+        if df[dim].dtype in [int, np.uint8, np.uint16, float]:
+            dim_max = np.max(df[dim])
+            dim_min = np.min(df[dim])
+            dim_len = dim_max - dim_min
+            if dim_len > 0:
+                redim_dict[dim] = (dim_min - margin*dim_len, 
+                                   dim_max + margin*dim_len)
+    if redim_dict == {}:
+        return fig
+    return fig.redim.range(**redim_dict)
 
 
 def imshow(im, color_mapper=None, plot_height=400, 
@@ -505,7 +615,7 @@ def corner(trace, datashade=True, vars=None, labels=None, plot_width=150,
                     x_ecdf, y_ecdf = _ecdf_vals(df[x], formal=True)
                     df_ecdf = pd.DataFrame(data={x: x_ecdf, 'ECDF': y_ecdf}) 
                     _ = datashader.bokeh_ext.InteractiveImage(
-                            plots[i][i],_create_line_image, df=df_ecdf, 
+                            plots[i][i], _create_line_image, df=df_ecdf, 
                             x=x, y='ECDF', cmap=hist_color)
                 else:
                     plots[i][i] = ecdf(df[x], p=plots[i][i], formal=True,
@@ -577,7 +687,7 @@ def _create_points_image(x_range, y_range, w, h, df, x, y, cmap):
 def _create_line_image(x_range, y_range, w, h, df, x, y, cmap=None):
     cvs = ds.Canvas(x_range=x_range, y_range=y_range, plot_height=int(h), 
                     plot_width=int(w))
-    agg = cvs.line(df, x, y, agg=ds.reductions.count())
+    agg = cvs.line(df, x, y)
     return ds.transfer_functions.dynspread(ds.transfer_functions.shade(
                                                agg, cmap=cmap))
 
