@@ -17,9 +17,8 @@ import datashader.bokeh_ext
 
 from . import utils
 
-def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', 
-         title=None, plot_height=300, plot_width=450, legend=None,
-         formal=False, **kwargs):
+def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
+         plot_height=300, plot_width=450, formal=False, **kwargs):
     """
     Create a plot of an ECDF.
 
@@ -40,8 +39,6 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF',
         Height of plot, in pixels. Ignored is `p` is not None.
     plot_width : int, default 450
         Width of plot, in pixels. Ignored is `p` is not None.
-    legend : str, default None
-        Legend text for the plotted ECDF.
     formal : bool, default False
         If True, make a plot of a formal ECDF (staircase). If False,
         plot the ECDF as dots.
@@ -123,13 +120,107 @@ def _ecdf_vals(data, formal=False):
         return x, y
 
 
-def jitter(df, cat, val, p=None, x_axis_label=None, y_axis_label=None, 
-           title=None, plot_height=300, plot_width=400, 
-           palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
-           formal=False, show_legend=False, jitter_width=0.5, 
-           order=None, **kwargs):
+def adjust_range(element, buffer=0.05):
     """
-    Make a jitter plot, default palette matches HoloViews.
+    Adjust soft ranges of dimensions of HoloViews element.
+
+    Parameters
+    ----------
+    element : holoviews element
+        Element which will have the `soft_range` of each kdim and vdim
+        recomputed to give a buffer around the glyphs.
+    buffer : float, default 0.05
+        Buffer, as a fraction of the whole data range, to give around
+        data.
+
+    Returns
+    -------
+    output : holoviews element
+        Inputted HoloViews element with updated soft_ranges for its
+        dimensions.
+    """
+    # This only works with DataFrames
+    if type(element.data) != pd.core.frame.DataFrame:
+        raise RuntimeError(
+            'Can only adjust range if data is Pandas DataFrame.')
+
+    # Adjust ranges of kdims
+    for i, dim in enumerate(element.kdims):
+        if element.data[dim.name].dtype in [float, int]:
+            data_range = (element.data[dim.name].min(),
+                          element.data[dim.name].max())
+            if data_range[1] - data_range[0] > 0:
+                buff = buffer * (data_range[1] - data_range[0])
+                element.kdims[i].soft_range = (data_range[0] - buff,
+                                               data_range[1] + buff)
+
+    # Adjust ranges of vdims
+    for i, dim in enumerate(element.vdims):
+        if element.data[dim.name].dtype in [float, int]:
+            data_range = (element.data[dim.name].min(),
+                          element.data[dim.name].max())
+            if data_range[1] - data_range[0] > 0:
+                buff = buffer * (data_range[1] - data_range[0])
+                element.vdims[i].soft_range = (data_range[0] - buff,
+                                               data_range[1] + buff)
+
+    return element
+
+
+def _catplot(df, cat, val, kind, p=None, x_axis_label=None, y_axis_label=None,
+             title=None, plot_height=300, plot_width=400, 
+             palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
+             show_legend=False, width=0.5, order=None, **kwargs):
+    """
+    Generate a plot with a categorical variable on x-axis.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        DataFrame containing tidy data for plotting.
+    cat : hashable
+        Name of column to use as categorical variable (x-axis). This is
+        akin to a kdim in HoloViews.
+    val : hashable
+        Name of column to use as value variable. This is akin to a kdim
+        in HoloViews.
+    kind : str, either 'jitter' or 'box'
+        Kind of plot to make.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
+    y_axis_label : str, default 'ECDF'
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    palette : list of strings of hex colors, or since hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by HoloViews.
+    show_legend : bool, default False
+        If True, show legend.
+    width : float, default 0.5
+        Maximum allowable width of jittered points or boxes. A value of
+        1 means that the points or box take the entire space allotted.
+    order : list or None
+        If not None, must be a list of unique entries in `df[val]`. The
+        order of the list specifies the order of the boxes. If None,
+        the boxes appear in the order in which they appeared in the
+        inputted DataFrame.
+    kwargs
+        Any kwargs to be passed to p.circle when making the jitter plot
+        or to p.quad when making a box plot..
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with jitter plot or box plot.
     """
     if order is not None:
         if len(order) > len(set(order)):
@@ -143,54 +234,236 @@ def jitter(df, cat, val, p=None, x_axis_label=None, y_axis_label=None,
             plot_height=plot_height, plot_width=plot_width, 
             x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
 
+        p_was_None = True
+    else:
+        p_was_None = False
+
+
     # Number of categorical variables
     n = len(df[cat].unique())
         
+    # If a single string for palette, set color
+    if type(palette) == str:
+        if kind == 'jitter' and 'color' not in kwargs:
+            kwargs['color'] = palette
+        elif kind == 'box' and 'fill_color' not in kwargs:
+            kwargs['fill_color'] = palette
+        palette = None
+    elif len(palette) == 1:
+        if kind == 'jitter' and 'color' not in kwargs:
+            kwargs['color'] = palette[0]
+        elif kind == 'box' and 'fill_color' not in kwargs:
+            kwargs['fill_color'] = palette[0]
+        palette = None
+    else:
+        color_cycle = list(range(len(palette))) * (n // len(palette) + 1)
+
+    # Set box line colors
+    if kind == 'box' and 'line_color' not in kwargs:
+        kwargs['line_color'] = 'black'
+
     labels = {}
     for i, g in enumerate(df.groupby(cat)):
         if order is None:
-            x = i
+            x = i + 0.5
         elif g[0] not in order:
             raise RuntimeError('Entry ' + g[0], ' not in `order`.')
         else:
-            x = order.index(g[0])
+            x = order.index(g[0]) + 0.5
 
-        if n > len(palette):
-            p.circle(x={'value': x, 
-                        'transform': bokeh.models.Jitter(width=jitter_width)},
-                     y=g[1][val], **kwargs)
-        else:
-            p.circle(x={'value': x, 
-                        'transform': bokeh.models.Jitter(width=jitter_width)},
-                     y=g[1][val], color=palette[x], **kwargs)
+        if kind == 'box':
+            data = g[1][val]
+            bottom, middle, top = np.percentile(data, [25, 50, 75])
+            iqr = top - bottom
+            left = x - width / 2
+            right = x + width / 2
+            top_whisker = min(top + 1.5*iqr, data.max())
+            bottom_whisker = max(bottom - 1.5*iqr, data.min())
+            whisk_lr = [x - 0.1, x + 0.1]
+            outliers = data[(data > top_whisker) | (data < bottom_whisker)]
+
+            if palette is None:
+                p.quad(left, right, top, bottom, **kwargs)
+            else:
+                p.quad(left, right, top, bottom,
+                       fill_color=palette[color_cycle[i]], **kwargs)
+            p.line([left, right], [middle]*2, color='black')
+            p.line([x, x], [bottom, bottom_whisker], color='black')
+            p.line([x, x], [top, top_whisker], color='black')
+            p.line(whisk_lr, bottom_whisker, color='black')
+            p.line(whisk_lr, top_whisker, color='black')
+            p.circle([x]*len(outliers), outliers, color='black')
+        elif kind == 'jitter':
+            if palette is None:
+                p.circle(x={'value': x, 
+                            'transform': bokeh.models.Jitter(width=width)},
+                         y=g[1][val],
+                         **kwargs)
+            else:
+                p.circle(x={'value': x, 
+                            'transform': bokeh.models.Jitter(width=width)},
+                         y=g[1][val], 
+                         color=palette[color_cycle[i]],
+                         **kwargs)
         labels[x] = g[0]
-        
-    p.xaxis.ticker = np.arange(len(df[cat].unique()))
-    p.xaxis.major_label_overrides = labels
-    p.xgrid.visible = False
+
+    if p_was_None:
+        p.xaxis.ticker = np.arange(len(df[cat].unique())) + 0.5
+        p.xaxis.major_label_overrides = labels
+        p.xgrid.visible = False
         
     return p
 
 
-def redim(fig, df, dims=None, margin=0.05):
+def jitter(df, cat, val, p=None, x_axis_label=None, y_axis_label=None, 
+           title=None, plot_height=300, plot_width=400, 
+           palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
+           show_legend=False, jitter_width=0.5, order=None, **kwargs):
     """
-    Redimension data for HoloViews figure.
-    """
-    if dims is None:
-        dims = [dim.label for dim in fig.ddims]
+    Make a jitter plot from a tidy DataFrame.
 
-    redim_dict = {}
-    for dim in dims:
-        if df[dim].dtype in [int, np.uint8, np.uint16, float]:
-            dim_max = np.max(df[dim])
-            dim_min = np.min(df[dim])
-            dim_len = dim_max - dim_min
-            if dim_len > 0:
-                redim_dict[dim] = (dim_min - margin*dim_len, 
-                                   dim_max + margin*dim_len)
-    if redim_dict == {}:
-        return fig
-    return fig.redim.range(**redim_dict)
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        DataFrame containing tidy data for plotting.
+    cat : hashable
+        Name of column to use as categorical variable (x-axis). This is
+        akin to a kdim in HoloViews.
+    val : hashable
+        Name of column to use as value variable. This is akin to a kdim
+        in HoloViews.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
+    y_axis_label : str, default 'ECDF'
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    palette : list of strings of hex colors, or since hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by HoloViews.
+    show_legend : bool, default False
+        If True, show legend.
+    jitter_width : float, default 0.5
+        Maximum allowable width of jittered points. A value of 1 means
+        that the points take the entire space allotted.
+    order : list or None
+        If not None, must be a list of unique entries in `df[val]`. The
+        order of the list specifies the order of the boxes. If None,
+        the boxes appear in the order in which they appeared in the
+        inputted DataFrame.
+    kwargs
+        Any kwargs to be passed to p.circle when making the jitter plot.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with jitter plot.
+    """
+    return _catplot(df,
+                    cat, 
+                    val, 
+                    'jitter', 
+                    p=p, 
+                    x_axis_label=x_axis_label,
+                    y_axis_label=y_axis_label,
+                    title=title,
+                    plot_height=plot_height, 
+                    plot_width=plot_width, 
+                    palette=palette,
+                    show_legend=show_legend, 
+                    width=jitter_width, 
+                    order=order, 
+                    **kwargs)
+
+
+def boxwhisker(df, cat, val, p=None, x_axis_label=None, y_axis_label=None, 
+               title=None, plot_height=300, plot_width=400, 
+               palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
+               show_legend=False, box_width=0.5, order=None, **kwargs):
+    """
+    Make a box-and-whisker plot from a tidy DataFrame.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        DataFrame containing tidy data for plotting.
+    cat : hashable
+        Name of column to use as categorical variable (x-axis). This is
+        akin to a kdim in HoloViews.
+    val : hashable
+        Name of column to use as value variable. This is akin to a kdim
+        in HoloViews.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
+    y_axis_label : str, default 'ECDF'
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    palette : list of strings of hex colors, or since hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all boxes are colored with that color. Default is
+        the default color cycle employed by HoloViews.
+    show_legend : bool, default False
+        If True, show legend.
+    box_width : float, default 0.5
+        Maximum allowable width of the boxes. A value of 1 means that
+        the boxes take the entire space allotted.
+    order : list or None
+        If not None, must be a list of unique entries in `df[val]`. The
+        order of the list specifies the order of the boxes. If None,
+        the boxes appear in the order in which they appeared in the
+        inputted DataFrame.
+    kwargs
+        Any kwargs to be passed to p.quad when making the plot.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with box-and-whisker plot.
+
+    Notes
+    -----
+    .. Uses the Tukey convention for box plots. The top and bottom of
+       the box are respectively the 75th and 25th percentiles of the
+       data. The line in the middle of the box is the median. The 
+       top whisker extends to the lesser of the largest data point and
+       the top of the box plus 1.5 times the interquartile region (the
+       height of the box). The bottom whisker extends to the greater of 
+       the smallest data point and the bottom of the box minus 1.5 times
+       the interquartile region. Data points not between the ends of the
+       whiskers are considered outliers and are plotted as individual
+       points.
+    """
+    return _catplot(df,
+                    cat, 
+                    val, 
+                    'box', 
+                    p=p, 
+                    x_axis_label=x_axis_label,
+                    y_axis_label=y_axis_label,
+                    title=title,
+                    plot_height=plot_height, 
+                    plot_width=plot_width, 
+                    palette=palette,
+                    show_legend=show_legend, 
+                    width=box_width, 
+                    order=order, 
+                    **kwargs)
 
 
 def imshow(im, color_mapper=None, plot_height=400, 
@@ -487,48 +760,6 @@ def rgb_frac_to_hex(rgb_frac):
                                            int(rgb_frac[2] * 255))
 
 
-def data_to_hex_color(x, palette, x_range=[0, 1], na_value='#000000'):
-    """
-    Convert a value to a hexidecimal color according to
-    color palette.
-
-    Parameters
-    ----------
-    x : float or int
-        Value to be converted to hexidecimal color.
-    palette : list of 3-tuples
-        Color palette as returned from seaborn.color_palette().
-        List of 3-tuples containing fractional RGB values.
-    x_range : array_list, shape (2,), default = [0, 1]
-        Low and high value of the range of values `x` may
-        assume.
-
-    Returns
-    -------
-    str
-        Hexidecimal string.
-
-    Examples
-    --------
-    >>> data_to_hex_color(0.7, sns.colorpalette())
-    '#ccb974'
-
-    >>> data_to_hex_color(7.1, [(1, 0, 0), (0, 1, 0), (0, 0, 1)], [0, 10])
-    '#0000ff'
-    """
-    if x is None or np.isnan(x):
-        return na_value
-    elif x > x_range[1] or x < x_range[0]:
-        raise RuntimeError('data outside of range')
-    elif x == x_range[1]:
-        return rgb_frac_to_hex(palette[-1])
-
-    # Fractional position of x in x_range
-    f = (x - x_range[0]) / (x_range[1] - x_range[0])
-
-    return rgb_frac_to_hex(palette[int(f * len(palette))])
-
-
 def corner(trace, datashade=True, vars=None, labels=None, plot_width=150, 
            smooth=2, bins=20, cmap='black', contour_color='black', 
            hist_color='black', alpha=1, bins_2d=50, plot_ecdf=False,
@@ -541,6 +772,9 @@ def corner(trace, datashade=True, vars=None, labels=None, plot_width=150,
     ----------
     trace : PyMC3 Trace or MultiTrace instance or Pandas DataFrame
         Trace of MCMC sampler.
+    datashade : bool, default True
+        Whether or not to convert sampled points to a raster image using
+        Datashader.
     """
 
     if type(trace) == pd.core.frame.DataFrame:
