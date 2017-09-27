@@ -3,10 +3,6 @@
 Utilities Caltech BE/Bi 103: Data Analysis in the Biological Sciences
 
 
-version number: 0.0.2
-author: Justin Bois
-
-
 ## Installation / Usage
 
 To install use pip:
