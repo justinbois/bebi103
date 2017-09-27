@@ -167,8 +167,8 @@ def adjust_range(element, buffer=0.05):
     return element
 
 
-def _catplot(df, cat, val, kind, p=None, x_axis_label=None, y_axis_label=None,
-             title=None, plot_height=300, plot_width=400, 
+def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
+             y_axis_label=None, title=None, plot_height=300, plot_width=400, 
              palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
              show_legend=False, width=0.5, order=None, **kwargs):
     """
@@ -178,8 +178,8 @@ def _catplot(df, cat, val, kind, p=None, x_axis_label=None, y_axis_label=None,
     ----------
     df : Pandas DataFrame
         DataFrame containing tidy data for plotting.
-    cat : hashable
-        Name of column to use as categorical variable (x-axis). This is
+    cats : hashable or list of hastables
+        Name of column(s) to use as categorical variable (x-axis). This is
         akin to a kdim in HoloViews.
     val : hashable
         Name of column to use as value variable. This is akin to a kdim
@@ -240,7 +240,8 @@ def _catplot(df, cat, val, kind, p=None, x_axis_label=None, y_axis_label=None,
 
 
     # Number of categorical variables
-    n = len(df[cat].unique())
+    gb = df.groupby(cats)
+    n = len(gb)
         
     # If a single string for palette, set color
     if type(palette) == str:
@@ -263,7 +264,7 @@ def _catplot(df, cat, val, kind, p=None, x_axis_label=None, y_axis_label=None,
         kwargs['line_color'] = 'black'
 
     labels = {}
-    for i, g in enumerate(df.groupby(cat)):
+    for i, g in enumerate(gb):
         if order is None:
             x = i + 0.5
         elif g[0] not in order:
@@ -305,17 +306,20 @@ def _catplot(df, cat, val, kind, p=None, x_axis_label=None, y_axis_label=None,
                          y=g[1][val], 
                          color=palette[color_cycle[i]],
                          **kwargs)
-        labels[x] = g[0]
+        if type(g[0]) == tuple:
+            labels[x] = ', '.join([str(c) for c in g[0]])
+        else:
+            labels[x] = g[0]
 
     if p_was_None:
-        p.xaxis.ticker = np.arange(len(df[cat].unique())) + 0.5
+        p.xaxis.ticker = np.arange(len(gb)) + 0.5
         p.xaxis.major_label_overrides = labels
         p.xgrid.visible = False
         
     return p
 
 
-def jitter(df, cat, val, p=None, x_axis_label=None, y_axis_label=None, 
+def jitter(df, cats, val, p=None, x_axis_label=None, y_axis_label=None, 
            title=None, plot_height=300, plot_width=400, 
            palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
            show_legend=False, jitter_width=0.5, order=None, **kwargs):
@@ -326,8 +330,8 @@ def jitter(df, cat, val, p=None, x_axis_label=None, y_axis_label=None,
     ----------
     df : Pandas DataFrame
         DataFrame containing tidy data for plotting.
-    cat : hashable
-        Name of column to use as categorical variable (x-axis). This is
+    cats : hashable or list of hastables
+        Name of column(s) to use as categorical variable (x-axis). This is
         akin to a kdim in HoloViews.
     val : hashable
         Name of column to use as value variable. This is akin to a kdim
@@ -368,7 +372,7 @@ def jitter(df, cat, val, p=None, x_axis_label=None, y_axis_label=None,
         Plot populated with jitter plot.
     """
     return _catplot(df,
-                    cat, 
+                    cats, 
                     val, 
                     'jitter', 
                     p=p, 
@@ -384,7 +388,7 @@ def jitter(df, cat, val, p=None, x_axis_label=None, y_axis_label=None,
                     **kwargs)
 
 
-def boxwhisker(df, cat, val, p=None, x_axis_label=None, y_axis_label=None, 
+def boxwhisker(df, cats, val, p=None, x_axis_label=None, y_axis_label=None, 
                title=None, plot_height=300, plot_width=400, 
                palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
                show_legend=False, box_width=0.5, order=None, **kwargs):
@@ -395,8 +399,8 @@ def boxwhisker(df, cat, val, p=None, x_axis_label=None, y_axis_label=None,
     ----------
     df : Pandas DataFrame
         DataFrame containing tidy data for plotting.
-    cat : hashable
-        Name of column to use as categorical variable (x-axis). This is
+    cats : hashable or list of hastables
+        Name of column(s) to use as categorical variable (x-axis). This is
         akin to a kdim in HoloViews.
     val : hashable
         Name of column to use as value variable. This is akin to a kdim
@@ -450,7 +454,7 @@ def boxwhisker(df, cat, val, p=None, x_axis_label=None, y_axis_label=None,
        points.
     """
     return _catplot(df,
-                    cat, 
+                    cats, 
                     val, 
                     'box', 
                     p=p, 
