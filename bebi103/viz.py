@@ -170,7 +170,8 @@ def adjust_range(element, buffer=0.05):
 def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
              y_axis_label=None, title=None, plot_height=300, plot_width=400, 
              palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
-             show_legend=False, width=0.5, order=None, **kwargs):
+             show_legend=True, formal=False, width=0.5, order=None,
+             **kwargs):
     """
     Generate a plot with a categorical variable on x-axis.
 
@@ -208,6 +209,9 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
     width : float, default 0.5
         Maximum allowable width of jittered points or boxes. A value of
         1 means that the points or box take the entire space allotted.
+    formal : bool, default False
+        If True, make a plot of a formal ECDF (staircase). If False,
+        plot the ECDF as dots. Only active when `kind` is 'ecdf'.
     order : list or None
         If not None, must be a list of unique entries in `df[val]`. The
         order of the list specifies the order of the boxes. If None,
@@ -265,12 +269,18 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
 
     labels = {}
     for i, g in enumerate(gb):
-        if order is None:
-            x = i + 0.5
-        elif g[0] not in order:
-            raise RuntimeError('Entry ' + g[0], ' not in `order`.')
-        else:
-            x = order.index(g[0]) + 0.5
+        if kind in ['box', 'jitter']:
+            if order is None:
+                x = i + 0.5
+            elif g[0] not in order:
+                raise RuntimeError('Entry ' + g[0], ' not in `order`.')
+            else:
+                x = order.index(g[0]) + 0.5
+
+            if type(g[0]) == tuple:
+                labels[x] = ', '.join([str(c) for c in g[0]])
+            else:
+                labels[x] = g[0]
 
         if kind == 'box':
             data = g[1][val]
@@ -296,7 +306,7 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
             p.circle([x]*len(outliers), outliers, color='black')
         elif kind == 'jitter':
             if palette is None:
-                p.circle(x={'value': x, 
+                p.jitter(x={'value': x, 
                             'transform': bokeh.models.Jitter(width=width)},
                          y=g[1][val],
                          **kwargs)
@@ -306,23 +316,40 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
                          y=g[1][val], 
                          color=palette[color_cycle[i]],
                          **kwargs)
-        if type(g[0]) == tuple:
-            labels[x] = ', '.join([str(c) for c in g[0]])
-        else:
-            labels[x] = g[0]
+        elif kind == 'ecdf':
+            if show_legend:
+                if type(g[0]) == tuple:
+                    legend = ', '.join([str(c) for c in g[0]])
+                else:
+                    legend = g[0]
+            else:
+                legend = None
 
-    if p_was_None:
+            if palette is None:
+                ecdf(g[1][val], formal=formal, p=p, legend=legend, **kwargs)
+            else:
+                ecdf(g[1][val],
+                     formal=formal,
+                     p=p,
+                     legend=legend,
+                     color=palette[color_cycle[i]],
+                     **kwargs)
+   
+    if p_was_None and kind in ['box', 'jitter']:
         p.xaxis.ticker = np.arange(len(gb)) + 0.5
         p.xaxis.major_label_overrides = labels
         p.xgrid.visible = False
         
+    if kind == 'ecdf':
+        p.legend.location = 'bottom_right'
+
     return p
 
-
-def jitter(df, cats, val, p=None, x_axis_label=None, y_axis_label=None, 
-           title=None, plot_height=300, plot_width=400, 
-           palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
-           show_legend=False, jitter_width=0.5, order=None, **kwargs):
+def ecdf_collection(
+        df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
+        title=None, plot_height=300, plot_width=400, 
+        palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
+        show_legend=True, formal=False, order=None, **kwargs):
     """
     Make a jitter plot from a tidy DataFrame.
 
@@ -371,6 +398,78 @@ def jitter(df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
     output : bokeh.plotting.Figure instance
         Plot populated with jitter plot.
     """
+    if x_axis_label is None:
+        x_axis_label = val
+    if y_axis_label is None:
+        y_axis_label = 'ECDF'
+
+    return _catplot(df,
+                    cats, 
+                    val, 
+                    'ecdf', 
+                    p=p, 
+                    x_axis_label=x_axis_label,
+                    y_axis_label=y_axis_label,
+                    title=title,
+                    plot_height=plot_height, 
+                    plot_width=plot_width, 
+                    palette=palette,
+                    show_legend=show_legend,
+                    formal=formal,
+                    order=order, 
+                    **kwargs)
+
+
+def jitter(df, cats, val, p=None, x_axis_label=None, y_axis_label=None, 
+           title=None, plot_height=300, plot_width=400, 
+           palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
+           jitter_width=0.5, order=None, **kwargs):
+    """
+    Make a jitter plot from a tidy DataFrame.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        DataFrame containing tidy data for plotting.
+    cats : hashable or list of hastables
+        Name of column(s) to use as categorical variable (x-axis). This is
+        akin to a kdim in HoloViews.
+    val : hashable
+        Name of column to use as value variable. This is akin to a kdim
+        in HoloViews.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
+    y_axis_label : str, default 'ECDF'
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    palette : list of strings of hex colors, or since hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by HoloViews.
+    jitter_width : float, default 0.5
+        Maximum allowable width of jittered points. A value of 1 means
+        that the points take the entire space allotted.
+    order : list or None
+        If not None, must be a list of unique entries in `df[val]`. The
+        order of the list specifies the order of the boxes. If None,
+        the boxes appear in the order in which they appeared in the
+        inputted DataFrame.
+    kwargs
+        Any kwargs to be passed to p.circle when making the jitter plot.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with jitter plot.
+    """
     return _catplot(df,
                     cats, 
                     val, 
@@ -381,9 +480,9 @@ def jitter(df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
                     title=title,
                     plot_height=plot_height, 
                     plot_width=plot_width, 
-                    palette=palette,
-                    show_legend=show_legend, 
+                    palette=palette, 
                     width=jitter_width, 
+                    show_legend=False,
                     order=order, 
                     **kwargs)
 
@@ -391,7 +490,7 @@ def jitter(df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
 def boxwhisker(df, cats, val, p=None, x_axis_label=None, y_axis_label=None, 
                title=None, plot_height=300, plot_width=400, 
                palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
-               show_legend=False, box_width=0.5, order=None, **kwargs):
+               box_width=0.5, order=None, **kwargs):
     """
     Make a box-and-whisker plot from a tidy DataFrame.
 
@@ -422,8 +521,6 @@ def boxwhisker(df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
         If a list, color palette to use. If a single string representing
         a hex color, all boxes are colored with that color. Default is
         the default color cycle employed by HoloViews.
-    show_legend : bool, default False
-        If True, show legend.
     box_width : float, default 0.5
         Maximum allowable width of the boxes. A value of 1 means that
         the boxes take the entire space allotted.
@@ -464,8 +561,8 @@ def boxwhisker(df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
                     plot_height=plot_height, 
                     plot_width=plot_width, 
                     palette=palette,
-                    show_legend=show_legend, 
                     width=box_width, 
+                    show_legend=False,
                     order=order, 
                     **kwargs)
 
