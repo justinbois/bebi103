@@ -2,12 +2,15 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import scipy.stats as st
 import pymc3 as pm
 import scipy.ndimage
 import skimage
 
 import matplotlib._cntr
 
+import bokeh.application
+import bokeh.application.handlers
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
@@ -332,7 +335,7 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
             p.circle([x]*len(outliers), outliers, color='black')
         elif kind == 'jitter':
             if palette is None:
-                p.jitter(x={'value': x, 
+                p.circle(x={'value': x, 
                             'transform': bokeh.models.Jitter(width=width)},
                          y=g[1][val],
                          **kwargs)
@@ -1228,3 +1231,104 @@ def _get_contour_lines(x, y, smooth=4, levels=None, bins=50, weights=None):
             ys.append(line[:,1])
             
     return xs, ys
+
+
+def distribution_plot_app(doc, scipy_dist=None, custom_pdf=None,
+    custom_pmf=None,
+    custom_cdf=None, params=None, plot_height=200, plot_width=300,
+    x_axis_label=None, pdf_y_axis_label=None, pmf_y_axis_label=None, 
+    cdf_y_axis_label='CDF', dist_name=None):
+    """
+    Function to build interactive Bokeh app.
+    """
+
+    if scipy_dist is None:
+        if (custom_pdf is None and custom_pmf is None) or custom_cdf is None:
+            raise RuntimeError('For custom distributions, both PDF/PMF and'
+                                + ' CDF must be specified.')
+        if (custom_pdf is None + custom_pmf is None) == 2:
+            raise RuntimeError('Can only specify custom PMF or PDF.')
+        if custom_pdf is None:
+            discrete = False
+            if pmf_y_axis_label is None:
+                p_y_axis_label = 'PMF'
+        else:
+            discrete = True
+            if pdf_y_axis_label is None:
+                p_y_axis_label = 'PDF'
+    elif (   custom_pdf is not None 
+          or custom_pmf is not None
+          or custom_cdf is not None):
+        raise RuntimeError(
+            'Can only specify either custom or scipy distribution.')
+    else:
+        if hasattr(scipy_dist, 'pmf'):
+            discrete = True
+            if pmf_y_axis_label is None:
+                p_y_axis_label = 'PMF'
+        else:
+            discrete = False
+            if pdf_y_axis_label is None:
+                p_y_axis_label = 'PDF'
+
+
+    if params is None:
+        raise RuntimeError('`params` must be specified.')
+
+
+    def _plot_app(doc)
+        p_p = bokeh.plotting.figure(plot_height=plot_height,
+                                    plot_width=plot_width,
+                                      x_axis_label=x_axis_label,
+                                      y_axis_label='PDF'
+        p_c = bokeh.plotting.figure(plot_height=200,
+                                    plot_width=300,
+                                    x_axis_label='λ',
+                                    y_axis_label=r'F(λ|x̄, n)')
+
+        # Link the axes
+        p_cdf.x_range = p_pdf.x_range
+
+        # Set up data for plot
+        lam = np.linspace(0, 50, 400)
+        x_bar = 10
+        n = 100
+
+        source = bokeh.models.ColumnDataSource(
+                data={'lam': lam,
+                      'post': posterior(lam, x_bar, n),
+                      'post_cdf': posterior_cdf(lam, x_bar, n)})
+
+        # Plot PDF and CSF
+        p_pdf.line('lam', 'post', source=source, line_width=2)
+        p_cdf.line('lam', 'post_cdf', source=source, line_width=2)
+        
+        def callback(attr, old, new):
+            x_bar = x_bar_slider.value
+            n = n_slider.value
+            source.data['post'] = posterior(lam, x_bar, n)
+            source.data['post_cdf'] = posterior_cdf(lam, x_bar, n)
+
+        x_bar_slider = bokeh.models.Slider(start=1,
+                                           end=30,
+                                           value=10,
+                                           step=1,
+                                           title='x_bar')
+        x_bar_slider.on_change('value', callback)
+
+        n_slider = bokeh.models.Slider(start=1,
+                                       end=500,
+                                       value=100,
+                                       step=1,
+                                       title='n')
+
+        x_bar_slider.on_change('value', callback)
+        n_slider.on_change('value', callback)
+
+        # Add the plot to the app
+        widgets = bokeh.layouts.widgetbox([x_bar_slider, n_slider])
+        grid = bokeh.layouts.gridplot([p_pdf, p_cdf], ncols=2)
+        doc.add_root(bokeh.layouts.column(widgets, grid))
+
+    handler = bokeh.application.handlers.FunctionHandler(posterior_plot_app)
+    app = bokeh.application.Application(handler)
