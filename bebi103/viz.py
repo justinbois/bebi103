@@ -1233,102 +1233,139 @@ def _get_contour_lines(x, y, smooth=4, levels=None, bins=50, weights=None):
     return xs, ys
 
 
-# def distribution_plot_app(doc, scipy_dist=None, custom_pdf=None,
-#     custom_pmf=None,
-#     custom_cdf=None, params=None, plot_height=200, plot_width=300,
-#     x_axis_label=None, pdf_y_axis_label=None, pmf_y_axis_label=None, 
-#     cdf_y_axis_label='CDF', dist_name=None):
-#     """
-#     Function to build interactive Bokeh app.
-#     """
+def distribution_plot_app(x_min, x_max, scipy_dist=None, custom_pdf=None,
+    custom_pmf=None,
+    custom_cdf=None, params=None, n=400, plot_height=200, plot_width=300,
+    x_axis_label='x', pdf_y_axis_label=None, pmf_y_axis_label=None, 
+    cdf_y_axis_label='CDF', dist_name=None):
+    """
+    Function to build interactive Bokeh app displaying a probability 
+    distribution.
+    """
 
-#     if scipy_dist is None:
-#         if (custom_pdf is None and custom_pmf is None) or custom_cdf is None:
-#             raise RuntimeError('For custom distributions, both PDF/PMF and'
-#                                 + ' CDF must be specified.')
-#         if (custom_pdf is None + custom_pmf is None) == 2:
-#             raise RuntimeError('Can only specify custom PMF or PDF.')
-#         if custom_pdf is None:
-#             discrete = False
-#             if pmf_y_axis_label is None:
-#                 p_y_axis_label = 'PMF'
-#         else:
-#             discrete = True
-#             if pdf_y_axis_label is None:
-#                 p_y_axis_label = 'PDF'
-#     elif (   custom_pdf is not None 
-#           or custom_pmf is not None
-#           or custom_cdf is not None):
-#         raise RuntimeError(
-#             'Can only specify either custom or scipy distribution.')
-#     else:
-#         if hasattr(scipy_dist, 'pmf'):
-#             discrete = True
-#             if pmf_y_axis_label is None:
-#                 p_y_axis_label = 'PMF'
-#         else:
-#             discrete = False
-#             if pdf_y_axis_label is None:
-#                 p_y_axis_label = 'PDF'
+    if scipy_dist is None:
+        fun_c = custom_cdf
+        if (custom_pdf is None and custom_pmf is None) or custom_cdf is None:
+            raise RuntimeError('For custom distributions, both PDF/PMF and'
+                                + ' CDF must be specified.')
+        if (custom_pdf is None and custom_pmf is None) == 2:
+            raise RuntimeError('Can only specify custom PMF or PDF.')
+        if custom_pdf is None:
+            discrete = True
+            fun_p = custom_pmf
+            if pmf_y_axis_label is None:
+                p_y_axis_label = 'PMF'
+        else:
+            discrete = False
+            fun_p = custom_pdf
+            if pdf_y_axis_label is None:
+                p_y_axis_label = 'PDF'
+    elif (   custom_pdf is not None 
+          or custom_pmf is not None
+          or custom_cdf is not None):
+        raise RuntimeError(
+            'Can only specify either custom or scipy distribution.')
+    else:
+        fun_c = scipy_dist.cdf
+        if hasattr(scipy_dist, 'pmf'):
+            discrete = True
+            fun_p = scipy_dist.pmf
+            if pmf_y_axis_label is None:
+                p_y_axis_label = 'PMF'
+        else:
+            discrete = False
+            fun_p = scipy_dist.pdf
+            if pdf_y_axis_label is None:
+                p_y_axis_label = 'PDF'
 
 
-#     if params is None:
-#         raise RuntimeError('`params` must be specified.')
+
+    if params is None:
+        raise RuntimeError('`params` must be specified.')
 
 
-#     def _plot_app(doc):
-#         p_p = bokeh.plotting.figure(plot_height=plot_height,
-#                                     plot_width=plot_width,
-#                                       x_axis_label=x_axis_label,
-#                                       y_axis_label='PDF'
-#         p_c = bokeh.plotting.figure(plot_height=200,
-#                                     plot_width=300,
-#                                     x_axis_label='λ',
-#                                     y_axis_label=r'F(λ|x̄, n)')
+    def _plot_app(doc):
+        p_p = bokeh.plotting.figure(plot_height=plot_height,
+                                    plot_width=plot_width,
+                                      x_axis_label=x_axis_label,
+                                      y_axis_label='PDF')
+        p_c = bokeh.plotting.figure(plot_height=plot_height,
+                                    plot_width=plot_width,
+                                    x_axis_label=x_axis_label,
+                                    y_axis_label='CDF')
 
-#         # Link the axes
-#         p_cdf.x_range = p_pdf.x_range
+        # Link the axes
+        p_c.x_range = p_p.x_range
 
-#         # Set up data for plot
-#         lam = np.linspace(0, 50, 400)
-#         x_bar = 10
-#         n = 100
+        # Set up data for plot
+        if discrete:
+            x = np.arange(x_min, x_max+1)
+            x_c = np.empty(2*len(x) - 1)
+            x_c[0] = x[0]
+            x_c[1::2] = x[1:]
+            x_c[2::2] = x[1:]
+        else:
+            x = np.linspace(x_min, x_max, n)
 
-#         source = bokeh.models.ColumnDataSource(
-#                 data={'lam': lam,
-#                       'post': posterior(lam, x_bar, n),
-#                       'post_cdf': posterior_cdf(lam, x_bar, n)})
+        # Make array of parameter values
+        param_vals = tuple([param['value'] for param in params])
 
-#         # Plot PDF and CSF
-#         p_pdf.line('lam', 'post', source=source, line_width=2)
-#         p_cdf.line('lam', 'post_cdf', source=source, line_width=2)
+        # Compute PDF and CDF
+        y_p = fun_p(x, *param_vals)
+        y_c = fun_c(x, *param_vals)
+
+        # Set up data sources
+        source = bokeh.models.ColumnDataSource(data={'x': x,
+                                                     'y_p': y_p, 
+                                                     'y_c': y_c})
+        # If discrete, need to take care with CDF
+
+        if discrete:
+            y_c_plot = np.empty(2*len(x) - 1)
+            y_c_plot[::2] = y_c
+            y_c_plot[1::2] = y_c[:-1]
+            source_discrete_cdf = bokeh.models.ColumnDataSource(
+                data={'x': x_c, 'y_c': y_c_plot})
+
+        # Plot PDF and CDF
+        if discrete:
+            p_p.circle('x', 'y_p', source=source, size=5)
+            p_p.segment(x0='x',
+                        x1='x',
+                        y0=0, 
+                        y1='y_p', 
+                        source=source, 
+                        line_width=2)
+            p_c.line('x', 'y_c', source=source_discrete_cdf, line_width=2)
+        else:
+            p_p.line('x', 'y_p', source=source, line_width=2)
+            p_c.line('x', 'y_c', source=source, line_width=2)
         
-#         def callback(attr, old, new):
-#             x_bar = x_bar_slider.value
-#             n = n_slider.value
-#             source.data['post'] = posterior(lam, x_bar, n)
-#             source.data['post_cdf'] = posterior_cdf(lam, x_bar, n)
+        def _callback(attr, old, new):
+            param_vals = tuple([slider.value for slider in sliders])
+            source.data['y_p'] = fun_p(x, *param_vals)
+            if discrete:
+                y_c = fun_c(x, *param_vals)
+                y_c_plot = np.empty(2*len(x) - 1)
+                y_c_plot[::2] = y_c
+                y_c_plot[1::2] = y_c[:-1]
+                source_discrete_cdf.data['y_c'] = y_c_plot
+            else:
+                source.data['y_c'] = fun_c(x, *param_vals)
 
-#         x_bar_slider = bokeh.models.Slider(start=1,
-#                                            end=30,
-#                                            value=10,
-#                                            step=1,
-#                                            title='x_bar')
-#         x_bar_slider.on_change('value', callback)
+        sliders = [bokeh.models.Slider(start=param['start'],
+                                       end=param['end'],
+                                       value=param['value'],
+                                       step=param['step'],
+                                       title=param['name'])
+                            for param in params]
+        for slider in sliders:
+            slider.on_change('value', _callback)
 
-#         n_slider = bokeh.models.Slider(start=1,
-#                                        end=500,
-#                                        value=100,
-#                                        step=1,
-#                                        title='n')
+        # Add the plot to the app
+        widgets = bokeh.layouts.widgetbox(sliders)
+        grid = bokeh.layouts.gridplot([p_p, p_c], ncols=2)
+        doc.add_root(bokeh.layouts.column(widgets, grid))
 
-#         x_bar_slider.on_change('value', callback)
-#         n_slider.on_change('value', callback)
-
-#         # Add the plot to the app
-#         widgets = bokeh.layouts.widgetbox([x_bar_slider, n_slider])
-#         grid = bokeh.layouts.gridplot([p_pdf, p_cdf], ncols=2)
-#         doc.add_root(bokeh.layouts.column(widgets, grid))
-
-#     handler = bokeh.application.handlers.FunctionHandler(posterior_plot_app)
-#     app = bokeh.application.Application(handler)
+    handler = bokeh.application.handlers.FunctionHandler(_plot_app)
+    return bokeh.application.Application(handler)
