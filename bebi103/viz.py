@@ -688,9 +688,11 @@ def boxwhisker(df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
                     **kwargs)
 
 
-def imshow(im, color_mapper=None, plot_height=400, 
+def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
            length_units='pixels', interpixel_distance=1.0,
-           no_ticks=False, flip=True, return_im=False):
+           x_range=None, y_range=None,
+           no_ticks=False, x_axis_label=None, y_axis_label=None, 
+           title=None, flip=True, return_im=False):
     """
     Display an image in a Bokeh figure.
     
@@ -710,10 +712,17 @@ def imshow(im, color_mapper=None, plot_height=400,
         x and y distance between pixels is the same.
     length_units : str, default 'pixels'
         The units of length in the image.
-    interpixel_distance : float, default 1.0
-        Interpixel distance in units of `length_units`.
+    interpixel_distance_x : float, default 1.0
+        Interpixel distance along x-axis in units of `length_units`.
+    interpixel_distance_y : float, default None
+        Interpixel distance along x-axis in units of `length_units`. If
+        None, then same as `interpixel_distance_x`.        
     no_ticks : bool, default False
         If True, no ticks are displayed. See note below.
+    flip : bool, default True
+        If True, flip image so it displays right-side up. This is
+        necessary because traditionally images have their 0,0 pixel
+        index in the top left corner, and not the bottom left corner.
     return_im : bool, default False
         If True, return the GlyphRenderer instance of the image being
         displayed.
@@ -763,15 +772,25 @@ def imshow(im, color_mapper=None, plot_height=400,
 
     # Get shape, dimensions
     n, m = im.shape[:2]
-    dw = m * interpixel_distance
-    dh = n * interpixel_distance
+    if x_range is not None and y_range is not None:
+        dw = x_range[1] - x_range[0]
+        dh = y_range[1] - y_range[0]
+    else:
+        dw = m * interpixel_distance
+        dh = n * interpixel_distance
+        x_range = [0, dw]
+        y_range = [0, dh]
     
     # Set up figure with appropriate dimensions
-    plot_width = int(m/n * plot_height)
+    if plot_width is None:
+        plot_width = int(m/n * plot_height)
+    p = bokeh.plotting.figure(plot_height=plot_height,
+                              plot_width=plot_width,
+                              x_range=x_range,
+                              y_range=y_range,
+                              title=title,
+                              tools='pan,box_zoom,wheel_zoom,reset')
     if no_ticks:
-        p = bokeh.plotting.figure(
-            plot_height=plot_height, plot_width=plot_width, x_range=[0, dw],
-            y_range=[0, dh], tools='pan,box_zoom,wheel_zoom,reset')
         p.xaxis.major_label_text_font_size = '0pt'
         p.yaxis.major_label_text_font_size = '0pt'
         p.xaxis.major_tick_line_color = None 
@@ -779,20 +798,31 @@ def imshow(im, color_mapper=None, plot_height=400,
         p.yaxis.major_tick_line_color = None 
         p.yaxis.minor_tick_line_color = None
     else:
-        p = bokeh.plotting.figure(
-            plot_height=plot_height, plot_width=plot_width, x_range=[0, dw],
-            y_range=[0, dh], x_axis_label=length_units, 
-            y_axis_label=length_units, tools='pan,box_zoom,wheel_zoom,reset')
+        if x_axis_label is None:
+            p.xaxis.axis_label = length_units
+        else:
+            p.xaxis.axis_label = x_axis_label
+        if y_axis_label is None:
+            p.yaxis.axis_label = length_units
+        else:
+            p.yaxis.axis_label = y_axis_label
 
     # Display the image
     if im.ndim == 2:
         if flip:
             im = im[::-1,:]
-        im_bokeh = p.image(image=[im], x=0, y=0, dw=dw, dh=dh, 
+        im_bokeh = p.image(image=[im],
+                           x=x_range[0], 
+                           y=y_range[0], 
+                           dw=dw, 
+                           dh=dh, 
                            color_mapper=color_mapper)
     else:
         im_bokeh = p.image_rgba(image=[rgb_to_rgba32(im, flip=flip)], 
-                                x=0, y=0, dw=dw, dh=dh)
+                                x=x_range[0],
+                                y=y_range[0],
+                                dw=dw, 
+                                dh=dh)
     
     if return_im:
         return p, im_bokeh
@@ -1056,7 +1086,7 @@ def corner(trace, datashade=True, vars=None, labels=None, plot_width=150,
             else:
                 plots[i][j].circle(df[x], df[y], size=2, 
                                    alpha=alpha, color=cmap)
-            xs, ys = _get_contour_lines(
+            xs, ys = _get_contour_lines_from_samples(
                 df[x].values, df[y].values, bins=bins_2d, smooth=smooth, 
                 levels=levels, weights=weights)
             plots[i][j].multi_line(xs, ys, line_color=contour_color, 
@@ -1125,6 +1155,141 @@ def corner(trace, datashade=True, vars=None, labels=None, plot_width=150,
     return grid
 
 
+def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350, 
+            plot_height=300, x_axis_label='x', y_axis_label='y', title=None, 
+            line_color=None, line_width=2, color_mapper=None,
+            overlay_grid=False, fill=False, fill_palette=None,
+            fill_alpha=0.75):
+    """
+    Make a contour plot, possibly overlaid on an image.
+
+    Parameters
+    ----------
+    X : 2D Numpy array
+        Array of x-values, as would be produced using np.meshgrid()
+    Y : 2D Numpy array
+        Array of y-values, as would be produced using np.meshgrid()
+    Z : 2D Numpy array
+        Array of z-values.
+    levels : array_like
+        Levels to plot, ranging from 0 to 1. The contour around a given
+        level contains that fraction of the total probability if the
+        contour plot is for a 2D probability density function. By 
+        default, the levels are given by the one, two, three, and four
+        sigma levels corresponding to a marginalized distribution from
+        a 2D Gaussian distribution.
+    p : bokeh plotting object, default None
+        If not None, the contour are added to `p`. This option is not
+        allowed if `overlaid` is True.
+    overlaid : bool, default False
+        If True, `Z` is displayed as an image and the contours are
+        overlaid.
+    plot_width : int, default 350
+        Width of the plot in pixels. Ignored if `p` is not None.
+    plot_height : int, default 300
+        Height of the plot in pixels. Ignored if `p` is not None.
+    x_axis_label : str, default 'x'
+        Label for the x-axis. Ignored if `p` is not None.
+    y_axis_label : str, default 'y'
+        Label for the y-axis. Ignored if `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored if `p` is not None.
+    line_color : str, defaults to Bokeh default
+        Color, either named CSS color or hex, of contour lines.
+    line_width : int, default 2
+        Width of contour lines.
+    color_mapper : bokeh.models.LinearColorMapper, default Viridis
+        Mapping of `Z` level to color. Ignored if `overlaid` is False.
+    overlay_grid : bool, default False
+        If True, faintly overlay the grid on top of image. Ignored if
+        overlaid is False.
+
+    Returns
+    -------
+    output : Bokeh plotting object
+        Plot populated with contours, possible with an image.
+    """
+    if len(X.shape) != 2 or Y.shape != X.shape or Z.shape != X.shape:
+        raise RuntimeError('All arrays must be 2D and of same shape.')
+
+    if overlaid and p is not None:
+        raise RuntimeError('Cannot specify `p` if showing image.')
+
+    if line_color is None:
+        if overlaid:
+            line_color = 'white'
+        else:
+            line_color = 'black'
+
+    if p is None:
+        if overlaid:
+            p = imshow(Z,
+                       color_mapper=color_mapper,
+                       plot_height=plot_height,
+                       plot_width=plot_width,
+                       x_axis_label=x_axis_label,
+                       y_axis_label=y_axis_label,
+                       title=title,
+                       x_range = [X.min(), X.max()],
+                       y_range = [Y.min(), Y.max()],
+                       no_ticks=False, 
+                       flip=False, 
+                       return_im=False)
+        else:
+            p = bokeh.plotting.figure(plot_width=plot_width,
+                                      plot_height=plot_height,
+                                      x_axis_label=x_axis_label,
+                                      y_axis_label=y_axis_label,
+                                      title=title)
+
+    # Set default levels
+    if levels is None:
+        levels = 1.0 - np.exp(-np.arange(0.5, 2.1, 0.5)**2 / 2)
+
+    # Compute contour lines
+    xs, ys = _contour_lines(X, Y, Z, levels)
+
+    # Make fills. This is currently not supported
+    if fill:
+        raise NotImplementedError('Filled contours are not yet implemented.')
+        if fill_palette is None:
+            if len(levels) <= 6:
+                fill_palette = bokeh.palettes.Greys[len(levels)+3][1:-1]
+            elif len(levels) <= 10:
+                fill_palette = bokeh.palettes.Viridis[len(levels)+1]
+            else:
+                raise RuntimeError(
+                    'Can only have maximally 10 levels with filled contours' +
+                    ' unless user specifies `fill_palette`.')
+        elif len(fill_palette) != len(levels) + 1:
+            raise RuntimeError('`fill_palette` must have 1 more entry' +
+                               ' than `levels`')
+
+        p.patch(xs[-1], ys[-1],
+                color=fill_palette[0],
+                alpha=fill_alpha,
+                line_color=None)
+        for i in range(1, len(levels)):
+            x_p = np.concatenate((xs[-1-i], xs[-i][::-1]))
+            y_p = np.concatenate((ys[-1-i], ys[-i][::-1]))
+            print(len(x_p), len(y_p))
+            p.patch(x_p, 
+                    y_p, 
+                    color=fill_palette[i],
+                    alpha=fill_alpha,
+                    line_color=None)
+
+        p.background_fill_color=fill_palette[-1]
+
+    # Populate the plot with contour lines
+    p.multi_line(xs, ys, line_color=line_color, line_width=2)
+
+    if overlay_grid and overlaid:
+        p.grid.level = 'overlay'
+        p.grid.grid_line_alpha = 0.2
+
+    return p
+
 def _data_range(df, x, y, margin=0.02):
     x_range = df[x].max() - df[x].min()
     y_range = df[y].max() - df[y].min()
@@ -1148,7 +1313,46 @@ def _create_line_image(x_range, y_range, w, h, df, x, y, cmap=None):
                                                agg, cmap=cmap))
 
 
-def _get_contour_lines(x, y, smooth=4, levels=None, bins=50, weights=None):
+def _contour_lines(X, Y, Z, levels):
+    """
+    Generate lines for contour plot.
+    """
+    # Compute the density levels.
+    Zflat = Z.flatten()
+    inds = np.argsort(Zflat)[::-1]
+    Zflat = Zflat[inds]
+    sm = np.cumsum(Zflat)
+    sm /= sm[-1]
+    V = np.empty(len(levels))
+    for i, v0 in enumerate(levels):
+        try:
+            V[i] = Zflat[sm <= v0][-1]
+        except:
+            V[i] = Zflat[0]
+    V.sort()
+    m = np.diff(V) == 0
+    
+    while np.any(m):
+        V[np.where(m)[0][0]] *= 1.0 - 1e-4
+        m = np.diff(V) == 0
+    V.sort()
+
+    # Make contours
+    c = matplotlib._cntr.Cntr(X, Y, Z)
+    xs = []
+    ys = []
+    for level in V:
+        paths = c.trace(level)
+        n_lines = len(paths) // 2
+        for line in paths[:n_lines]:
+            xs.append(line[:,0])
+            ys.append(line[:,1])
+            
+    return xs, ys
+
+
+def _get_contour_lines_from_samples(x, y, smooth=4, levels=None, bins=50, 
+                                    weights=None):
     """
     Get lines for contour overlay.
 
@@ -1172,26 +1376,6 @@ def _get_contour_lines(x, y, smooth=4, levels=None, bins=50, weights=None):
 
     if smooth is not None:
         H = scipy.ndimage.gaussian_filter(H, smooth)
-        
-    # Compute the density levels.
-    Hflat = H.flatten()
-    inds = np.argsort(Hflat)[::-1]
-    Hflat = Hflat[inds]
-    sm = np.cumsum(Hflat)
-    sm /= sm[-1]
-    V = np.empty(len(levels))
-    for i, v0 in enumerate(levels):
-        try:
-            V[i] = Hflat[sm <= v0][-1]
-        except:
-            V[i] = Hflat[0]
-    V.sort()
-    m = np.diff(V) == 0
-    
-    while np.any(m):
-        V[np.where(m)[0][0]] *= 1.0 - 1e-4
-        m = np.diff(V) == 0
-    V.sort()
 
     # Compute the bin centers.
     X1, Y1 = 0.5 * (X[1:] + X[:-1]), 0.5 * (Y[1:] + Y[:-1])
@@ -1220,27 +1404,72 @@ def _get_contour_lines(x, y, smooth=4, levels=None, bins=50, weights=None):
 
     # Set up contour object
     X2, Y2 = np.meshgrid(X2, Y2)
-    c = matplotlib._cntr.Cntr(X2, Y2, H2.transpose())
-    xs = []
-    ys = []
-    for level in V:
-        paths = c.trace(level)
-        n_lines = len(paths) // 2
-        for line in paths[:n_lines]:
-            xs.append(line[:,0])
-            ys.append(line[:,1])
-            
-    return xs, ys
+
+    return _contour_lines(X2, Y2, H2.transpose(), levels)
 
 
 def distribution_plot_app(x_min, x_max, scipy_dist=None, custom_pdf=None,
-    custom_pmf=None,
-    custom_cdf=None, params=None, n=400, plot_height=200, plot_width=300,
-    x_axis_label='x', pdf_y_axis_label=None, pmf_y_axis_label=None, 
-    cdf_y_axis_label='CDF', dist_name=None):
+    custom_pmf=None, custom_cdf=None, params=None, n=400, plot_height=200, 
+    plot_width=300, x_axis_label='x', pdf_y_axis_label=None, 
+    pmf_y_axis_label=None, cdf_y_axis_label='CDF', title=None):
     """
-    Function to build interactive Bokeh app displaying a probability 
-    distribution.
+    Function to build interactive Bokeh app displaying a univariate
+    probability distribution.
+
+    Parameters
+    ----------
+    x_min : float
+        Minimum value that the random variable can take in plots.
+    x_max : float
+        Maximum value that the random variable can take in plots.
+    scipy_dist : scipy.stats distribution
+        Distribution to use in plotting.
+    custom_pdf : function
+        Function with call signature f(x, *params) that computes the
+        PDF of a distribution.
+    custom_pmf : function    
+        Function with call signature f(x, *params) that computes the
+        PDF of a distribution.
+    custom_cdf : function
+        Function with call signature F(x, *params) that computes the
+        CDF of a distribution.
+    params : list of dicts
+        A list of parameter specifications. Each entry in the list gives
+        specifications for a parameter of the distribution stored as a
+        dictionary. Each dictionary must have the following keys.
+            name : str, name of the parameter
+            start : float, starting point of slider for parameter (the
+                smallest allowed value of the parameter)
+            end : float, ending point of slider for parameter (the
+                largest allowed value of the parameter)
+            value : float, the value of the parameter that the slider
+                takes initially. Must be between start and end.
+            step : float, the step size for the slider
+    n : int, default 400
+        Number of points to use in making plots of PDF and CDF for 
+        continuous distributions. This should be large enough to give
+        smooth plots.
+    plot_height : int, default 200
+        Height of plots.
+    plot_width : int, default 300
+        Width of plots.
+    x_axis_label : str, default 'x'
+        Label for x-axis.
+    pdf_y_axis_label : str, default 'PDF'
+        Label for the y-axis of the PDF plot.
+    pmf_y_axis_label : str, default 'PMF'
+        Label for the y-axis of the PMF plot.
+    cdf_y_axis_label : str, default 'CDF'
+        Label for the y-axis of the CDF plot.
+    title : str, default None
+        Title to be displayed above the PDF or PMF plot.
+
+    Returns
+    -------
+    output : Bokeh app
+        An app to visualize the PDF/PMF and CDF. It can be displayed
+        with bokeh.io.show(). If it is displayed in a notebook, the
+        notebook_url kwarg should be specified.
     """
 
     if scipy_dist is None:
@@ -1287,8 +1516,9 @@ def distribution_plot_app(x_min, x_max, scipy_dist=None, custom_pdf=None,
     def _plot_app(doc):
         p_p = bokeh.plotting.figure(plot_height=plot_height,
                                     plot_width=plot_width,
-                                      x_axis_label=x_axis_label,
-                                      y_axis_label='PDF')
+                                    x_axis_label=x_axis_label,
+                                    y_axis_label='PDF',
+                                    title=title)
         p_c = bokeh.plotting.figure(plot_height=plot_height,
                                     plot_width=plot_width,
                                     x_axis_label=x_axis_label,
