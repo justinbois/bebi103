@@ -20,6 +20,84 @@ import datashader.bokeh_ext
 
 from . import utils
 
+def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
+                 title=None, plot_height=300, plot_width=450,
+                 fill_color='#1f77b4', line_color='#1f77b4', show_line=True,
+                 line_width=1, fill_alpha=1, line_alpha=1, p=None, **kwargs):
+    """
+    Create a filled region between two curves.
+
+    Parameters
+    ----------
+    x1 : array_like
+        Array of x-values for first curve
+    y1 : array_like
+        Array of y-values for first curve
+    x2 : array_like
+        Array of x-values for second curve
+    y2 : array_like
+        Array of y-values for second curve
+    y_axis_label : str, default None
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    fill_color : str, default '#1f77b4'
+        Color of fill as a hex string.
+    line_color : str, default '#1f77b4'
+        Color of the line as a hex string.
+    show_line : bool, default True
+        If True, show the lines on the edges of the fill.
+    line_width : int, default 1
+        Line width of lines on the edgs of the fill.
+    fill_alpha : float, default 1.0
+        Opacity of the fill.
+    line_alpha : float, default 1.0
+        Opacity of the lines.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with fill-between.
+
+    Notes
+    -----
+    .. Any remaining kwargs are passed to bokeh.models.patch().
+    """
+    if p is None:
+        p = bokeh.plotting.figure(
+            plot_height=plot_height, plot_width=plot_width, 
+            x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
+
+
+    p.patch(x=np.concatenate((x1, x2[::-1])),
+            y=np.concatenate((y1, y2[::-1])),
+            alpha=fill_alpha,
+            fill_color=fill_color,
+            line_width=0,
+            **kwargs)
+
+    if show_line:
+        p.line(x1,
+               y1, 
+               line_width=line_width, 
+               alpha=line_alpha, 
+               color=line_color)
+        p.line(x2, 
+               y2, 
+               line_width=line_width, 
+               alpha=line_alpha, 
+               color=line_color)
+
+    return p
+
+
 def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
          plot_height=300, plot_width=450, formal=False, **kwargs):
     """
