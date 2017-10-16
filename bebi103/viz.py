@@ -374,15 +374,16 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
     if kind == 'box' and 'line_color' not in kwargs:
         kwargs['line_color'] = 'black'
 
+    # Set up the iterator over the groupby object
+    if order is None:
+        order = list(gb.groups.keys())
+    gb_iterator = [(order_val, gb.get_group(order_val)) 
+                        for order_val in order]
+
     labels = {}
-    for i, g in enumerate(gb):
+    for i, g in enumerate(gb_iterator):
         if kind in ['box', 'jitter']:
-            if order is None:
-                x = i + 0.5
-            elif g[0] not in order:
-                raise RuntimeError('Entry ' + g[0], ' not in `order`.')
-            else:
-                x = order.index(g[0]) + 0.5
+            x = i + 0.5
 
             if type(g[0]) == tuple:
                 labels[x] = ', '.join([str(c) for c in g[0]])
