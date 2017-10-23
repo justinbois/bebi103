@@ -157,20 +157,48 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
     return p
 
 
-def histogram(data, bins=None, p=None, x_axis_label=None, y_axis_label=None,
-              title=None, kind='step', plot_height=300, plot_width=450, 
-              density=True, **kwargs):
+def histogram(data, bins=10, p=None, x_axis_label=None, y_axis_label=None,
+              title=None, plot_height=300, plot_width=450, density=True,
+              kind='step', **kwargs):
     """
     Make a plot of a histogram of a data set.
+
+    Parameters
+    ----------
+    data : array_like
+        1D array of data to make a histogram out of
+    bins : int or array_like, default 10
+        Setting for `bins` kwarg to be passed to `np.histogram()`.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
+    y_axis_label : str, default None
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    density : bool, default True
+        If True, normalized the histogram. Otherwise, base the histogram
+        on counts.
+    kind : str, default 'step'
+        The kind of histogram to display. Allowed values are 'step' and
+        'step_filled'.
+
+    Returns
+    -------
+    output : Bokeh figure
+        Figure populted with histogram.
     """
    # Instantiate Bokeh plot if not already passed in
     if p is None:
         p = bokeh.plotting.figure(
             plot_height=plot_height, plot_width=plot_width, 
             x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
-
-    if bins is None:
-        bins = 10
 
     # Compute histogram
     f, e = np.histogram(data, bins=bins, density=density)
@@ -284,18 +312,6 @@ def adjust_range(element, buffer=0.05):
                                                data_range[1] + buff)
 
     return element
-
-
-def colored_ecdf(df, cats, val, palette, p=None, show_legend=False,
-                 x_axis_label=None,
-                 y_axis_label='ECDF', title=None, plot_height=300, 
-                 plot_width=450, **kwargs):
-    """
-    """
-    df_sorted = df.sort_values(by=val)
-    _, df_sorted['__ecdf_y_values'] = _ecdf_vals(df_sorted[val])
-    gb = df_sorted.groupby(cats)
-    n = len(gb)
     
 
 def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
@@ -1129,21 +1145,76 @@ def rgb_frac_to_hex(rgb_frac):
                                            int(rgb_frac[2] * 255))
 
 
-def corner(trace, vars=None, datashade=True, labels=None, plot_width=150, 
-           smooth=2, bins=20, cmap='black', contour_color='black', 
+def corner(trace, vars=None, labels=None, datashade=True, plot_width=150, 
+           smooth=1, bins=20, cmap='black', contour_color='black', 
            hist_color='black', alpha=1, bins_2d=50, plot_ecdf=False,
            plot_width_correction=50, plot_height_correction=40, levels=None,
            weights=None, show_contours=True, extend_contour_domain=False):
     """
-    Make a corner plot of MCMC results.
+    Make a corner plot of MCMC results. Heavily influenced by the corner
+    package by Dan Foreman-Mackey.
 
     Parameters
     ----------
     trace : PyMC3 Trace or MultiTrace instance or Pandas DataFrame
         Trace of MCMC sampler.
+    vars : list
+        List of variables as strings included in `trace` to construct
+        corner plot.
+    labels : list, default None
+        List of labels for the respective variables given in `vars`. If
+        None, the variable names from `vars` are used.
     datashade : bool, default True
         Whether or not to convert sampled points to a raster image using
-        Datashader.
+        Datashader. For almost all applications, this should be true.
+        Otherwise, you will try to render thousands and thousands of
+        points.
+    plot_width : int, default 150
+        Width of each plot in the corner plot in pixels. The height is
+        computed from the width to make the plots roughly square.
+    smooth : int or None, default 1
+        Width of smoothing kernel for making contours.
+    bins : int, default 20
+        Number of binds to use in constructing histograms. Ignored if
+        `plot_ecdf` is True.
+    cmap : str, default 'black'
+        Valid colormap string for DataShader and for coloring Bokeh
+        glyphs.
+    contour_color : str, default 'black'
+        Color of contour lines
+    hist_color : str, default 'black'
+        Color of histogram lines
+    alpha : float, default 1.0
+        Opacity of glyphs. Ignored if `datashade` is True.
+    bins_2d : int, default 50
+        Number of bins in each direction for binning 2D histograms when
+        computing contours
+    plot_ecdf : bool, default False
+        If True, plot ECDFs of samples on the diagonal of the corner
+        plot. If False, histograms are plotted.
+    plot_width_correction : int, default 50
+        Correction for width of plot taking into account tick and axis
+        labels.
+    plot_height_correction : int, default 40
+        Correction for height of plot taking into account tick and axis
+        labels.
+    levels : list of floats, default None
+        Levels to use when constructing contours. By default, these are
+        chosen according to this principle from Dan Foreman-Mackey:
+        http://corner.readthedocs.io/en/latest/pages/sigmas.html
+    weights : default None
+        Value to pass as `weights` kwarg to np.histogram2d().
+    show_contours : bool, default True
+        If True, show contour plot on top of samples.
+    extend_contour_domain : bool, default False
+        If True, extend the domain of the contours a little bit beyond
+        the extend of the samples. This is done in the corner module,
+        but I prefer not to do it.
+
+    Returns
+    -------
+    output : Bokeh gridplot
+        Corner plot as a Bokeh gridplot.
     """
 
     if vars is None:
@@ -1477,7 +1548,7 @@ def _contour_lines(X, Y, Z, levels):
     return xs, ys
 
 
-def _get_contour_lines_from_samples(x, y, smooth=2, levels=None, bins=50, 
+def _get_contour_lines_from_samples(x, y, smooth=1, levels=None, bins=50, 
                                     weights=None, extend_domain=False):
     """
     Get lines for contour overlay.
