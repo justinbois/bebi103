@@ -1326,7 +1326,8 @@ def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350,
         levels = 1.0 - np.exp(-np.arange(0.5, 2.1, 0.5)**2 / 2)
 
     # Compute contour lines
-    xs, ys = _contour_lines(X, Y, Z, levels)
+    if fill or line_width:
+        xs, ys = _contour_lines(X, Y, Z, levels)
 
     # Make fills. This is currently not supported
     if fill:
@@ -1361,7 +1362,8 @@ def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350,
         p.background_fill_color=fill_palette[-1]
 
     # Populate the plot with contour lines
-    p.multi_line(xs, ys, line_color=line_color, line_width=2)
+    if line_width:
+        p.multi_line(xs, ys, line_color=line_color, line_width=line_width)
 
     if overlay_grid and overlaid:
         p.grid.level = 'overlay'
