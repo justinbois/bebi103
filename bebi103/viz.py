@@ -157,6 +157,44 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
     return p
 
 
+def histogram(data, bins=None, p=None, x_axis_label=None, y_axis_label=None,
+              title=None, kind='step', plot_height=300, plot_width=450, 
+              density=True, **kwargs):
+    """
+    Make a plot of a histogram of a data set.
+    """
+   # Instantiate Bokeh plot if not already passed in
+    if p is None:
+        p = bokeh.plotting.figure(
+            plot_height=plot_height, plot_width=plot_width, 
+            x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
+
+    if bins is None:
+        bins = 10
+
+    # Compute histogram
+    f, e = np.histogram(data, bins=bins, density=density)
+    e0 = np.empty(2*len(e))
+    f0 = np.empty(2*len(e))
+    e0[::2] = e
+    e0[1::2] = e
+    f0[0] = 0
+    f0[-1] = 0
+    f0[1:-1:2] = f
+    f0[2:-1:2] = f
+
+    if kind == 'step':
+        p.line(e0, f0, **kwargs)
+
+    if kind == 'step_filled':
+        x2 = [e0.min(), e0.max()]
+        y2 = [0, 0]
+        p = fill_between(e0, f0, x2, y2, show_line=True, p=p, **kwargs)
+
+    return p
+
+
+
 def _ecdf_vals(data, formal=False):
     """
     Get x, y, values of an ECDF for plotting.
@@ -1091,11 +1129,11 @@ def rgb_frac_to_hex(rgb_frac):
                                            int(rgb_frac[2] * 255))
 
 
-def corner(trace, datashade=True, vars=None, labels=None, plot_width=150, 
+def corner(trace, vars=None, datashade=True, labels=None, plot_width=150, 
            smooth=2, bins=20, cmap='black', contour_color='black', 
            hist_color='black', alpha=1, bins_2d=50, plot_ecdf=False,
            plot_width_correction=50, plot_height_correction=40, levels=None,
-           weights=None):
+           weights=None, show_contours=True, extend_contour_domain=False):
     """
     Make a corner plot of MCMC results.
 
@@ -1108,14 +1146,14 @@ def corner(trace, datashade=True, vars=None, labels=None, plot_width=150,
         Datashader.
     """
 
+    if vars is None:
+        raise RuntimeError('Must specify vars.')
+
     if type(trace) == pd.core.frame.DataFrame:
         df = trace
     else:
         df = pm.trace_to_dataframe(trace) 
 
-    if vars is None:
-        vars = df.columns[~(df.columns.isin(
-                            ['chain', 'log_like', 'log_post', 'log_prior']))]
     if len (vars) > 6:
         raise RuntimeError(
                     'For space purposes, can show only five variables.')
@@ -1134,12 +1172,12 @@ def corner(trace, datashade=True, vars=None, labels=None, plot_width=150,
         raise NotImplementedError('Single histogram to be implemented.')
         
     if not datashade:
-        if len(df) > 1000:
-            warnings.warn(
-                'Rendering so many points without DataShader is ill-advised.')
-        elif len(df) > 10000:
+        if len(df) > 10000:
             raise RuntimeError(
                 'Cannot render more than 10,000 samples without DataShader.')
+        elif len(df) > 1000:
+            warnings.warn(
+                'Rendering so many points without DataShader is ill-advised.')
 
     plots = [[None for _ in range(len(vars))] for _ in range(len(vars))]
     
@@ -1165,11 +1203,18 @@ def corner(trace, datashade=True, vars=None, labels=None, plot_width=150,
             else:
                 plots[i][j].circle(df[x], df[y], size=2, 
                                    alpha=alpha, color=cmap)
-            xs, ys = _get_contour_lines_from_samples(
-                df[x].values, df[y].values, bins=bins_2d, smooth=smooth, 
-                levels=levels, weights=weights)
-            plots[i][j].multi_line(xs, ys, line_color=contour_color, 
-                                   line_width=2)
+
+            if show_contours:
+                xs, ys = _get_contour_lines_from_samples(
+                                df[x].values,
+                                df[y].values, 
+                                bins=bins_2d, 
+                                smooth=smooth, 
+                                levels=levels,
+                                weights=weights, 
+                                extend_domain=extend_contour_domain)
+                plots[i][j].multi_line(xs, ys, line_color=contour_color, 
+                                       line_width=2)
         else:
             if plot_ecdf:
                 x_range, _ = _data_range(df, x, x)
@@ -1430,8 +1475,8 @@ def _contour_lines(X, Y, Z, levels):
     return xs, ys
 
 
-def _get_contour_lines_from_samples(x, y, smooth=4, levels=None, bins=50, 
-                                    weights=None):
+def _get_contour_lines_from_samples(x, y, smooth=2, levels=None, bins=50, 
+                                    weights=None, extend_domain=False):
     """
     Get lines for contour overlay.
 
@@ -1460,29 +1505,31 @@ def _get_contour_lines_from_samples(x, y, smooth=4, levels=None, bins=50,
     X1, Y1 = 0.5 * (X[1:] + X[:-1]), 0.5 * (Y[1:] + Y[:-1])
 
     # Extend the array for the sake of the contours at the plot edges.
-    H2 = H.min() + np.zeros((H.shape[0] + 4, H.shape[1] + 4))
-    H2[2:-2, 2:-2] = H
-    H2[2:-2, 1] = H[:, 0]
-    H2[2:-2, -2] = H[:, -1]
-    H2[1, 2:-2] = H[0]
-    H2[-2, 2:-2] = H[-1]
-    H2[1, 1] = H[0, 0]
-    H2[1, -2] = H[0, -1]
-    H2[-2, 1] = H[-1, 0]
-    H2[-2, -2] = H[-1, -1]
-    X2 = np.concatenate([
-        X1[0] + np.array([-2, -1]) * np.diff(X1[:2]),
-        X1,
-        X1[-1] + np.array([1, 2]) * np.diff(X1[-2:]),
-    ])
-    Y2 = np.concatenate([
-        Y1[0] + np.array([-2, -1]) * np.diff(Y1[:2]),
-        Y1,
-        Y1[-1] + np.array([1, 2]) * np.diff(Y1[-2:]),
-    ])
-
-    # Set up contour object
-    X2, Y2 = np.meshgrid(X2, Y2)
+    if extend_domain:
+        H2 = H.min() + np.zeros((H.shape[0] + 4, H.shape[1] + 4))
+        H2[2:-2, 2:-2] = H
+        H2[2:-2, 1] = H[:, 0]
+        H2[2:-2, -2] = H[:, -1]
+        H2[1, 2:-2] = H[0]
+        H2[-2, 2:-2] = H[-1]
+        H2[1, 1] = H[0, 0]
+        H2[1, -2] = H[0, -1]
+        H2[-2, 1] = H[-1, 0]
+        H2[-2, -2] = H[-1, -1]
+        X2 = np.concatenate([
+            X1[0] + np.array([-2, -1]) * np.diff(X1[:2]),
+            X1,
+            X1[-1] + np.array([1, 2]) * np.diff(X1[-2:]),
+        ])
+        Y2 = np.concatenate([
+            Y1[0] + np.array([-2, -1]) * np.diff(Y1[:2]),
+            Y1,
+            Y1[-1] + np.array([1, 2]) * np.diff(Y1[-2:]),
+        ])
+        X2, Y2 = np.meshgrid(X2, Y2)
+    else:
+        X2, Y2 = np.meshgrid(X1, Y1)
+        H2 = H
 
     return _contour_lines(X2, Y2, H2.transpose(), levels)
 
