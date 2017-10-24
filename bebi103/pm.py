@@ -213,6 +213,39 @@ def ReparametrizedCauchy(name, alpha=None, beta=None, shape=1):
     return var
 
 
+def hotdist(dist, name, beta, *args, **kwargs):
+    """
+    Instantiate a "hot" distribution. The "hot" distribution takes the
+    value returned by the logp method of `dist` and returns beta * logp.
+
+    Parameters
+    ----------
+    dist : PyMC3 distribution
+        The name of a distribution you want to make hot. Examples:
+        pm.Normal, pm.Binomial, pm.MvNormal, pm.Dirichlet.
+    name : str
+        Name of the random variable.
+    beta : float on interval [0, 1]
+        Beta value (inverse temperature) of the distribution.
+
+    Returns
+    -------
+    output : pymc3 distribution
+        Hot distribution. 
+    """
+    class HotDistribution(dist):
+        def __init__(self, beta, *args, **kwargs):
+            super(HotDistribution, self).__init__(*args, **kwargs)
+            if not (0 <= beta <= 1):
+                raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
+            self.beta = beta
+
+        def logp(self, value):
+            return self.beta * dist.logp(self, value)
+        
+    return HotDistribution(name, beta, *args, **kwargs)
+
+
 def chol_to_cov(chol, cov_prefix):
     """
     Convert flattened Cholesky matrix to covariance.
@@ -224,7 +257,7 @@ def chol_to_cov(chol, cov_prefix):
         from trace.get_values(chol), where trace is a PyMC3 MultiTrace
         instance.
     chol_prefix : str
-        Prefix for the name of the covariance variable. Results are
+        Prefix for the nam e of the covariance variable. Results are
         stored as prefix__i__j, where i and j are the row and column
         indices, respectively.
 
