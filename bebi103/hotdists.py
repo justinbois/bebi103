@@ -624,52 +624,7 @@ class HotWeibull(pm.Weibull):
         return self.beta * pm.Weibull.logp(self, value)
 
 
-class HotHalfStudentT(pm.HalfStudentT):
-    """
-    A "hot" HalfStudentT distribution.
-
-    Parameters
-    ----------
-    beta : float on interval [0, 1]
-        Beta value (inverse temperature) of the distribution.
-
-    Returns
-    -------
-    output : pymc3 distribution
-        Hot HalfStudentT distribution. 
-    """
-    def __init__(self, beta, *args, **kwargs):
-        super(HotHalfStudentT, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
-        
-    def logp(self, value):
-        return self.beta * pm.HalfStudentT.logp(self, value)
-
-
-class HotStudentTpos(pm.StudentTpos):
-    """
-    A "hot" StudentTpos distribution.
-
-    Parameters
-    ----------
-    beta : float on interval [0, 1]
-        Beta value (inverse temperature) of the distribution.
-
-    Returns
-    -------
-    output : pymc3 distribution
-        Hot StudentTpos distribution. 
-    """
-    def __init__(self, beta, *args, **kwargs):
-        super(HotStudentTpos, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
-        
-    def logp(self, value):
-        return self.beta * pm.StudentTpos.logp(self, value)
+HotHalfStudentT = pm.Bound(pm.StudentT, lower=0)
 
 
 class HotLognormal(pm.Lognormal):
@@ -1054,30 +1009,6 @@ class HotWishart(pm.Wishart):
         
     def logp(self, value):
         return self.beta * pm.Wishart.logp(self, value)
-
-
-class HotWishartBartlett(pm.WishartBartlett):
-    """
-    A "hot" WishartBartlett distribution.
-
-    Parameters
-    ----------
-    beta : float on interval [0, 1]
-        Beta value (inverse temperature) of the distribution.
-
-    Returns
-    -------
-    output : pymc3 distribution
-        Hot WishartBartlett distribution. 
-    """
-    def __init__(self, beta, *args, **kwargs):
-        super(HotWishartBartlett, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
-        
-    def logp(self, value):
-        return self.beta * pm.WishartBartlett.logp(self, value)
 
 
 class HotLKJCorr(pm.LKJCorr):

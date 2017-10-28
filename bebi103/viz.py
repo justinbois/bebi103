@@ -571,12 +571,12 @@ def ecdf_collection(
         the boxes appear in the order in which they appeared in the
         inputted DataFrame.
     kwargs
-        Any kwargs to be passed to p.circle when making the jitter plot.
+        Any kwargs to be passed to p.circle when making the ECDF.
 
     Returns
     -------
     output : bokeh.plotting.Figure instance
-        Plot populated with jitter plot.
+        Plot populated with ECDFs.
     """
     if x_axis_label is None:
         x_axis_label = val
@@ -643,12 +643,12 @@ def colored_ecdf(
         the boxes appear in the order in which they appeared in the
         inputted DataFrame.
     kwargs
-        Any kwargs to be passed to p.circle when making the jitter plot.
+        Any kwargs to be passed to p.circle when making the ECDF.
 
     Returns
     -------
     output : bokeh.plotting.Figure instance
-        Plot populated with jitter plot.
+        Plot populated with a colored ECDF.
     """
     if x_axis_label is None:
         x_axis_label = val
@@ -1354,7 +1354,7 @@ def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350,
             plot_height=300, x_axis_label='x', y_axis_label='y', title=None, 
             line_color=None, line_width=2, color_mapper=None,
             overlay_grid=False, fill=False, fill_palette=None,
-            fill_alpha=0.75):
+            fill_alpha=0.75, **kwargs):
     """
     Make a contour plot, possibly overlaid on an image.
 
@@ -1479,7 +1479,8 @@ def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350,
 
     # Populate the plot with contour lines
     if line_width:
-        p.multi_line(xs, ys, line_color=line_color, line_width=line_width)
+        p.multi_line(xs, ys, line_color=line_color, line_width=line_width,
+                     **kwargs)
 
     if overlay_grid and overlaid:
         p.grid.level = 'overlay'

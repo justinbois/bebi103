@@ -7,6 +7,8 @@ import pymc3 as pm
 import pymc3.stats
 import theano.tensor as tt
 
+from .hotdists import *
+
 def trace_to_dataframe(trace, model=None, log_post=False):
     """
     Convert a PyMC3 trace to a Pandas DataFrame
@@ -81,10 +83,6 @@ class Jeffreys(pm.Continuous):
         # Check inputs
         if lower is None or upper is None:
             raise RuntimeError('`lower` and `upper` must be provided.')
-        if lower <= 0:
-            raise RuntimeError('`lower` must be > 0.')
-        if upper <= lower:
-            raise RuntimeError('`upper` must be > `lower`.')
 
         if transform == 'interval':
             transform = pm.distributions.transforms.interval(lower, upper)
@@ -134,6 +132,50 @@ class MarginalizedHomoscedasticNormal(pm.Continuous):
                      - 0.5 * n * tt.log(np.pi)) 
         return prefactor - 0.5 * n * tt.log(tt.sum((value - self.mu)**2))
 
+
+class GoodBad(pm.Continuous):
+    """
+    Likelihood for the good-bad data model, in which each data point
+    is either "good" with a small variance or "bad" with a large 
+    variance.
+
+    Parameters
+    ----------
+    w : float
+        Probability that a data point is "good."
+    mu : float
+        Mean of the distribution.
+    sigma : float
+        Standard deviation for "good" data points.
+    sigma_bad : float
+        Standard deviation for "bad" data points.
+
+    Returns
+    -------
+    output : pymc3 distribution
+        Distribution for the good-bad data model.
+    """
+    def __init__(self, mu, sigma, sigma_bad, w, *args, **kwargs):
+        super(GoodBad, self).__init__(*args, **kwargs)
+        self.mu = mu = tt.as_tensor_variable(mu)
+        self.sigma = tt.as_tensor_variable(sigma)
+        self.sigma_bad = tt.as_tensor_variable(sigma_bad)
+        self.w = tt.as_tensor_variable(w)
+        self.mean = mu
+        self.median = mu
+        self.mode = mu
+
+    def logp(self, value):
+        prefactor = -tt.log(2.0 * np.pi) / 2.0
+        ll_good = (  tt.log(self.w / self.sigma) 
+                   - ((value - self.mu) / self.sigma)**2 / 2.0)
+        ll_bad = (  tt.log((1.0 - self.w) / self.sigma_bad)
+                  - ((value - self.mu) / self.sigma_bad)**2 / 2.0)
+        term = tt.switch(tt.gt(ll_good, ll_bad),
+                         ll_good + tt.log(1 + tt.exp(ll_bad - ll_good)),
+                         ll_bad + tt.log(1 + tt.exp(ll_good - ll_bad)))
+        return prefactor + term
+    
 
 def ReparametrizedNormal(name, mu=None, sd=None, shape=1):
     """
