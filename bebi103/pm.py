@@ -255,6 +255,82 @@ def ReparametrizedCauchy(name, alpha=None, beta=None, shape=1):
     return var
 
 
+class Ordered(pm.distributions.transforms.ElemwiseTransform):
+    """
+    Class defining transform to order entries in an array.
+
+    Code from Adrian Seyboldt from PyMC3 discourse: https://discourse.pymc.io/t/mixture-models-and-breaking-class-symmetry/208/4
+    """
+    name = 'ordered'
+
+    def forward(self, x):
+        out = tt.zeros(x.shape)
+        out = tt.inc_subtensor(out[0], x[0])
+        out = tt.inc_subtensor(out[1:], tt.log(x[1:] - x[:-1]))
+        return out
+    
+    def forward_val(self, x, point=None):
+        x, = pm.distributions.distribution.draw_values([x], point=point)
+        return self.forward(x)
+
+    def backward(self, y):
+        out = tt.zeros(y.shape)
+        out = tt.inc_subtensor(out[0], y[0])
+        out = tt.inc_subtensor(out[1:], tt.exp(y[1:]))
+        return tt.cumsum(out)
+
+    def jacobian_det(self, y):
+        return tt.sum(y[1:])
+
+
+class Composed(pm.distributions.transforms.Transform):    
+    """
+    Class to build a transform out of an elementwise transform.
+
+    Code from Adrian Seyboldt from PyMC3 discourse: https://discourse.pymc.io/t/mixture-models-and-breaking-class-symmetry/208/4   
+    """
+    def __init__(self, trafo1, trafo2):
+        self._trafo1 = trafo1
+        self._trafo2 = trafo2
+        self.name = '_'.join([trafo1.name, trafo2.name])
+
+    def forward(self, x):
+        return self._trafo2.forward(self._trafo1.forward(x))
+    
+    def forward_val(self, x, point=None):
+        return self.forward(x)
+
+    def backward(self, y):
+        return self._trafo1.backward(self._trafo2.backward(y))
+
+    def jacobian_det(self, y):
+        y2 = self._trafo2.backward(y)
+        det1 = self._trafo1.jacobian_det(y2)
+        det2 = self._trafo2.jacobian_det(y)
+        return det1 + det2
+
+
+def ordered_transform():
+    """
+    Make an ordered transform.
+
+    Returns
+    -------
+    output : pm.distirbutions.transforms.Transform subclass instance
+        Transform to order entries in tensor.
+
+    Example
+    -------
+    To insist on ordering probabilities, p1 <= p2 <= p3,
+    >>> p = pymc3.Beta('p',
+                       alpha=1,
+                       beta=1,
+                       shape=3,
+                       transform=ordered_transform())
+    """
+    return Composed(pm.distributions.transforms.LogOdds(), Ordered())
+
+
 def hotdist(dist, name, beta, *args, **kwargs):
     """
     Instantiate a "hot" distribution. The "hot" distribution takes the
