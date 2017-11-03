@@ -6,7 +6,7 @@ class HotBinomial(pm.Binomial):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -14,14 +14,14 @@ class HotBinomial(pm.Binomial):
     output : pymc3 distribution
         Hot Binomial distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Binomial.logp(self, value)
+        return self.beta_temp * pm.Binomial.logp(self, value)
 
 
 class HotBetaBinomial(pm.BetaBinomial):
@@ -30,7 +30,7 @@ class HotBetaBinomial(pm.BetaBinomial):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -38,14 +38,14 @@ class HotBetaBinomial(pm.BetaBinomial):
     output : pymc3 distribution
         Hot BetaBinomial distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotBetaBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.BetaBinomial.logp(self, value)
+        return self.beta_temp * pm.BetaBinomial.logp(self, value)
 
 
 class HotBernoulli(pm.Bernoulli):
@@ -54,7 +54,7 @@ class HotBernoulli(pm.Bernoulli):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -62,14 +62,14 @@ class HotBernoulli(pm.Bernoulli):
     output : pymc3 distribution
         Hot Bernoulli distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotBernoulli, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Bernoulli.logp(self, value)
+        return self.beta_temp * pm.Bernoulli.logp(self, value)
 
 
 class HotDiscreteWeibull(pm.DiscreteWeibull):
@@ -78,7 +78,7 @@ class HotDiscreteWeibull(pm.DiscreteWeibull):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -86,14 +86,14 @@ class HotDiscreteWeibull(pm.DiscreteWeibull):
     output : pymc3 distribution
         Hot DiscreteWeibull distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotDiscreteWeibull, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.DiscreteWeibull.logp(self, value)
+        return self.beta_temp * pm.DiscreteWeibull.logp(self, value)
 
 
 class HotPoisson(pm.Poisson):
@@ -102,7 +102,7 @@ class HotPoisson(pm.Poisson):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -110,14 +110,14 @@ class HotPoisson(pm.Poisson):
     output : pymc3 distribution
         Hot Poisson distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotPoisson, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Poisson.logp(self, value)
+        return self.beta_temp * pm.Poisson.logp(self, value)
 
 
 class HotNegativeBinomial(pm.NegativeBinomial):
@@ -126,7 +126,7 @@ class HotNegativeBinomial(pm.NegativeBinomial):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -134,14 +134,14 @@ class HotNegativeBinomial(pm.NegativeBinomial):
     output : pymc3 distribution
         Hot NegativeBinomial distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotNegativeBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.NegativeBinomial.logp(self, value)
+        return self.beta_temp * pm.NegativeBinomial.logp(self, value)
 
 
 class HotConstantDist(pm.ConstantDist):
@@ -150,7 +150,7 @@ class HotConstantDist(pm.ConstantDist):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -158,14 +158,14 @@ class HotConstantDist(pm.ConstantDist):
     output : pymc3 distribution
         Hot ConstantDist distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotConstantDist, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.ConstantDist.logp(self, value)
+        return self.beta_temp * pm.ConstantDist.logp(self, value)
 
 
 class HotConstant(pm.Constant):
@@ -174,7 +174,7 @@ class HotConstant(pm.Constant):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -182,14 +182,14 @@ class HotConstant(pm.Constant):
     output : pymc3 distribution
         Hot Constant distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotConstant, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Constant.logp(self, value)
+        return self.beta_temp * pm.Constant.logp(self, value)
 
 
 class HotZeroInflatedPoisson(pm.ZeroInflatedPoisson):
@@ -198,7 +198,7 @@ class HotZeroInflatedPoisson(pm.ZeroInflatedPoisson):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -206,14 +206,14 @@ class HotZeroInflatedPoisson(pm.ZeroInflatedPoisson):
     output : pymc3 distribution
         Hot ZeroInflatedPoisson distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotZeroInflatedPoisson, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.ZeroInflatedPoisson.logp(self, value)
+        return self.beta_temp * pm.ZeroInflatedPoisson.logp(self, value)
 
 
 class HotZeroInflatedBinomial(pm.ZeroInflatedBinomial):
@@ -222,7 +222,7 @@ class HotZeroInflatedBinomial(pm.ZeroInflatedBinomial):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -230,14 +230,14 @@ class HotZeroInflatedBinomial(pm.ZeroInflatedBinomial):
     output : pymc3 distribution
         Hot ZeroInflatedBinomial distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotZeroInflatedBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.ZeroInflatedBinomial.logp(self, value)
+        return self.beta_temp * pm.ZeroInflatedBinomial.logp(self, value)
 
 
 class HotZeroInflatedNegativeBinomial(pm.ZeroInflatedNegativeBinomial):
@@ -246,7 +246,7 @@ class HotZeroInflatedNegativeBinomial(pm.ZeroInflatedNegativeBinomial):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -254,14 +254,14 @@ class HotZeroInflatedNegativeBinomial(pm.ZeroInflatedNegativeBinomial):
     output : pymc3 distribution
         Hot ZeroInflatedNegativeBinomial distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotZeroInflatedNegativeBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.ZeroInflatedNegativeBinomial.logp(self, value)
+        return self.beta_temp * pm.ZeroInflatedNegativeBinomial.logp(self, value)
 
 
 class HotDiscreteUniform(pm.DiscreteUniform):
@@ -270,7 +270,7 @@ class HotDiscreteUniform(pm.DiscreteUniform):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -278,14 +278,14 @@ class HotDiscreteUniform(pm.DiscreteUniform):
     output : pymc3 distribution
         Hot DiscreteUniform distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotDiscreteUniform, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.DiscreteUniform.logp(self, value)
+        return self.beta_temp * pm.DiscreteUniform.logp(self, value)
 
 
 class HotGeometric(pm.Geometric):
@@ -294,7 +294,7 @@ class HotGeometric(pm.Geometric):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -302,14 +302,14 @@ class HotGeometric(pm.Geometric):
     output : pymc3 distribution
         Hot Geometric distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotGeometric, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Geometric.logp(self, value)
+        return self.beta_temp * pm.Geometric.logp(self, value)
 
 
 class HotCategorical(pm.Categorical):
@@ -318,7 +318,7 @@ class HotCategorical(pm.Categorical):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -326,14 +326,14 @@ class HotCategorical(pm.Categorical):
     output : pymc3 distribution
         Hot Categorical distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotCategorical, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Categorical.logp(self, value)
+        return self.beta_temp * pm.Categorical.logp(self, value)
 
 
 class HotUniform(pm.Uniform):
@@ -342,7 +342,7 @@ class HotUniform(pm.Uniform):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -350,14 +350,14 @@ class HotUniform(pm.Uniform):
     output : pymc3 distribution
         Hot Uniform distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotUniform, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Uniform.logp(self, value)
+        return self.beta_temp * pm.Uniform.logp(self, value)
 
 
 class HotFlat(pm.Flat):
@@ -366,7 +366,7 @@ class HotFlat(pm.Flat):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -374,14 +374,14 @@ class HotFlat(pm.Flat):
     output : pymc3 distribution
         Hot Flat distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotFlat, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Flat.logp(self, value)
+        return self.beta_temp * pm.Flat.logp(self, value)
 
 
 class HotHalfFlat(pm.HalfFlat):
@@ -390,7 +390,7 @@ class HotHalfFlat(pm.HalfFlat):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -398,14 +398,14 @@ class HotHalfFlat(pm.HalfFlat):
     output : pymc3 distribution
         Hot HalfFlat distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotHalfFlat, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.HalfFlat.logp(self, value)
+        return self.beta_temp * pm.HalfFlat.logp(self, value)
 
 
 class HotNormal(pm.Normal):
@@ -414,7 +414,7 @@ class HotNormal(pm.Normal):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -422,14 +422,14 @@ class HotNormal(pm.Normal):
     output : pymc3 distribution
         Hot Normal distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotNormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Normal.logp(self, value)
+        return self.beta_temp * pm.Normal.logp(self, value)
 
 
 class HotBeta(pm.Beta):
@@ -438,7 +438,7 @@ class HotBeta(pm.Beta):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -446,14 +446,14 @@ class HotBeta(pm.Beta):
     output : pymc3 distribution
         Hot Beta distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotBeta, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Beta.logp(self, value)
+        return self.beta_temp * pm.Beta.logp(self, value)
 
 
 class HotExponential(pm.Exponential):
@@ -462,7 +462,7 @@ class HotExponential(pm.Exponential):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -470,14 +470,14 @@ class HotExponential(pm.Exponential):
     output : pymc3 distribution
         Hot Exponential distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotExponential, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Exponential.logp(self, value)
+        return self.beta_temp * pm.Exponential.logp(self, value)
 
 
 class HotLaplace(pm.Laplace):
@@ -486,7 +486,7 @@ class HotLaplace(pm.Laplace):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -494,14 +494,14 @@ class HotLaplace(pm.Laplace):
     output : pymc3 distribution
         Hot Laplace distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotLaplace, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Laplace.logp(self, value)
+        return self.beta_temp * pm.Laplace.logp(self, value)
 
 
 class HotStudentT(pm.StudentT):
@@ -510,7 +510,7 @@ class HotStudentT(pm.StudentT):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -518,14 +518,14 @@ class HotStudentT(pm.StudentT):
     output : pymc3 distribution
         Hot StudentT distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotStudentT, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.StudentT.logp(self, value)
+        return self.beta_temp * pm.StudentT.logp(self, value)
 
 
 class HotCauchy(pm.Cauchy):
@@ -534,7 +534,7 @@ class HotCauchy(pm.Cauchy):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -542,14 +542,14 @@ class HotCauchy(pm.Cauchy):
     output : pymc3 distribution
         Hot Cauchy distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotCauchy, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Cauchy.logp(self, value)
+        return self.beta_temp * pm.Cauchy.logp(self, value)
 
 
 class HotHalfCauchy(pm.HalfCauchy):
@@ -558,7 +558,7 @@ class HotHalfCauchy(pm.HalfCauchy):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -566,14 +566,14 @@ class HotHalfCauchy(pm.HalfCauchy):
     output : pymc3 distribution
         Hot HalfCauchy distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotHalfCauchy, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.HalfCauchy.logp(self, value)
+        return self.beta_temp * pm.HalfCauchy.logp(self, value)
 
 
 class HotGamma(pm.Gamma):
@@ -582,7 +582,7 @@ class HotGamma(pm.Gamma):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -590,14 +590,14 @@ class HotGamma(pm.Gamma):
     output : pymc3 distribution
         Hot Gamma distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotGamma, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Gamma.logp(self, value)
+        return self.beta_temp * pm.Gamma.logp(self, value)
 
 
 class HotWeibull(pm.Weibull):
@@ -606,7 +606,7 @@ class HotWeibull(pm.Weibull):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -614,14 +614,14 @@ class HotWeibull(pm.Weibull):
     output : pymc3 distribution
         Hot Weibull distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotWeibull, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Weibull.logp(self, value)
+        return self.beta_temp * pm.Weibull.logp(self, value)
 
 
 HotHalfStudentT = pm.Bound(pm.StudentT, lower=0)
@@ -633,7 +633,7 @@ class HotLognormal(pm.Lognormal):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -641,14 +641,14 @@ class HotLognormal(pm.Lognormal):
     output : pymc3 distribution
         Hot Lognormal distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotLognormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Lognormal.logp(self, value)
+        return self.beta_temp * pm.Lognormal.logp(self, value)
 
 
 class HotChiSquared(pm.ChiSquared):
@@ -657,7 +657,7 @@ class HotChiSquared(pm.ChiSquared):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -665,14 +665,14 @@ class HotChiSquared(pm.ChiSquared):
     output : pymc3 distribution
         Hot ChiSquared distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotChiSquared, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.ChiSquared.logp(self, value)
+        return self.beta_temp * pm.ChiSquared.logp(self, value)
 
 
 class HotHalfNormal(pm.HalfNormal):
@@ -681,7 +681,7 @@ class HotHalfNormal(pm.HalfNormal):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -689,14 +689,14 @@ class HotHalfNormal(pm.HalfNormal):
     output : pymc3 distribution
         Hot HalfNormal distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotHalfNormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.HalfNormal.logp(self, value)
+        return self.beta_temp * pm.HalfNormal.logp(self, value)
 
 
 class HotWald(pm.Wald):
@@ -705,7 +705,7 @@ class HotWald(pm.Wald):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -713,14 +713,14 @@ class HotWald(pm.Wald):
     output : pymc3 distribution
         Hot Wald distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotWald, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Wald.logp(self, value)
+        return self.beta_temp * pm.Wald.logp(self, value)
 
 
 class HotPareto(pm.Pareto):
@@ -729,7 +729,7 @@ class HotPareto(pm.Pareto):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -737,14 +737,14 @@ class HotPareto(pm.Pareto):
     output : pymc3 distribution
         Hot Pareto distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotPareto, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Pareto.logp(self, value)
+        return self.beta_temp * pm.Pareto.logp(self, value)
 
 
 class HotInverseGamma(pm.InverseGamma):
@@ -753,7 +753,7 @@ class HotInverseGamma(pm.InverseGamma):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -761,14 +761,14 @@ class HotInverseGamma(pm.InverseGamma):
     output : pymc3 distribution
         Hot InverseGamma distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotInverseGamma, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.InverseGamma.logp(self, value)
+        return self.beta_temp * pm.InverseGamma.logp(self, value)
 
 
 class HotExGaussian(pm.ExGaussian):
@@ -777,7 +777,7 @@ class HotExGaussian(pm.ExGaussian):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -785,14 +785,14 @@ class HotExGaussian(pm.ExGaussian):
     output : pymc3 distribution
         Hot ExGaussian distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotExGaussian, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.ExGaussian.logp(self, value)
+        return self.beta_temp * pm.ExGaussian.logp(self, value)
 
 
 class HotVonMises(pm.VonMises):
@@ -801,7 +801,7 @@ class HotVonMises(pm.VonMises):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -809,14 +809,14 @@ class HotVonMises(pm.VonMises):
     output : pymc3 distribution
         Hot VonMises distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotVonMises, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.VonMises.logp(self, value)
+        return self.beta_temp * pm.VonMises.logp(self, value)
 
 
 class HotSkewNormal(pm.SkewNormal):
@@ -825,7 +825,7 @@ class HotSkewNormal(pm.SkewNormal):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -833,14 +833,14 @@ class HotSkewNormal(pm.SkewNormal):
     output : pymc3 distribution
         Hot SkewNormal distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotSkewNormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.SkewNormal.logp(self, value)
+        return self.beta_temp * pm.SkewNormal.logp(self, value)
 
 
 class HotLogistic(pm.Logistic):
@@ -849,7 +849,7 @@ class HotLogistic(pm.Logistic):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -857,14 +857,14 @@ class HotLogistic(pm.Logistic):
     output : pymc3 distribution
         Hot Logistic distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotLogistic, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Logistic.logp(self, value)
+        return self.beta_temp * pm.Logistic.logp(self, value)
 
 
 class HotInterpolated(pm.Interpolated):
@@ -873,7 +873,7 @@ class HotInterpolated(pm.Interpolated):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -881,14 +881,14 @@ class HotInterpolated(pm.Interpolated):
     output : pymc3 distribution
         Hot Interpolated distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotInterpolated, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Interpolated.logp(self, value)
+        return self.beta_temp * pm.Interpolated.logp(self, value)
 
 
 class HotMvNormal(pm.MvNormal):
@@ -897,7 +897,7 @@ class HotMvNormal(pm.MvNormal):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -905,14 +905,14 @@ class HotMvNormal(pm.MvNormal):
     output : pymc3 distribution
         Hot MvNormal distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotMvNormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.MvNormal.logp(self, value)
+        return self.beta_temp * pm.MvNormal.logp(self, value)
 
 
 class HotMvStudentT(pm.MvStudentT):
@@ -921,7 +921,7 @@ class HotMvStudentT(pm.MvStudentT):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -929,14 +929,14 @@ class HotMvStudentT(pm.MvStudentT):
     output : pymc3 distribution
         Hot MvStudentT distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotMvStudentT, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.MvStudentT.logp(self, value)
+        return self.beta_temp * pm.MvStudentT.logp(self, value)
 
 
 class HotDirichlet(pm.Dirichlet):
@@ -945,7 +945,7 @@ class HotDirichlet(pm.Dirichlet):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -953,14 +953,14 @@ class HotDirichlet(pm.Dirichlet):
     output : pymc3 distribution
         Hot Dirichlet distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotDirichlet, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Dirichlet.logp(self, value)
+        return self.beta_temp * pm.Dirichlet.logp(self, value)
 
 
 class HotMultinomial(pm.Multinomial):
@@ -969,7 +969,7 @@ class HotMultinomial(pm.Multinomial):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -977,14 +977,14 @@ class HotMultinomial(pm.Multinomial):
     output : pymc3 distribution
         Hot Multinomial distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotMultinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Multinomial.logp(self, value)
+        return self.beta_temp * pm.Multinomial.logp(self, value)
 
 
 class HotWishart(pm.Wishart):
@@ -993,7 +993,7 @@ class HotWishart(pm.Wishart):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -1001,14 +1001,14 @@ class HotWishart(pm.Wishart):
     output : pymc3 distribution
         Hot Wishart distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotWishart, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Wishart.logp(self, value)
+        return self.beta_temp * pm.Wishart.logp(self, value)
 
 
 class HotLKJCorr(pm.LKJCorr):
@@ -1017,7 +1017,7 @@ class HotLKJCorr(pm.LKJCorr):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -1025,14 +1025,14 @@ class HotLKJCorr(pm.LKJCorr):
     output : pymc3 distribution
         Hot LKJCorr distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotLKJCorr, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.LKJCorr.logp(self, value)
+        return self.beta_temp * pm.LKJCorr.logp(self, value)
 
 
 class HotLKJCholeskyCov(pm.LKJCholeskyCov):
@@ -1041,7 +1041,7 @@ class HotLKJCholeskyCov(pm.LKJCholeskyCov):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -1049,14 +1049,14 @@ class HotLKJCholeskyCov(pm.LKJCholeskyCov):
     output : pymc3 distribution
         Hot LKJCholeskyCov distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotLKJCholeskyCov, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.LKJCholeskyCov.logp(self, value)
+        return self.beta_temp * pm.LKJCholeskyCov.logp(self, value)
 
 
 class HotMixture(pm.Mixture):
@@ -1065,7 +1065,7 @@ class HotMixture(pm.Mixture):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -1073,14 +1073,14 @@ class HotMixture(pm.Mixture):
     output : pymc3 distribution
         Hot Mixture distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotMixture, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.Mixture.logp(self, value)
+        return self.beta_temp * pm.Mixture.logp(self, value)
 
 
 class HotNormalMixture(pm.NormalMixture):
@@ -1089,7 +1089,7 @@ class HotNormalMixture(pm.NormalMixture):
 
     Parameters
     ----------
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -1097,12 +1097,12 @@ class HotNormalMixture(pm.NormalMixture):
     output : pymc3 distribution
         Hot NormalMixture distribution. 
     """
-    def __init__(self, beta, *args, **kwargs):
+    def __init__(self, beta_temp, *args, **kwargs):
         super(HotNormalMixture, self).__init__(*args, **kwargs)
-        if not (0 <= beta <= 1):
-            raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-        self.beta = beta
+        if not (0 <= beta_temp <= 1):
+            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        self.beta_temp = beta_temp
         
     def logp(self, value):
-        return self.beta * pm.NormalMixture.logp(self, value)
+        return self.beta_temp * pm.NormalMixture.logp(self, value)
 

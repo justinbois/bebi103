@@ -331,7 +331,7 @@ def ordered_transform():
     return Composed(pm.distributions.transforms.LogOdds(), Ordered())
 
 
-def hotdist(dist, name, beta, *args, **kwargs):
+def hotdist(dist, name, beta_temp, *args, **kwargs):
     """
     Instantiate a "hot" distribution. The "hot" distribution takes the
     value returned by the logp method of `dist` and returns beta * logp.
@@ -343,7 +343,7 @@ def hotdist(dist, name, beta, *args, **kwargs):
         pm.Normal, pm.Binomial, pm.MvNormal, pm.Dirichlet.
     name : str
         Name of the random variable.
-    beta : float on interval [0, 1]
+    beta_temp : float on interval [0, 1]
         Beta value (inverse temperature) of the distribution.
 
     Returns
@@ -352,16 +352,16 @@ def hotdist(dist, name, beta, *args, **kwargs):
         Hot distribution. 
     """
     class HotDistribution(dist):
-        def __init__(self, beta, *args, **kwargs):
+        def __init__(self, beta_temp, *args, **kwargs):
             super(HotDistribution, self).__init__(*args, **kwargs)
-            if not (0 <= beta <= 1):
-                raise RuntimeError('Must have 0 ≤ beta ≤ 1.')
-            self.beta = beta
+            if not (0 <= beta_temp <= 1):
+                raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+            self.beta_temp = beta_temp
 
         def logp(self, value):
-            return self.beta * dist.logp(self, value)
+            return self.beta_temp * dist.logp(self, value)
         
-    return HotDistribution(name, beta, *args, **kwargs)
+    return HotDistribution(name, beta_temp, *args, **kwargs)
 
 
 def chol_to_cov(chol, cov_prefix):
