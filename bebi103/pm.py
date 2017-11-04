@@ -364,6 +364,10 @@ def hotdist(dist, name, beta_temp, *args, **kwargs):
     return HotDistribution(name, beta_temp, *args, **kwargs)
 
 
+def beta_ladder(n=20, beta_min=1e-8):
+    return np.logspace(np.log10(beta_min), 0, n)
+
+
 def chol_to_cov(chol, cov_prefix):
     """
     Convert flattened Cholesky matrix to covariance.

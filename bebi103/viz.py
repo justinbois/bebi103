@@ -318,7 +318,7 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
              y_axis_label=None, title=None, plot_height=300, plot_width=400, 
              palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
              show_legend=False, formal=False, width=0.5, order=None,
-             **kwargs):
+             x_axis_type='linear', y_axis_type='linear', **kwargs):
     """
     Generate a plot with a categorical variable on x-axis.
 
@@ -367,6 +367,10 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
         order of the list specifies the order of the boxes. If None,
         the boxes appear in the order in which they appeared in the
         inputted DataFrame.
+    x_axis_type : 'linear' or 'log'
+        Type of x-axis.
+    y_axis_type : 'linear' or 'log'
+        Type of y-axis.
     kwargs
         Any kwargs to be passed to p.circle when making the jitter plot
         or to p.quad when making a box plot..
@@ -391,7 +395,8 @@ def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
             
         p = bokeh.plotting.figure(
             plot_height=plot_height, plot_width=plot_width, 
-            x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
+            x_axis_label=x_axis_label, y_axis_label=y_axis_label,
+            x_axis_type=x_axis_type, y_axis_type=y_axis_type, title=title)
 
         p_was_None = True
     else:
@@ -529,7 +534,8 @@ def ecdf_collection(
         df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
         title=None, plot_height=300, plot_width=400, 
         palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
-        show_legend=True, formal=False, order=None, **kwargs):
+        show_legend=True, formal=False, order=None, x_axis_type='linear',
+        **kwargs):
     """
     Make a collection of ECDFs from a tidy DataFrame.
 
@@ -570,6 +576,8 @@ def ecdf_collection(
         order of the list specifies the order of the boxes. If None,
         the boxes appear in the order in which they appeared in the
         inputted DataFrame.
+    x_axis_type : 'linear' or 'log'
+        Type of x-axis.
     kwargs
         Any kwargs to be passed to p.circle when making the ECDF.
 
@@ -597,6 +605,7 @@ def ecdf_collection(
                     show_legend=show_legend,
                     formal=formal,
                     order=order, 
+                    x_axis_type=x_axis_type,
                     **kwargs)
 
 
@@ -604,7 +613,7 @@ def colored_ecdf(
         df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
         title=None, plot_height=300, plot_width=400, 
         palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
-        show_legend=True, order=None, **kwargs):
+        show_legend=True, order=None, x_axis_type='linear', **kwargs):
     """
     Make an ECDF where points are colored by categorial variables.
 
@@ -642,6 +651,8 @@ def colored_ecdf(
         order of the list specifies the order of the boxes. If None,
         the boxes appear in the order in which they appeared in the
         inputted DataFrame.
+    x_axis_type : 'linear' or 'log'
+        Type of x-axis.
     kwargs
         Any kwargs to be passed to p.circle when making the ECDF.
 
@@ -671,6 +682,7 @@ def colored_ecdf(
                     show_legend=show_legend,
                     formal=False,
                     order=order, 
+                    x_axis_type=x_axis_type,
                     **kwargs)
 
 
