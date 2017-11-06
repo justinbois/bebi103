@@ -5,9 +5,104 @@ import pandas as pd
 
 import pymc3 as pm
 import pymc3.stats
+import pymc3.model
 import theano.tensor as tt
+import tqdm
 
 from .hotdists import *
+
+def _log_like_trace(trace, model, progressbar=False):
+    """Calculate the elementwise log-likelihood for the sampled trace.
+    Parameters
+    ----------
+    trace : result of MCMC run
+    model : PyMC Model
+        Optional model. Default None, taken from context.
+    progressbar: bool
+        Whether or not to display a progress bar in the command line. The
+        bar shows the percentage of completion, the evaluation speed, and
+        the estimated time to completion
+    Returns
+    -------
+    logp : array of shape (n_samples, n_observations)
+        The contribution of the observations to the log likelihood of 
+        the whole model.
+
+    Notes
+    -----
+    .. This is a copy of the pymc3.stats._log_post_trace() function for
+       PyMC3 version 3.2. That is a misnomer, since it is not the log
+       posterior for the trace, but rather the contributions to the 
+       log posterior of each observation in the likelihood.
+    """
+    cached = [(var, var.logp_elemwise) for var in model.observed_RVs]
+
+    def logp_vals_point(pt):
+        if len(model.observed_RVs) == 0:
+            return floatX(np.array([], dtype='d'))
+
+        logp_vals = []
+        for var, logp in cached:
+            logp = logp(pt)
+            if var.missing_values:
+                logp = logp[~var.observations.mask]
+            logp_vals.append(logp.ravel())
+
+        return np.concatenate(logp_vals)
+
+    try:
+        points = trace.points()
+    except AttributeError:
+        points = trace
+
+    points = tqdm.tqdm(points) if progressbar else points
+
+    try:
+        logp = (logp_vals_point(pt) for pt in points)
+        return np.stack(logp)
+    finally:
+        if progressbar:
+            points.close()
+
+
+def _log_prior_trace(trace, model):
+    """Calculate the elementwise log-prior for the sampled trace.
+    Parameters
+    ----------
+    trace : result of MCMC run
+    model : PyMC Model
+        Optional model. Default None, taken from context.
+
+    Returns
+    -------
+    logp : array of shape (n_samples, n_observations)
+        The contribution of the log prior.
+    """
+    cached = [var.logp for var in model.unobserved_RVs 
+                                if type(var) == pymc3.model.FreeRV]
+
+    def logp_vals_point(pt):
+        if len(model.unobserved_RVs) == 0:
+            return floatX(np.array([], dtype='d'))
+
+        return np.array([logp(pt) for logp in cached])
+
+    try:
+        points = trace.points()
+    except AttributeError:
+        points = trace
+
+    logp = (logp_vals_point(pt) for pt in points)
+    return np.stack(logp)
+
+
+def _log_posterior_trace(trace, model):
+    """
+    Log posterior of each point in a trace.
+    """
+    return (_log_like_trace(trace, model).sum(axis=1) 
+            + _log_prior_trace(trace, model).sum(axis=1))
+
 
 def trace_to_dataframe(trace, model=None, log_post=False):
     """
@@ -56,8 +151,9 @@ def trace_to_dataframe(trace, model=None, log_post=False):
         # Extract the model from context if necessary
         model = pm.modelcontext(model)
 
-        logp = pymc3.stats._log_post_trace(trace, model).sum(axis=1)
-        df['log_posterior'] = logp
+        df['log_likelihood'] = _log_like_trace(trace, model).sum(axis=1)
+        df['log_prior'] = _log_prior_trace(trace, model).sum(axis=1)
+        df['log_posterior'] = df['log_likelihood'] + df['log_prior']
 
     return df
 
