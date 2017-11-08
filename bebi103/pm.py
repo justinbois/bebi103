@@ -1,3 +1,4 @@
+import multiprocessing
 import warnings
 
 import numpy as np
@@ -462,6 +463,155 @@ def hotdist(dist, name, beta_temp, *args, **kwargs):
 
 def beta_ladder(n=20, beta_min=1e-8):
     return np.logspace(np.log10(beta_min), 0, n)
+
+
+def sample_beta_ladder(model_fun, betas, args=(), njobs=1, draws=500,
+                       tune=500, quiet=False, **kwargs):
+    """
+    Draw MCMC samples for a distribution for various values of beta.
+
+    Parameters
+    ----------
+    model_fun : function
+        Function that returns a PyMC3 model. Must have call signature
+        model_fun(beta_temp, *args), where `beta_temp` is the inverse
+        temperature.
+    betas : array_like
+        Array of beta values to sample.
+    args : tuple, default ()
+        Any additional arguments passed into `model_fun`.
+    njobs : int, default 1
+        Number of temperatures to run in parallel. This is *not* the
+        number of samplers to run in parallel for each temperature.
+        Each temperature is only sampled with a single walker.
+    draws : int, default 500
+        Number of samples to generate for each temperature.
+    tune : int, default 500
+        Number of tuning steps to take for each temperature.
+    quiet : bool, default False
+        If True, suppress output to the screen.
+    kwargs 
+        All additional kwargs are passed to pm.sample().
+
+    Returns
+    -------
+    traces : list of PyMC3 traces
+        Traces for each value in betas
+    models : list of PyMC3 models
+        List of "hot" models corresponding to each value of beta.
+
+    Example
+    -------
+    .. Draw samples out of a Normal distribution with a flat prior
+       on `mu` and a HalfCauchy prior on `sigma`.
+
+       x = np.random.normal(0, 1, size=100)
+
+       def norm_model(beta_temp, beta_cauchy, x):
+           with pm.Model() as model:
+               mu = pm.Flat('mu')
+               sigma = pm.HalfCauchy('sigma', beta=beta_cauchy)
+               x_obs = HotNormal('x_obs', beta_temp=beta_temp, mu=mu, 
+                                 sd=sigma, observed=x)
+           return model
+
+       betas = np.logspace(-3, 0, 10)
+       samples, models = sample_beta_ladder(
+                           norm_model, betas, args=(beta_cauchy, x))
+
+
+    """
+    # Insert code here to pop draws, tune, and progressbar out of kwargs
+
+    if np.any(betas < 0) or np.any(betas > 1):
+        raise RuntimeError('All beta values must be on interval (0, 1].')
+
+    if not np.any(betas == 1):
+        warnings.warn(
+            'You probably want to sample beta = 1, the cold distribution.')
+
+    if np.any(betas == 0):
+        raise RuntimeError("Sampling beta = 0 not allowed;"
+                           + " you're just sampling the prior in that case.")
+
+    if len(betas) != len(np.unique(betas)):
+        raise RuntimeError('Repeated beta entry.')
+
+    def sample(beta):
+        if not quiet:
+            print(f'Sampling beta = {beta}....')
+
+        model = model_fun(beta, *args)
+
+        with model:
+            if quiet:
+                trace = pm.sample(draws=draws,
+                                  tune=tune, 
+                                  progressbar=False, 
+                                  **kwargs)
+            else:
+                trace = pm.sample(draws=draws, tune=tune, **kwargs)
+
+        return trace, model, beta
+
+    if njobs == 1:
+        return [sample(beta) for beta in betas]
+    else:
+        with multiprocessing.Pool(njobs) as p:
+            return p.map(sample, betas)
+
+
+def log_evidence_estimate(trace_model_beta):
+    """
+    Compute an estimate of the log evidence.
+
+    Parameters
+    ----------
+    trace_model_beta : list of (trace, model, beta) tuples
+        List of (trace, model, beta) tuples as would be returned by
+        sample_beta_ladder().
+
+    Returns
+    -------
+    output : float
+        Approximate negative log evidence.
+    """
+
+    # Extract traces, models, and betas
+    betas = []
+    traces = []
+    models = []
+    for tmb in trace_model_beta:
+        traces.append(tmb[0])
+        models.append(tmb[1])
+        betas.append(tmb[2])
+
+    betas = np.array(betas)
+
+    if np.any(betas <= 0) or np.any(betas > 1):
+        raise RuntimeError('All beta values must be between zero and one.')
+
+    if len(betas) != len(np.unique(betas)):
+        raise RuntimeError('Repeated beta entry.')
+
+    # Sort
+    inds = np.argsort(betas)
+    betas = betas[inds]
+    traces = traces[inds]
+    models = models[inds]
+
+    # Compute average log likelihood
+    mean_log_like = []
+    for beta, trace, model in zip(betas, traces, models):
+        mean_log_like.append(_log_like_trace(trace, model).sum(axis=1).mean()
+                                 / beta)
+
+    # Add zero value
+    betas = np.concatenate(((0,), betas))
+    mean_log_like = np.concatenate(((mean_log_like[0],), mean_log_like))
+
+    # Perform integral
+    return np.trapz(mean_log_like, x=betas)
 
 
 def chol_to_cov(chol, cov_prefix):
