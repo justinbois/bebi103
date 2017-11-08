@@ -16,8 +16,8 @@ class HotBinomial(pm.Binomial):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -40,8 +40,8 @@ class HotBetaBinomial(pm.BetaBinomial):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotBetaBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -64,8 +64,8 @@ class HotBernoulli(pm.Bernoulli):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotBernoulli, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -88,8 +88,8 @@ class HotDiscreteWeibull(pm.DiscreteWeibull):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotDiscreteWeibull, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -112,8 +112,8 @@ class HotPoisson(pm.Poisson):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotPoisson, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -136,8 +136,8 @@ class HotNegativeBinomial(pm.NegativeBinomial):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotNegativeBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -160,8 +160,8 @@ class HotConstantDist(pm.ConstantDist):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotConstantDist, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -184,8 +184,8 @@ class HotConstant(pm.Constant):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotConstant, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -208,8 +208,8 @@ class HotZeroInflatedPoisson(pm.ZeroInflatedPoisson):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotZeroInflatedPoisson, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -232,8 +232,8 @@ class HotZeroInflatedBinomial(pm.ZeroInflatedBinomial):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotZeroInflatedBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -256,8 +256,8 @@ class HotZeroInflatedNegativeBinomial(pm.ZeroInflatedNegativeBinomial):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotZeroInflatedNegativeBinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -280,8 +280,8 @@ class HotDiscreteUniform(pm.DiscreteUniform):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotDiscreteUniform, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -304,8 +304,8 @@ class HotGeometric(pm.Geometric):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotGeometric, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -328,8 +328,8 @@ class HotCategorical(pm.Categorical):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotCategorical, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -352,8 +352,8 @@ class HotUniform(pm.Uniform):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotUniform, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -376,8 +376,8 @@ class HotFlat(pm.Flat):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotFlat, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -400,8 +400,8 @@ class HotHalfFlat(pm.HalfFlat):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotHalfFlat, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -424,8 +424,8 @@ class HotNormal(pm.Normal):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotNormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -448,8 +448,8 @@ class HotBeta(pm.Beta):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotBeta, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -472,8 +472,8 @@ class HotExponential(pm.Exponential):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotExponential, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -496,8 +496,8 @@ class HotLaplace(pm.Laplace):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotLaplace, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -520,8 +520,8 @@ class HotStudentT(pm.StudentT):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotStudentT, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -544,8 +544,8 @@ class HotCauchy(pm.Cauchy):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotCauchy, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -568,8 +568,8 @@ class HotHalfCauchy(pm.HalfCauchy):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotHalfCauchy, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -592,8 +592,8 @@ class HotGamma(pm.Gamma):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotGamma, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -616,8 +616,8 @@ class HotWeibull(pm.Weibull):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotWeibull, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -643,8 +643,8 @@ class HotLognormal(pm.Lognormal):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotLognormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -667,8 +667,8 @@ class HotChiSquared(pm.ChiSquared):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotChiSquared, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -691,8 +691,8 @@ class HotHalfNormal(pm.HalfNormal):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotHalfNormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -715,8 +715,8 @@ class HotWald(pm.Wald):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotWald, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -739,8 +739,8 @@ class HotPareto(pm.Pareto):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotPareto, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -763,8 +763,8 @@ class HotInverseGamma(pm.InverseGamma):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotInverseGamma, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -787,8 +787,8 @@ class HotExGaussian(pm.ExGaussian):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotExGaussian, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -811,8 +811,8 @@ class HotVonMises(pm.VonMises):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotVonMises, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -835,8 +835,8 @@ class HotSkewNormal(pm.SkewNormal):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotSkewNormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -859,8 +859,8 @@ class HotLogistic(pm.Logistic):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotLogistic, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -883,8 +883,8 @@ class HotInterpolated(pm.Interpolated):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotInterpolated, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -907,8 +907,8 @@ class HotMvNormal(pm.MvNormal):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotMvNormal, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -931,8 +931,8 @@ class HotMvStudentT(pm.MvStudentT):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotMvStudentT, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -955,8 +955,8 @@ class HotDirichlet(pm.Dirichlet):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotDirichlet, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -979,8 +979,8 @@ class HotMultinomial(pm.Multinomial):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotMultinomial, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -1003,8 +1003,8 @@ class HotWishart(pm.Wishart):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotWishart, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -1027,8 +1027,8 @@ class HotLKJCorr(pm.LKJCorr):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotLKJCorr, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -1051,8 +1051,8 @@ class HotLKJCholeskyCov(pm.LKJCholeskyCov):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotLKJCholeskyCov, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -1075,8 +1075,8 @@ class HotMixture(pm.Mixture):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotMixture, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):
@@ -1099,8 +1099,8 @@ class HotNormalMixture(pm.NormalMixture):
     """
     def __init__(self, beta_temp, *args, **kwargs):
         super(HotNormalMixture, self).__init__(*args, **kwargs)
-        if not (0 <= beta_temp <= 1):
-            raise RuntimeError('Must have 0 ≤ beta_temp ≤ 1.')
+        if not (0 < beta_temp <= 1):
+            raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
         
     def logp(self, value):

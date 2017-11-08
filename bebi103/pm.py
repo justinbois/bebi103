@@ -1,5 +1,6 @@
-import multiprocessing
 import warnings
+
+import joblib
 
 import numpy as np
 import pandas as pd
@@ -465,8 +466,19 @@ def beta_ladder(n=20, beta_min=1e-8):
     return np.logspace(np.log10(beta_min), 0, n)
 
 
+def _sample_beta(beta, model_fun, args, kwargs):
+    print(f'Sampling beta = {beta}....')
+
+    model = model_fun(beta, *args)
+
+    with model:
+        trace = pm.sample(**kwargs)
+
+    return trace, model, beta
+
+
 def sample_beta_ladder(model_fun, betas, args=(), njobs=1, draws=500,
-                       tune=500, quiet=False, **kwargs):
+                       tune=500, progressbar=True, **kwargs):
     """
     Draw MCMC samples for a distribution for various values of beta.
 
@@ -488,8 +500,8 @@ def sample_beta_ladder(model_fun, betas, args=(), njobs=1, draws=500,
         Number of samples to generate for each temperature.
     tune : int, default 500
         Number of tuning steps to take for each temperature.
-    quiet : bool, default False
-        If True, suppress output to the screen.
+    progressbar : bool, default True
+        If True, show progress bars of samlers.
     kwargs 
         All additional kwargs are passed to pm.sample().
 
@@ -537,28 +549,16 @@ def sample_beta_ladder(model_fun, betas, args=(), njobs=1, draws=500,
     if len(betas) != len(np.unique(betas)):
         raise RuntimeError('Repeated beta entry.')
 
-    def sample(beta):
-        if not quiet:
-            print(f'Sampling beta = {beta}....')
-
-        model = model_fun(beta, *args)
-
-        with model:
-            if quiet:
-                trace = pm.sample(draws=draws,
-                                  tune=tune, 
-                                  progressbar=False, 
-                                  **kwargs)
-            else:
-                trace = pm.sample(draws=draws, tune=tune, **kwargs)
-
-        return trace, model, beta
+    kwargs['draws'] = draws
+    kwargs['tune'] = tune
+    kwargs['progressbar'] = progressbar
 
     if njobs == 1:
-        return [sample(beta) for beta in betas]
+        return [_sample_beta(beta, model_fun, args, kwargs) for beta in betas]
     else:
-        with multiprocessing.Pool(njobs) as p:
-            return p.map(sample, betas)
+        jobs = (joblib.delayed(_sample_beta)(beta, model_fun, args, kwargs)
+                     for beta in betas)
+        return joblib.Parallel(n_jobs=njobs)(jobs)
 
 
 def log_evidence_estimate(trace_model_beta):
@@ -596,9 +596,9 @@ def log_evidence_estimate(trace_model_beta):
 
     # Sort
     inds = np.argsort(betas)
-    betas = betas[inds]
-    traces = traces[inds]
-    models = models[inds]
+    betas = betas = [betas[i] for i in inds]
+    traces =traces = [traces[i] for i in inds]
+    models = models = [models[i] for i in inds]
 
     # Compute average log likelihood
     mean_log_like = []
