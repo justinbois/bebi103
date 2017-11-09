@@ -1232,14 +1232,17 @@ def corner(trace, vars=None, labels=None, datashade=True, plot_width=150,
     if vars is None:
         raise RuntimeError('Must specify vars.')
 
+    if type(vars) not in (list, tuple):
+        raise RuntimeError('`vars` must be a list or tuple.')
+
     if type(trace) == pd.core.frame.DataFrame:
         df = trace
     else:
         df = pm.trace_to_dataframe(trace) 
 
-    if len (vars) > 6:
+    if len(vars) > 6:
         raise RuntimeError(
-                    'For space purposes, can show only five variables.')
+                    'For space purposes, can show only six variables.')
         
     for col in vars:
         if col not in df.columns:
@@ -1252,7 +1255,34 @@ def corner(trace, vars=None, labels=None, datashade=True, plot_width=150,
         raise RuntimeError('len(vars) must equal len(labels)')
 
     if len(vars) == 1:
-        raise NotImplementedError('Single histogram to be implemented.')
+        x = vars[0]
+        if plot_ecdf:
+            if datashade:
+                if plot_width == 150:
+                    plot_height = 200
+                    plot_width = 300
+                else:
+                    plot_width = 200
+                    plot_height=200
+                x_range, _ = _data_range(df, vars[0], vars[0])
+                p = bokeh.plotting.figure(
+                        x_range=x_range, y_range=[-0.02, 1.02], 
+                        plot_width=plot_width, plot_height=plot_height)
+                x_ecdf, y_ecdf = _ecdf_vals(df[vars[0]], formal=True)
+                df_ecdf = pd.DataFrame(data={vars[0]: x_ecdf, 'ECDF': y_ecdf})
+                _ = datashader.bokeh_ext.InteractiveImage(
+                        p, _create_line_image, df=df_ecdf, 
+                        x=x, y='ECDF', cmap=hist_color)
+            else:
+                return ecdf(df[vars[0]], formal=True,
+                            line_width=2, line_color=hist_color)
+        else:
+            return histogram(df[vars[0]],
+                             bins=bins,
+                             density=True, 
+                             line_width=2,
+                             color=hist_color,
+                             x_axis_label=vars[0])
         
     if not datashade:
         if len(df) > 10000:

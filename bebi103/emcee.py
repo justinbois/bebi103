@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 import emcee
+import ptemcee
 
 def generic_log_posterior(log_prior, log_likelihood, params, logpargs=(),
                           loglargs=()):
@@ -76,15 +77,15 @@ def sampler_to_dataframe(sampler, columns=None):
         df['lnprob'] = sampler.flatlnprobability
         df['chain'] = np.concatenate([i * np.ones(n_steps, dtype=int)
                                                 for i in range(n_walkers)])
-    elif isinstance(sampler, emcee.PTSampler):
+    elif isinstance(sampler, ptemcee.sampler.Sampler):
         n_temps, n_walkers, n_steps, n_dim = sampler.chain.shape
 
         df = pd.DataFrame(
             data=sampler.flatchain.reshape(
                 (n_temps * n_walkers * n_steps, n_dim)),
             columns=columns)
-        df['lnlike'] = sampler.lnlikelihood.flatten()
-        df['lnprob'] = sampler.lnprobability.flatten()
+        df['lnlike'] = sampler.loglikelihood.flatten()
+        df['lnprob'] = sampler.logprobability.flatten()
 
         beta_inds = [i * np.ones(n_steps * n_walkers, dtype=int)
                      for i, _ in enumerate(sampler.betas)]
@@ -347,25 +348,25 @@ def run_pt_emcee(log_like, log_prior, n_burn, n_steps, n_temps=None,
 
     # Set up the PTSampler instance
     if threads is not None:
-        sampler = emcee.PTSampler(n_temps, n_walkers, n_dim, log_like,
-                                  log_prior, loglargs=loglargs,
+        sampler = ptemcee.Sampler(n_walkers, n_dim, log_like, log_prior,
+                                  ntemps=n_temps, loglargs=loglargs,
                                   logpargs=logpargs, threads=threads)
     else:
-        sampler = emcee.PTSampler(n_temps, n_walkers, n_dim, log_like,
-                                  log_prior, loglargs=loglargs,
+        sampler = ptemcee.Sampler(n_walkers, n_dim, log_like, log_prior,
+                                  ntemps=n_temps, loglargs=loglargs,
                                   logpargs=logpargs)
 
     # Do burn-in
     if n_burn > 0:
-        pos, _, _ = sampler.run_mcmc(p0, n_burn, storechain=False)
+        pos, _, _ = sampler.run_mcmc(p0, iterations=n_burn, storechain=False)
     else:
         pos = p0
 
     # Sample again, starting from end burn-in state
-    pos, _, _ = sampler.run_mcmc(pos, n_steps, thin=thin)
+    pos, _, _ = sampler.run_mcmc(pos, iterations=n_steps, thin=thin)
 
     # Compute thermodynamic integral
-    lnZ, dlnZ = sampler.thermodynamic_integration_log_evidence(fburnin=0)
+    lnZ, dlnZ = sampler.log_evidence_estimate(fburnin=0)
 
     # Make DataFrame for results
     df = sampler_to_dataframe(sampler, columns=columns)
