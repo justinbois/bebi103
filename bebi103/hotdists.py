@@ -1,3 +1,4 @@
+import theano.tensor as tt
 import pymc3 as pm
 
 class HotBinomial(pm.Binomial):
@@ -1073,8 +1074,10 @@ class HotMixture(pm.Mixture):
     output : pymc3 distribution
         Hot Mixture distribution. 
     """
-    def __init__(self, beta_temp, *args, **kwargs):
-        super(HotMixture, self).__init__(*args, **kwargs)
+    def __init__(self, beta_temp, w, comp_dists, *args, **kwargs):
+
+        super(HotMixture, self).__init__(w, comp_dists, *args, **kwargs)
+
         if not (0 < beta_temp <= 1):
             raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
@@ -1097,8 +1100,8 @@ class HotNormalMixture(pm.NormalMixture):
     output : pymc3 distribution
         Hot NormalMixture distribution. 
     """
-    def __init__(self, beta_temp, *args, **kwargs):
-        super(HotNormalMixture, self).__init__(*args, **kwargs)
+    def __init__(self, beta_temp, w, mu, *args, **kwargs):
+        super(HotNormalMixture, self).__init__(w, mu, *args, **kwargs)
         if not (0 < beta_temp <= 1):
             raise RuntimeError('Must have 0 < beta_temp ≤ 1.')
         self.beta_temp = beta_temp
