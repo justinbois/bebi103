@@ -507,10 +507,10 @@ def sample_beta_ladder(model_fun, betas, args=(), njobs=1, draws=500,
 
     Returns
     -------
-    traces : list of PyMC3 traces
-        Traces for each value in betas
-    models : list of PyMC3 models
-        List of "hot" models corresponding to each value of beta.
+    output : list of tuples
+        List of tuples. The first tuple is the traces for each beta
+        value. The second tuple is a tuple of compiled PyMC3 models.
+        The last is a tuple of beta values.
 
     Example
     -------
@@ -528,8 +528,7 @@ def sample_beta_ladder(model_fun, betas, args=(), njobs=1, draws=500,
            return model
 
        betas = np.logspace(-3, 0, 10)
-       samples, models = sample_beta_ladder(
-                           norm_model, betas, args=(beta_cauchy, x))
+       tmb = sample_beta_ladder(norm_model, betas, args=(beta_cauchy, x))
 
 
     """
