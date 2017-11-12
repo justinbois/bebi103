@@ -20,6 +20,7 @@ import datashader.bokeh_ext
 
 from . import utils
 
+
 def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
                  title=None, plot_height=300, plot_width=450,
                  fill_color='#1f77b4', line_color='#1f77b4', show_line=True,
@@ -99,7 +100,8 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
 
 
 def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
-         plot_height=300, plot_width=450, formal=False, **kwargs):
+         plot_height=300, plot_width=450, formal=False, x_axis_type='linear',
+         y_axis_type='linear', **kwargs):
     """
     Create a plot of an ECDF.
 
@@ -142,7 +144,8 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
     if p is None:
         p = bokeh.plotting.figure(
             plot_height=plot_height, plot_width=plot_width, 
-            x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
+            x_axis_label=x_axis_label, y_axis_label=y_axis_label,
+            x_axis_type=x_axis_type, y_axis_type=y_axis_type, title=title)
 
     if formal:
         # Line of steps
@@ -833,11 +836,28 @@ def boxwhisker(df, cats, val, p=None, x_axis_label=None, y_axis_label=None,
                     **kwargs)
 
 
+def _display_clicks(div, attributes=[],
+                    style='float:left;clear:left;font_size=0.5pt'):
+    """Build a suitable CustomJS to display the current event
+    in the div model."""
+    return bokeh.models.CustomJS(args=dict(div=div), code="""
+        var attrs = %s; var args = [];
+        for (var i=0; i<attrs.length; i++ ) {
+            args.push(Number(cb_obj[attrs[i]]).toFixed(4));
+        }
+        var line = "<span style=%r>[" + args.join(", ") + "], </span>\\n";
+        var text = div.text.concat(line);
+        var lines = text.split("\\n")
+        if ( lines.length > 35 ) { lines.shift(); }
+        div.text = lines.join("\\n");
+    """ % (attributes, style))
+
+
 def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
            length_units='pixels', interpixel_distance=1.0,
            x_range=None, y_range=None,
            no_ticks=False, x_axis_label=None, y_axis_label=None, 
-           title=None, flip=True, return_im=False):
+           title=None, flip=True, return_im=False, record_clicks=False):
     """
     Display an image in a Bokeh figure.
     
@@ -871,6 +891,9 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     return_im : bool, default False
         If True, return the GlyphRenderer instance of the image being
         displayed.
+    record_clicks : bool, default False
+        If True, enables recording of clicks on the image. The clicks are
+        displayed in copy-able text next to the displayed figure. 
         
     Returns
     -------
@@ -968,7 +991,17 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
                                 y=y_range[0],
                                 dw=dw, 
                                 dh=dh)
-    
+
+    if record_clicks:
+        div = bokeh.models.Div(width=200)
+        layout = bokeh.layouts.row(p, div)
+        p.js_on_event(bokeh.events.Tap,
+                      _display_clicks(div, attributes=['x', 'y']))
+        if return_im:
+            return layout, im_bokeh
+        else:
+            return layout
+
     if return_im:
         return p, im_bokeh
     return p
@@ -1530,6 +1563,75 @@ def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350,
 
     return p
 
+
+def ds_line_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
+                 x_axis_label=None, y_axis_label=None, title=None,
+                 margin=0.02):
+    """
+    Make a datashaded line plot.
+
+    Params
+    ------
+    df : pandas DataFrame
+        DataFrame containing the data
+    x : Valid column name of Pandas DataFrame
+        Column containing the x-data.
+    y : Valid column name of Pandas DataFrame
+        Column containing the y-data.
+    cmap : str, default '#1f77b4'
+        Valid colormap string for DataShader and for coloring Bokeh
+        glyphs.
+    plot_height : int, default 300
+        Height of plot, in pixels.
+    plot_width : int, default 500
+        Width of plot, in pixels.
+    x_axis_label : str, default None
+        Label for the x-axis.
+    y_axis_label : str, default None
+        Label for the y-axis.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    margin : float, default 0.02
+        Margin, in units of `plot_width` or `plot_height`, to leave
+        around the plotted line.
+
+    Returns
+    -------
+    output : datashader.bokeh_ext.InteractiveImage
+        Interactive image of plot. Note that you should *not* use
+        bokeh.io.show() to view the image. For most use cases, you
+        should just call this function without variable assignment.
+    """
+
+    if x_axis_label is None:
+        if type(x) == str:
+            x_axis_label = x
+        else:
+            x_axis_label = 'x'
+
+    if y_axis_label is None:
+        if type(y) == str:
+            y_axis_label = y
+        else:
+            y_axis_label = 'y'
+
+    x_range, y_range = _data_range(df, x, y, margin=margin)
+    p = bokeh.plotting.figure(plot_height=plot_height,
+                              plot_width=plot_width,
+                              x_range=x_range,
+                              y_range=y_range,
+                              x_axis_label=x_axis_label,
+                              y_axis_label=y_axis_label,
+                              title=title)
+    return datashader.bokeh_ext.InteractiveImage(p,
+                                                 _create_line_image,
+                                                 df=df, 
+                                                 x=x, 
+                                                 y=y,
+                                                 cmap=cmap)
+    return p
+
+
 def _data_range(df, x, y, margin=0.02):
     x_range = df[x].max() - df[x].min()
     y_range = df[y].max() - df[y].min()
@@ -1841,3 +1943,52 @@ def distribution_plot_app(x_min, x_max, scipy_dist=None, custom_pdf=None,
 
     handler = bokeh.application.handlers.FunctionHandler(_plot_app)
     return bokeh.application.Application(handler)
+
+
+def im_click(im, color_mapper=None, plot_height=400, plot_width=None,
+             length_units='pixels', interpixel_distance=1.0,
+             x_range=None, y_range=None,
+             no_ticks=False, x_axis_label=None, y_axis_label=None, 
+             title=None, flip=True):
+    """
+    """
+
+    def display_event(div, attributes=[],
+                      style='float:left;clear:left;font_size=0.5pt'):
+        """Build a suitable CustomJS to display the current event
+        in the div model."""
+        return bokeh.models.CustomJS(args=dict(div=div), code="""
+            var attrs = %s; var args = [];
+            for (var i=0; i<attrs.length; i++ ) {
+                args.push(Number(cb_obj[attrs[i]]).toFixed(4));
+            }
+            var line = "<span style=%r>[" + args.join(", ") + "],</span>\\n";
+            var text = div.text.concat(line);
+            var lines = text.split("\\n")
+            if ( lines.length > 35 ) { lines.shift(); }
+            div.text = lines.join("\\n");
+        """ % (attributes, style))
+
+    p = imshow(im,
+               color_mapper=color_mapper,
+               plot_height=plot_height, 
+               plot_width=plot_width,
+               length_units=length_units, 
+               interpixel_distance=interpixel_distance,
+               x_range=x_range, 
+               y_range=y_range,
+               no_ticks=no_ticks, 
+               x_axis_label=x_axis_label, 
+               y_axis_label=y_axis_label, 
+               title=title, 
+               flip=flip)
+
+    div = bokeh.models.Div(width=200)
+    layout = bokeh.layout.row(p, div)
+
+    p.js_on_event(bokeh.events.Tap, display_event(div, attributes=['x', 'y']))
+
+    return layout
+
+
+
