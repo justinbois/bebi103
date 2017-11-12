@@ -4,6 +4,8 @@ import scipy.odr
 import skimage.io
 import skimage.measure
 
+from matplotlib import path
+
 class SimpleImageCollection(object):
     """
     Load a collection of images.
