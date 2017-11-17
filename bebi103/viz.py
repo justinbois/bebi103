@@ -1632,6 +1632,74 @@ def ds_line_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
     return p
 
 
+def ds_point_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
+                  x_axis_label=None, y_axis_label=None, title=None,
+                  margin=0.02):
+    """
+    Make a datashaded point plot.
+
+    Params
+    ------
+    df : pandas DataFrame
+        DataFrame containing the data
+    x : Valid column name of Pandas DataFrame
+        Column containing the x-data.
+    y : Valid column name of Pandas DataFrame
+        Column containing the y-data.
+    cmap : str, default '#1f77b4'
+        Valid colormap string for DataShader and for coloring Bokeh
+        glyphs.
+    plot_height : int, default 300
+        Height of plot, in pixels.
+    plot_width : int, default 500
+        Width of plot, in pixels.
+    x_axis_label : str, default None
+        Label for the x-axis.
+    y_axis_label : str, default None
+        Label for the y-axis.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    margin : float, default 0.02
+        Margin, in units of `plot_width` or `plot_height`, to leave
+        around the plotted line.
+
+    Returns
+    -------
+    output : datashader.bokeh_ext.InteractiveImage
+        Interactive image of plot. Note that you should *not* use
+        bokeh.io.show() to view the image. For most use cases, you
+        should just call this function without variable assignment.
+    """
+
+    if x_axis_label is None:
+        if type(x) == str:
+            x_axis_label = x
+        else:
+            x_axis_label = 'x'
+
+    if y_axis_label is None:
+        if type(y) == str:
+            y_axis_label = y
+        else:
+            y_axis_label = 'y'
+
+    x_range, y_range = _data_range(df, x, y, margin=margin)
+    p = bokeh.plotting.figure(plot_height=plot_height,
+                              plot_width=plot_width,
+                              x_range=x_range,
+                              y_range=y_range,
+                              x_axis_label=x_axis_label,
+                              y_axis_label=y_axis_label,
+                              title=title)
+    return datashader.bokeh_ext.InteractiveImage(p,
+                                                 _create_points_image,
+                                                 df=df, 
+                                                 x=x, 
+                                                 y=y,
+                                                 cmap=cmap)
+    return p
+
+
 def _data_range(df, x, y, margin=0.02):
     x_range = df[x].max() - df[x].min()
     y_range = df[y].max() - df[y].min()
