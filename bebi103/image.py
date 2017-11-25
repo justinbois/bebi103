@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.odr
 
+import numba
+
 import skimage.io
 import skimage.measure
 
@@ -205,17 +207,17 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=1000, thresh_r=0.0,
                 in the two images.
     """
 
-    # Make mirrored boundaries in preparation for scrambling
-    im_1_mirror = mirror_edges(im_1, psf_width)
-    im_2_mirror = mirror_edges(im_2, psf_width)
+    # Make float mirrored boundaries in preparation for scrambling
+    im_1_mirror = mirror_edges(im_1, psf_width).astype(float)
+    im_2_mirror = mirror_edges(im_2, psf_width).astype(float)
 
     # Set up ROI
     if roi is None:
         roi = np.ones_like(im_1, dtype='bool')
 
-    # Rename images to be sliced ROI
-    im_1 = im_1[roi]
-    im_2 = im_2[roi]
+    # Rename images to be sliced ROI and convert to float
+    im_1 = im_1[roi].astype(float)
+    im_2 = im_2[roi].astype(float)
 
     # Mirror ROI at edges
     roi_mirror = mirror_edges(roi, psf_width)
@@ -224,18 +226,11 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=1000, thresh_r=0.0,
     blocks_1 = im_to_blocks(im_1_mirror, psf_width, roi_mirror, roi_method)
     blocks_2 = im_to_blocks(im_2_mirror, psf_width, roi_mirror, roi_method)
 
-    # Flatten second list of blocks for Pearson calculations
-    blocks_2_flat = np.array(blocks_2).flatten()
-
     # Compute the Pearson coefficient
-    pearson_r, _ = st.pearsonr(np.array(blocks_1).ravel(), blocks_2_flat)
+    pearson_r = _pearson_r(blocks_1.ravel(), blocks_2.ravel())
 
     # Do image scrambling and r calculations
-    r_scr = np.empty(n_scramble)
-    for i in range(n_scramble):
-        random.shuffle(blocks_1)
-        r, _ = scipy.stats.pearsonr(np.array(blocks_1).ravel(), blocks_2_flat)
-        r_scr[i] = r
+    r_scr = scrambled_r(blocks_1, blocks_2, n=n_scramble)
 
     # Compute percent chance of coloc
     p_coloc = (r_scr < pearson_r).sum() / n_scramble
@@ -266,6 +261,64 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=1000, thresh_r=0.0,
             psf_width=psf_width, n_scramble=n_scramble, thresh_r=None,
             thresh_1=None, thresh_2=None, a=None, b=None, M_1=None,
             M_2=None, r_scr=r_scr, pearson_r=pearson_r, p_coloc=p_coloc)
+
+
+@numba.jit(nopython=True)
+def _pearson_r(x, y):
+    """
+    Compute the Pearson correlation coefficient between two samples.
+
+    Parameters
+    ----------
+    data_1 : array_like
+        One-dimensional array of data.
+    data_2 : array_like
+        One-dimensional array of data.
+        
+    Returns
+    -------
+    output : float
+        The Pearson correlation coefficient between `data_1`
+        and `data_2`.
+    """
+    return (np.mean(x*y) - np.mean(x) * np.mean(y)) / np.std(x) / np.std(y)
+
+
+@numba.jit(nopython=True)
+def scrambled_r(blocks_1, blocks_2, n=200):
+    """
+    Scrambles blocks_1 n_scramble times and returns the Pearson r values.
+
+    Parameters
+    ----------
+    blocks_1 : n x n_p x n_p Numpy array
+        First index corresponds to block ID, and second and third
+        indices have pixel values in blocks.
+    blocks_2 : n x n_p x n_p Numpy array
+        First index corresponds to block ID, and second and third
+        indices have pixel values in blocks.        
+    n : int
+        Number of scrambled Pearson r values to compute.
+
+    Returns
+    -------
+    output : ndarray
+        Numpy array with Pearson r values computed by scrambling the
+        first set of blocks.
+    """
+    # Indicies of blocks
+    block_inds = np.arange(blocks_1.shape[0])
+    
+    # Flatten blocks 2
+    blocks_2_flat = blocks_2.flatten()
+    
+    r_scr = np.empty(n)
+    for i in range(n):
+        np.random.shuffle(block_inds)
+        r = _pearson_r(blocks_1[block_inds].ravel(), blocks_2_flat)
+        r_scr[i] = r
+    return r_scr
+
 
 
 def _odr_linear(x, y, intercept=None, beta0=None):
@@ -368,12 +421,12 @@ def _find_thresh(im_1, im_2, a, b, thresh_r=0.0):
     thresh_max = im_1.max()
     thresh_min = im_1.min()
     thresh = thresh_max
-    r = pearsonr_below_thresh(thresh, im_1, im_2, a, b)
+    r = _pearsonr_below_thresh(thresh, im_1, im_2, a, b)
     min_r = r
     min_thresh = thresh
     while thresh > thresh_min and r > thresh_r:
         thresh -= incr
-        r = pearsonr_below_thresh(thresh, im_1, im_2, a, b)
+        r = _pearsonr_below_thresh(thresh, im_1, im_2, a, b)
         if min_r > r:
             min_r = r
             min_thresh = thresh
@@ -406,7 +459,7 @@ def _pearsonr_below_thresh(thresh, im_1, im_2, a, b):
         Intercept of the ORD regression of `im_2` vs. `im_1`.
     """
     inds = (im_1 <= thresh) | (im_2 <= a * thresh + b)
-    r, _ = st.pearsonr(im_1[inds], im_2[inds])
+    r = _pearson_r(im_1[inds], im_2[inds])
     return r
 
 
@@ -480,7 +533,7 @@ def im_to_blocks(im, width, roi=None, roi_method='all'):
         roi_test = np.any
 
     # Construct list of blocks
-    return [im[i:i + width, j:j + width]
-            for i in range(0, im.shape[0], width)
-            for j in range(0, im.shape[1], width)
-            if roi_test(roi[i:i + width, j:j + width])]
+    return np.array([im[i:i + width, j:j + width]
+                        for i in range(0, im.shape[0], width)
+                            for j in range(0, im.shape[1], width)
+                                if roi_test(roi[i:i + width, j:j + width])])
