@@ -8,6 +8,7 @@ import scipy.ndimage
 import skimage
 
 import matplotlib._cntr
+from matplotlib.pyplot import get_cmap as mpl_get_cmap
 
 import bokeh.application
 import bokeh.application.handlers
@@ -22,6 +23,7 @@ from . import utils
 
 
 def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
+                 x_axis_type='linear', y_axis_type='linear',
                  title=None, plot_height=300, plot_width=450,
                  fill_color='#1f77b4', line_color='#1f77b4', show_line=True,
                  line_width=1, fill_alpha=1, line_alpha=1, p=None, **kwargs):
@@ -38,9 +40,14 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
         Array of x-values for second curve
     y2 : array_like
         Array of y-values for second curve
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
     y_axis_label : str, default None
         Label for the y-axis. Ignored is `p` is not None.
-    title : str, default None
+    x_axis_type : str, default 'linear'
+        Either 'linear' or 'log'.
+    y_axis_type : str, default 'linear'
+        Either 'linear' or 'log'.    title : str, default None
         Title of the plot. Ignored is `p` is not None.
     plot_height : int, default 300
         Height of plot, in pixels. Ignored is `p` is not None.
@@ -73,7 +80,8 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
     """
     if p is None:
         p = bokeh.plotting.figure(
-            plot_height=plot_height, plot_width=plot_width, 
+            plot_height=plot_height, plot_width=plot_width,
+            x_axis_type=x_axis_type, y_axis_type=y_axis_type,
             x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
 
 
@@ -125,6 +133,10 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
     formal : bool, default False
         If True, make a plot of a formal ECDF (staircase). If False,
         plot the ECDF as dots.
+    x_axis_type : str, default 'linear'
+        Either 'linear' or 'log'.
+    y_axis_type : str, default 'linear'
+        Either 'linear' or 'log'.
     kwargs
         Any kwargs to be passed to either p.circle or p.line, for
         `formal` being False or True, respectively.
@@ -855,7 +867,7 @@ def _display_clicks(div, attributes=[],
 
 def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
            length_units='pixels', interpixel_distance=1.0,
-           x_range=None, y_range=None,
+           x_range=None, y_range=None, colorbar=False,
            no_ticks=False, x_axis_label=None, y_axis_label=None, 
            title=None, flip=True, return_im=False, record_clicks=False):
     """
@@ -877,11 +889,14 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
         x and y distance between pixels is the same.
     length_units : str, default 'pixels'
         The units of length in the image.
-    interpixel_distance_x : float, default 1.0
-        Interpixel distance along x-axis in units of `length_units`.
-    interpixel_distance_y : float, default None
-        Interpixel distance along x-axis in units of `length_units`. If
-        None, then same as `interpixel_distance_x`.        
+    interpixel_distance : float, default 1.0
+        Interpixel distance in units of `length_units`.
+    x_range : bokeh.models.Range1d instance, default None
+        Range of x-axis. If None, determined automatically.
+    y_range : bokeh.models.Range1d instance, default None
+        Range of y-axis. If None, determined automatically.
+    colorbar : bool, default False
+        If True, include a colorbar.
     no_ticks : bool, default False
         If True, no ticks are displayed. See note below.
     flip : bool, default True
@@ -918,6 +933,10 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
         elif im.shape[2] not in [2, 3]:
             raise RuntimeError('Can only display 1, 2, or 3 channels.')
 
+    # If binary image, make sure it's int
+    if im.dtype == bool:
+        im = im.astype(np.uint8)
+
     # Get color mapper
     if im.ndim == 2:
         if color_mapper is None:
@@ -927,6 +946,8 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
                 and color_mapper.lower() in ['rgb', 'cmy']):
             raise RuntimeError(
                     'Cannot use rgb or cmy colormap for intensity image.')
+        color_mapper.low = im.min()
+        color_mapper.high = im.max()
     elif im.ndim == 3:
         if color_mapper is None or color_mapper.lower() == 'cmy':
             im = im_merge(*np.rollaxis(im, 2), cmy=True)
@@ -952,11 +973,17 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     # Set up figure with appropriate dimensions
     if plot_width is None:
         plot_width = int(m/n * plot_height)
+    if colorbar:
+        plot_width += 40
+        toolbar_location = 'above'
+    else:
+        toolbar_location = 'right'
     p = bokeh.plotting.figure(plot_height=plot_height,
                               plot_width=plot_width,
                               x_range=x_range,
                               y_range=y_range,
                               title=title,
+                              toolbar_location=toolbar_location,
                               tools='pan,box_zoom,wheel_zoom,reset')
     if no_ticks:
         p.xaxis.major_label_text_font_size = '0pt'
@@ -991,6 +1018,17 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
                                 y=y_range[0],
                                 dw=dw, 
                                 dh=dh)
+
+    # Make a colorbar
+    if colorbar:
+        if im.ndim == 3:
+            warnings.warn('No colorbar display for RGB images.')
+        else:
+            color_bar = bokeh.models.ColorBar(color_mapper=color_mapper,
+                                              label_standoff=12,
+                                              border_line_color=None,
+                                              location=(0,0))
+            p.add_layout(color_bar, 'right')
 
     if record_clicks:
         div = bokeh.models.Div(width=200)
@@ -2059,4 +2097,27 @@ def im_click(im, color_mapper=None, plot_height=400, plot_width=None,
     return layout
 
 
+def mpl_cmap_to_color_mapper(cmap):
+    """
+    Convert a Matplotlib colormap to a bokeh.models.LinearColorMapper
+    instance.
+
+    Parameters
+    ----------
+    cmap : str
+        A string giving the name of the color map.
+
+    Returns
+    -------
+    output : bokeh.models.LinearColorMapper instance
+        A linear color_mapper with 25 gradations.
+
+    Notes
+    -----
+    .. See https://matplotlib.org/examples/color/colormaps_reference.html
+       for available Matplotlib colormaps.
+    """
+    cm = mpl_get_cmap(cmap)
+    palette = [rgb_frac_to_hex(cm(i)[:3]) for i in range(256)]
+    return bokeh.models.LinearColorMapper(palette=palette)
 
