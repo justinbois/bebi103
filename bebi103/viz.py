@@ -869,7 +869,9 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
            length_units='pixels', interpixel_distance=1.0,
            x_range=None, y_range=None, colorbar=False,
            no_ticks=False, x_axis_label=None, y_axis_label=None, 
-           title=None, flip=True, return_im=False, record_clicks=False):
+           title=None, flip=True, return_im=False,
+           saturate_channels=True, min_intensity=None,
+           max_intensity=None, record_clicks=False):
     """
     Display an image in a Bokeh figure.
     
@@ -906,6 +908,12 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     return_im : bool, default False
         If True, return the GlyphRenderer instance of the image being
         displayed.
+    min_intensity : int or float, default None
+        Minimum possible intensity of a pixel in the image. If None,
+        the image is scaled based on the dynamic range in the image.
+    max_intensity : int or float, default None
+        Maximum possible intensity of a pixel in the image. If None,
+        the image is scaled based on the dynamic range in the image.
     record_clicks : bool, default False
         If True, enables recording of clicks on the image. The clicks are
         displayed in copy-able text next to the displayed figure. 
@@ -946,13 +954,33 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
                 and color_mapper.lower() in ['rgb', 'cmy']):
             raise RuntimeError(
                     'Cannot use rgb or cmy colormap for intensity image.')
-        color_mapper.low = im.min()
-        color_mapper.high = im.max()
+        if min_intensity is None:
+            color_mapper.low = im.min()
+        else:
+            color_mapper.low = min_intensity
+        if max_intensity is None:
+            color_mapper.high = im.max()
+        else:
+            color_mapper.high = max_intensity
     elif im.ndim == 3:
         if color_mapper is None or color_mapper.lower() == 'cmy':
-            im = im_merge(*np.rollaxis(im, 2), cmy=True)
+            im = im_merge(*np.rollaxis(im, 2),
+                          cmy=True, 
+                          im_0_min=min_intensity,
+                          im_1_min=min_intensity,
+                          im_2_min=min_intensity,
+                          im_0_max=max_intensity,
+                          im_1_max=max_intensity,
+                          im_2_max=max_intensity)
         elif color_mapper.lower() == 'rgb':
-            im = im_merge(*np.rollaxis(im, 2), cmy=False)
+            im = im_merge(*np.rollaxis(im, 2),
+                          cmy=False, 
+                          im_0_min=min_intensity,
+                          im_1_min=min_intensity,
+                          im_2_min=min_intensity,
+                          im_0_max=max_intensity,
+                          im_1_max=max_intensity,
+                          im_2_max=max_intensity)
         else:
             raise RuntimeError('Invalid color mapper for color image.')
     else:
