@@ -7,7 +7,7 @@ import pymc3 as pm
 import scipy.ndimage
 import skimage
 
-import matplotlib._cntr
+import matplotlib._contour
 from matplotlib.pyplot import get_cmap as mpl_get_cmap
 
 import bokeh.application
@@ -1814,13 +1814,12 @@ def _contour_lines(X, Y, Z, levels):
     V.sort()
 
     # Make contours
-    c = matplotlib._cntr.Cntr(X, Y, Z)
+    c = matplotlib._contour.QuadContourGenerator(X, Y, Z, None, True, 0)
     xs = []
     ys = []
     for level in V:
-        paths = c.trace(level)
-        n_lines = len(paths) // 2
-        for line in paths[:n_lines]:
+        paths = c.create_contour(level)
+        for line in paths:
             xs.append(line[:,0])
             ys.append(line[:,1])
             
