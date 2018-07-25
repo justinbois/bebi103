@@ -1336,7 +1336,7 @@ def corner(trace, vars=None, labels=None, datashade=True, plot_width=150,
 
     if type(trace) == pd.core.frame.DataFrame:
         df = trace
-    elif type(trace) == :
+    elif 'pymc3' in str(type(trace)):
         df = pm.trace_to_dataframe(trace) 
     elif 'stanfit' in str(type(trace)):
         df = pd.DataFrame(stan_fit.extract(vars))
