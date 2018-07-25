@@ -1336,8 +1336,10 @@ def corner(trace, vars=None, labels=None, datashade=True, plot_width=150,
 
     if type(trace) == pd.core.frame.DataFrame:
         df = trace
-    else:
+    elif type(trace) == :
         df = pm.trace_to_dataframe(trace) 
+    elif 'stanfit' in str(type(trace)):
+        df = pd.DataFrame(stan_fit.extract(vars))
 
     if len(vars) > 6:
         raise RuntimeError(
@@ -2117,7 +2119,7 @@ def im_click(im, color_mapper=None, plot_height=400, plot_width=None,
                flip=flip)
 
     div = bokeh.models.Div(width=200)
-    layout = bokeh.layout.row(p, div)
+    layout = bokeh.layouts.row(p, div)
 
     p.js_on_event(bokeh.events.Tap, display_event(div, attributes=['x', 'y']))
 
