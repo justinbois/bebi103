@@ -3,7 +3,13 @@ import warnings
 import numpy as np
 import pandas as pd
 import scipy.stats as st
-import pymc3 as pm
+
+try:
+    import pymc3 as pm
+except ImportError as e:
+    warnings.warn(f"""PyMC3 import failed with error "{e}".
+Features requiring PyMC3 will not work and you will get exceptions.""")
+
 import scipy.ndimage
 import skimage
 
@@ -15,18 +21,72 @@ import bokeh.application.handlers
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
-import datashader as ds
-import datashader.bokeh_ext
+
+try:
+    import datashader as ds
+    import datashader.bokeh_ext
+except ImportError as e:
+    warnings.warn(f"""DataShader import failed with error "{e}".
+Features requiring DataShader will not work and you will get exceptions.""")
 
 
 from . import utils
 
+def _ecdf_vals(data, formal=False, x_min=None, x_max=None):
+    """Get x, y, values of an ECDF for plotting.
+    Parameters
+    ----------
+    data : ndarray
+        One dimensional Numpy array with data.
+    formal : bool, default False
+        If True, generate x and y values for formal ECDF (staircase). If
+        False, generate x and y values for ECDF as dots.
+    x_min : float, 'infer', or None
+        Minimum value of x to plot. If 'infer', use a 5% buffer. Ignored
+        if `formal` is False.
+    x_max : float, 'infer', or None
+        Maximum value of x to plot. If 'infer', use a 5% buffer. Ignored
+        if `formal` is False.
+    Returns
+    -------
+    x : ndarray
+        x-values for plot
+    y : ndarray
+        y-values for plot
+    """
+    x = np.sort(data)
+    y = np.arange(1, len(data)+1) / len(data)
 
+    if formal:
+        return _to_formal(x, y)
+    else:
+        return x, y
+
+
+def _to_formal(x, y):
+    """Convert to formal ECDF."""
+    # Set up output arrays
+    x_formal = np.empty(2*len(x))
+    y_formal = np.empty(2*len(x))
+
+    # y-values for steps
+    y_formal[0] = 0
+    y_formal[1::2] = y
+    y_formal[2::2] = y[:-1]
+
+    # x- values for steps
+    x_formal[::2] = x
+    x_formal[1::2] = x
+
+    return x_formal, y_formal
+
+        
 def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
                  x_axis_type='linear', y_axis_type='linear',
                  title=None, plot_height=300, plot_width=450,
                  fill_color='#1f77b4', line_color='#1f77b4', show_line=True,
-                 line_width=1, fill_alpha=1, line_alpha=1, p=None, **kwargs):
+                 line_width=1, fill_alpha=1, line_alpha=1, p=None, 
+                 backend='bokeh', **kwargs):
     """
     Create a filled region between two curves.
 
@@ -68,6 +128,8 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
+    backend : str, either 'bokeh' or 'altair'
+        Whether to output a Bokeh or Altair plot.
 
     Returns
     -------
@@ -78,6 +140,9 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
     -----
     .. Any remaining kwargs are passed to bokeh.models.patch().
     """
+    if backend != 'bokeh':
+        raise RuntimeError('Only Bokeh plots are supported.')
+
     if p is None:
         p = bokeh.plotting.figure(
             plot_height=plot_height, plot_width=plot_width,
@@ -182,8 +247,11 @@ def histogram(data, bins=10, p=None, x_axis_label=None, y_axis_label=None,
     ----------
     data : array_like
         1D array of data to make a histogram out of
-    bins : int or array_like, default 10
-        Setting for `bins` kwarg to be passed to `np.histogram()`.
+    bins : int, array_like, or one of 'exact' or 'integer' default 10
+        Setting for `bins` kwarg to be passed to `np.histogram()`. If
+        `'exact'`, then each unique value in the data gets its own bin.
+        If `integer`, then integer data is assumed and each integer gets
+        its own bin.
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
@@ -207,13 +275,27 @@ def histogram(data, bins=10, p=None, x_axis_label=None, y_axis_label=None,
     Returns
     -------
     output : Bokeh figure
-        Figure populted with histogram.
+        Figure populated with histogram.
     """
-   # Instantiate Bokeh plot if not already passed in
+    # Instantiate Bokeh plot if not already passed in
     if p is None:
         p = bokeh.plotting.figure(
             plot_height=plot_height, plot_width=plot_width, 
             x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
+
+    if bins == 'exact':
+        a = np.unique(data)
+        if len(a) == 1:
+            bins = np.array([a[0] - 0.5, a[0] + 0.5])
+        else:
+            bins = np.concatenate(((a[0] - (a[1] - a[0])/2,), 
+                                    (a[1:] + a[:-1]) / 2, 
+                                    (a[-1] + (a[-1]-a[-2]) / 2,)))
+    elif bins == 'integer':
+        if np.any(data != np.round(data)):
+            raise RuntimeError(
+                        "'integer' bins chosen, but data are not integer.")
+        bins = np.arange(data.min()-1, data.max()+1) + 0.5
 
     # Compute histogram
     f, e = np.histogram(data, bins=bins, density=density)
@@ -235,51 +317,6 @@ def histogram(data, bins=10, p=None, x_axis_label=None, y_axis_label=None,
         p = fill_between(e0, f0, x2, y2, show_line=True, p=p, **kwargs)
 
     return p
-
-
-
-def _ecdf_vals(data, formal=False):
-    """
-    Get x, y, values of an ECDF for plotting.
-
-    Parameters
-    ----------
-    data : ndarray
-        One dimensional Numpay array with data.
-    formal : bool, default False
-        If True, generate x and y values for formal ECDF (staircase). If
-        False, generate x and y values for ECDF as dots.
-
-    Returns
-    -------
-    x : ndarray
-        x-values for plot
-    y : ndarray
-        y-values for plot
-    """
-    x = np.sort(data)
-    y = np.arange(1, len(data)+1) / len(data)
-
-    if formal:
-        # Set up output arrays
-        x_formal = np.empty(2*(len(x) + 1))
-        y_formal = np.empty(2*(len(x) + 1))
-
-        # y-values for steps
-        y_formal[:2] = 0
-        y_formal[2::2] = y
-        y_formal[3::2] = y
-
-        # x- values for steps
-        x_formal[0] = x[0]
-        x_formal[1] = x[0]
-        x_formal[2::2] = x
-        x_formal[3:-1:2] = x[1:]
-        x_formal[-1] = x[-1]
-
-        return x_formal, y_formal
-    else:
-        return x, y
 
 
 def adjust_range(element, buffer=0.05):
@@ -328,10 +365,559 @@ def adjust_range(element, buffer=0.05):
 
     return element
     
+def _get_cat_range(df, grouped, order, color_column, horizontal):
+    if order is None:
+        factors = tuple(grouped.groups.keys())
+    else:
+        factors = tuple(order)
+        
+    if horizontal:
+        cat_range = bokeh.models.FactorRange(*(factors[::-1]))
+    else:
+        cat_range = bokeh.models.FactorRange(*factors)
+
+    if color_column is None:
+        color_factors = factors
+    else:
+        color_factors = list(df[color_column].unique())
+
+    return cat_range, factors, color_factors
+
+
+def _cat_figure(df, grouped, plot_height, plot_width, x_axis_label,
+                y_axis_label, title, order, color_column, tooltips, 
+                horizontal, val_axis_type):
+    fig_kwargs = dict(plot_height=plot_height,
+                      plot_width=plot_width, 
+                      x_axis_label=x_axis_label, 
+                      y_axis_label=y_axis_label, 
+                      title=title,
+                      tooltips=tooltips)
+
+    cat_range, factors, color_factors = _get_cat_range(df, 
+                                                       grouped, 
+                                                       order, 
+                                                       color_column, 
+                                                       horizontal)
+
+    if horizontal:
+        fig_kwargs['y_range'] = cat_range
+        fig_kwargs['x_axis_type'] = val_axis_type
+    else:
+        fig_kwargs['x_range'] = cat_range
+        fig_kwargs['y_axis_type'] = val_axis_type
+
+    return bokeh.plotting.figure(**fig_kwargs), factors, color_factors
+        
+    
+def _cat_source(df, cats, cols):
+    if type(cats) in [list, tuple]:
+        cat_source = list(zip(*tuple([df[cat] for cat in cats])))
+        labels = [', '.join(cat) for cat in cat_source]
+    else:
+        cat_source = list(df[cats].values)
+        labels = cat_source
+
+    if type(cols) in [list, tuple]:
+        source_dict = {col: list(df[col].values) for col in cols}
+    else:
+        source_dict = {cols: list(df[cols].values)}
+
+    source_dict['cat'] = cat_source
+    source_dict['__label'] = labels
+    
+    return bokeh.models.ColumnDataSource(source_dict)    
+    
+
+def _tooltip_cols(tooltips):
+    if tooltips is None:
+        return []
+    if type(tooltips) not in [list, tuple]:
+        raise RuntimeError(
+                '`tooltips` must be a list or tuple of two-tuples.')
+
+    cols = []
+    for tip in tooltips:
+        if type(tip) not in [list, tuple] or len(tip) != 2:
+            raise RuntimeError('Invalid tooltip.')
+        if tip[1][0] == '@':
+            if tip[1][1] == '{':
+                cols.append(tip[1][2:tip[1].find('}')])
+            elif '{' in tip[1]:
+                cols.append(tip[1][1:tip[1].find('{')])
+            else:
+                cols.append(tip[1][1:])
+
+    return cols
+
+
+def _cols_to_keep(cats, val, color_column, tooltips):
+    cols = _tooltip_cols(tooltips)
+    cols += [val]
+
+    if type(cats) in [list, tuple]:
+        cols += list(cats)
+    else:
+        cols += [cats]
+
+    if color_column is not None:
+        cols += [color_column]
+
+    return list(set(cols))
+
+
+def _check_cat_input(df, cats, val, color_column, cols, kwargs):
+    if df is None:
+        raise RuntimeError('`df` argument must be provided.')
+    if cats is None:
+        raise RuntimeError('`cats` argument must be provided.')
+    if val is None:
+        raise RuntimeError('`val` argument must be provided.')
+
+    if val not in df.columns:
+        raise RuntimeError(
+            f'{val} is not a column in the inputted data frame')
+
+    cats_array = type(cats) in [list, tuple]
+
+    if cats_array:
+        for cat in cats:
+            if cat not in df.columns:
+                raise RuntimeError(
+                        f'{cat} is not a column in the inputted data frame')
+    else:
+        if cats not in df.columns:
+            raise RuntimeError(
+                        f'{cats} is not a column in the inputted data frame')
+
+    if color_column is not None and color_column not in df.columns:
+        raise RuntimeError(
+                f'{color_column} is not a column in the inputted data frame')
+
+    for col in cols:
+        if col not in df.columns:
+            raise RuntimeError(
+                    f'{col} is not a column in the inputted data frame')
+
+    if (kwargs is not None 
+            and any([key in kwargs for key in ['x', 'y', 'source']])):
+        raise RuntimeError('`x`, `y`, and `source` are not allowed kwargs.')
+
+    if val == 'cat':
+        raise RuntimeError("`'cat'` cannot be used as `val`.")
+
+    if (    val == '__label' 
+         or (cats == '__label' or (cats_array and '__label' in cats))):
+        raise RuntimeError("'__label' cannot be used for `val` or `cats`.")
+
+    
+def jitter(df=None, cats=None, val=None, p=None, horizontal=False, 
+            x_axis_label=None,
+           y_axis_label=None, title=None, plot_height=300, plot_width=400, 
+           palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                    '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
+           width=0.4, order=None, val_axis_type='linear', show_legend=False,
+           color_column=None, tooltips=None, **kwargs):
+    """
+    Make a jitter plot from a tidy DataFrame.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        DataFrame containing tidy data for plotting.
+    cats : hashable or list of hastables
+        Name of column(s) to use as categorical variable. 
+    val : hashable
+        Name of column to use as value variable.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    horizontal : bool, default False
+        If true, the categorical axis is the vertical axis.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
+    y_axis_label : str, default 'ECDF'
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    palette : list of strings of hex colors, or since hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by Altair.
+    width : float, default 0.4
+        Maximum allowable width of jittered points. A value of 1 means
+        that the points take the entire space allotted.
+    order : list or None
+        If not None, must be a list of unique entries in `df[val]`. The
+        order of the list specifies the order of the boxes. If None,
+        the boxes appear in the order in which they appeared in the
+        inputted DataFrame.
+    val_axis_type : str, default 'linear'
+        Type of scaling for the quantitative axis, wither 'linear' or
+        'log'.
+    kwargs
+        Any kwargs to be passed to p.circle when making the jitter plot.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with jitter plot.
+    """
+
+    cols = _cols_to_keep(cats, val, color_column, tooltips)
+
+    _check_cat_input(df, cats, val, color_column, cols, kwargs)
+
+    grouped = df.groupby(cats)
+    
+    if p is None:
+        p, factors, color_factors = _cat_figure(df,
+                                                grouped, 
+                                                plot_height, 
+                                                plot_width, 
+                                                x_axis_label, 
+                                                y_axis_label, 
+                                                title, 
+                                                order, 
+                                                color_column,
+                                                tooltips,
+                                                horizontal, 
+                                                val_axis_type)
+    else:
+        _, factors, color_factors = _get_cat_range(df, 
+                                                   grouped, 
+                                                   order, 
+                                                   color_column, 
+                                                   horizontal)
+        if tooltips is not None:
+            p.add_tools(bokeh.models.HoverTool(tooltips=tooltips))
+
+    source = _cat_source(df, cats, cols)
+
+        
+    if 'color' not in kwargs:
+        if color_column is None:
+            color_column = 'cat'
+        kwargs['color'] = bokeh.transform.factor_cmap(color_column, 
+                                                      palette=palette, 
+                                                      factors=color_factors)
+
+    if show_legend:
+        kwargs['legend'] = '__label'
+
+    if horizontal:
+        p.circle(source=source,
+                 x=val,
+                 y=bokeh.transform.jitter('cat',
+                                          width=width, 
+                                          range=p.y_range),
+                 **kwargs)
+        p.ygrid.grid_line_color = None
+    else:
+        p.circle(source=source,
+                 y=val,
+                 x=bokeh.transform.jitter('cat',
+                                          width=width, 
+                                          range=p.x_range),
+                 **kwargs)
+        p.xgrid.grid_line_color = None
+
+    return p
+
+def _outliers(data):
+    bottom, middle, top = np.percentile(data, [25, 50, 75])
+    iqr = top - bottom
+    top_whisker = min(top + 1.5*iqr, data.max())
+    bottom_whisker = max(bottom - 1.5*iqr, data.min())
+    outliers = data[(data > top_whisker) | (data < bottom_whisker)]
+    return outliers
+
+
+def _box_and_whisker(data):
+    middle = data.median()
+    bottom = data.quantile(0.25)    
+    top = data.quantile(0.75)
+    iqr = top - bottom
+    top_whisker = min(top + 1.5*iqr, data.max())
+    bottom_whisker = max(bottom - 1.5*iqr, data.min())
+    return pd.Series({'middle': middle, 
+                      'bottom': bottom, 
+                      'top': top, 
+                      'top_whisker': top_whisker, 
+                      'bottom_whisker': bottom_whisker})
+
+
+def _box_source(df, cats, val, cols):
+    """Construct a data frame for making box plot."""
+    
+    if type(cats) in [list, tuple]:
+        level = list(range(len(cats)))
+    else:
+        level = 0
+        
+    if cats is None:
+        grouped = df
+    else:
+        grouped = df.groupby(cats)
+
+    # Data frame for boxes and whiskers
+    df_box = grouped[val].apply(_box_and_whisker).unstack().reset_index()
+    source_box = _cat_source(df_box, cats, ['middle', 'bottom', 'top', 'top_whisker', 'bottom_whisker'])
+
+    # Data frame for outliers
+    df_outliers = grouped[val].apply(_outliers).reset_index(level=level)
+    df_outliers[cols] = df.loc[df_outliers.index, cols]
+    source_outliers = _cat_source(df_outliers, cats, cols)
+    
+    return source_box, source_outliers
+
+
+def box(df, cats, val, p=None, horizontal=False, x_axis_label=None,
+        y_axis_label=None, title=None, plot_height=300, plot_width=400, 
+        palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                 '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
+        width=0.4, order=None, tooltips=None,val_axis_type='linear', 
+        display_outliers=True, box_kwargs={}, whisker_kwargs=None, 
+        outlier_kwargs=None):
+    """
+    Make a box-and-whisker plot from a tidy DataFrame.
+
+    Parameters
+    ----------
+    df : Pandas DataFrame
+        DataFrame containing tidy data for plotting.
+    cats : hashable or list of hastables
+        Name of column(s) to use as categorical variable.
+    val : hashable
+        Name of column to use as value variable.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored is `p` is not None.
+    y_axis_label : str, default 'ECDF'
+        Label for the y-axis. Ignored is `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored is `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored is `p` is not None.
+    palette : list of strings of hex colors, or since hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all boxes are colored with that color. Default is
+        the default color cycle employed by Altair.
+    width : float, default 0.4
+        Maximum allowable width of the boxes. A value of 1 means that
+        the boxes take the entire space allotted.
+    order : list or None
+        If not None, must be a list of unique entries in `df[val]`. The
+        order of the list specifies the order of the boxes. If None,
+        the boxes appear in the order in which they appeared in the
+        inputted DataFrame.
+    val_axis_type : str, default 'linear'
+        Type of scaling for the quantitative axis, wither 'linear' or
+        'log'.
+    display_outliers : bool, default True
+        If True, display outliers, otherwise suppress them. This should
+        only be False when making an overlay with a jitter plot.
+    box_kwargs : dict, default None
+        A dictionary of kwargs to be passed into `p.hbar()` or 
+        `p.vbar()` when constructing the boxes for the box plot.
+    whisker_kwargs : dict, default None
+        A dictionary of kwargs to be passed into `p.segment()`
+        when constructing the whiskers for the box plot.
+    outlier_kwargs : dict, default None
+        A dictionary of kwargs to be passed into `p.circle()`
+        when constructing the outliers for the box plot.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with box-and-whisker plot.
+
+    Notes
+    -----
+    .. Uses the Tukey convention for box plots. The top and bottom of
+       the box are respectively the 75th and 25th percentiles of the
+       data. The line in the middle of the box is the median. The 
+       top whisker extends to the lesser of the largest data point and
+       the top of the box plus 1.5 times the interquartile region (the
+       height of the box). The bottom whisker extends to the greater of 
+       the smallest data point and the bottom of the box minus 1.5 times
+       the interquartile region. Data points not between the ends of the
+       whiskers are considered outliers and are plotted as individual
+       points.
+    """    
+    cols = _cols_to_keep(cats, val, None, tooltips)
+
+    _check_cat_input(df, cats, val, None, cols, box_kwargs)
+
+    if whisker_kwargs is None:
+        whisker_kwargs = {'line_color': 'black'}
+    elif type(whisker_kwargs) != dict:
+        raise RuntimeError('`whisker_kwargs` must be a dict.')
+        
+    if outlier_kwargs is None:
+        outlier_kwargs = dict()
+    elif type(outlier_kwargs) != dict:
+        raise RuntimeError('`outlier_kwargs` must be a dict.')
+        
+    if box_kwargs is None:
+        box_kwargs = {'line_color': 'black'}
+    elif type(box_kwargs) != dict:
+        raise RuntimeError('`box_kwargs` must be a dict.')
+    
+    grouped = df.groupby(cats)
+        
+    if p is None:
+        p, factors, color_factors = _cat_figure(df,
+                                                grouped, 
+                                                plot_height, 
+                                                plot_width, 
+                                                x_axis_label, 
+                                                y_axis_label, 
+                                                title, 
+                                                order, 
+                                                None,
+                                                tooltips,
+                                                horizontal, 
+                                                val_axis_type)
+    else:
+        if tooltips is not None:
+            p.add_tools(bokeh.models.HoverTool(tooltips=tooltips))
+
+        _, factors, color_factors = _get_cat_range(df, 
+                                                   grouped, 
+                                                   order, 
+                                                   color_column, 
+                                                   horizontal)
+
+    source_box, source_outliers = _box_source(df, cats, val, cols)
+
+    if 'fill_color' not in box_kwargs:
+        box_kwargs['fill_color'] = bokeh.transform.factor_cmap('cat', palette=palette, factors=factors)
+    if 'line_color' not in box_kwargs:
+        box_kwargs['line_color'] = 'black'
+
+    if 'color' in outlier_kwargs:
+        if 'line_color' in outlier_kwargs or 'fill_color' in outlier_kwargs:
+            raise RuntimeError('If `color` is in `outlier_kwargs`, `line_color` and `fill_color` cannot be.')
+    else:
+        outlier_kwargs = {'color': bokeh.transform.factor_cmap('cat', palette=palette, factors=factors)}
+    
+    if horizontal:
+        p.segment(source=source_box,
+                  y0='cat',
+                  y1='cat',
+                  x0='top',
+                  x1='top_whisker',
+                  **whisker_kwargs)
+        p.segment(source=source_box,
+                  y0='cat',
+                  y1='cat',
+                  x0='bottom',
+                  x1='bottom_whisker',
+                  **whisker_kwargs)
+        p.hbar(source=source_box,
+               y='cat',
+               left='top_whisker',
+               right='top_whisker',
+               height=width/4,
+               **whisker_kwargs)
+        p.hbar(source=source_box,
+               y='cat',
+               left='bottom_whisker',
+               right='bottom_whisker',
+               height=width/4,
+               **whisker_kwargs)
+        p.hbar(source=source_box,
+               y='cat',
+               left='bottom',
+               right='top',
+               height=width,
+               **box_kwargs)
+        p.hbar(source=source_box,
+               y='cat',
+               left='middle',
+               right='middle',
+               height=width,
+               **box_kwargs)
+        if display_outliers:
+            p.circle(source=source_outliers,
+                     y='cat',
+                     x=val,
+                     **outlier_kwargs)
+        p.ygrid.grid_line_color = None
+    else:
+        p.segment(source=source_box,
+                  x0='cat',
+                  x1='cat',
+                  y0='top',
+                  y1='top_whisker',
+                  **whisker_kwargs)
+        p.segment(source=source_box,
+                  x0='cat',
+                  x1='cat',
+                  y0='bottom',
+                  y1='bottom_whisker',
+                  **whisker_kwargs)
+        p.vbar(source=source_box,
+               x='cat',
+               bottom='top_whisker',
+               top='top_whisker',
+               width=width/4,
+               **whisker_kwargs)
+        p.vbar(source=source_box,
+               x='cat',
+               bottom='bottom_whisker',
+               top='bottom_whisker',
+               width=width/4,
+               **whisker_kwargs)
+        p.vbar(source=source_box,
+               x='cat',
+               bottom='bottom',
+               top='top',
+               width=width,
+               **box_kwargs)
+        p.vbar(source=source_box,
+               x='cat',
+               bottom='middle',
+               top='middle',
+               width=width,
+               **box_kwargs)
+        if display_outliers:
+            p.circle(source=source_outliers,
+                     x='cat',
+                     y=val,
+                     **outlier_kwargs)
+        p.xgrid.grid_line_color = None
+
+    return p    
+
+
+def boxwhisker(df, cats, val, p=None, horizontal=False, x_axis_label=None,
+        y_axis_label=None, title=None, plot_height=300, plot_width=400, 
+        palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                 '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
+        width=0.4, order=None, val_axis_type='linear', display_outliers=True,
+        box_kwargs=None, whisker_kwargs=None, outlier_kwargs=None):
+    """Deprecated, see `box`."""
+    warnings.warn('`boxwhisker` is deprecated and will be removed in future versions. Use `box`.', DeprecationWarning)
+
+    return box(df, cats, val, p, horizontal, x_axis_label, y_axis_label,
+               title, plot_height, plot_width, palette, width, order, 
+               val_axis_type, display_outliers, box_kwargs, whisker_kwargs, 
+               outlier_kwargs)
 
 def _catplot(df, cats, val, kind, p=None, x_axis_label=None,
              y_axis_label=None, title=None, plot_height=300, plot_width=400, 
-             palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
+             palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                      '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
              show_legend=False, formal=False, width=0.5, order=None,
              x_axis_type='linear', y_axis_type='linear', **kwargs):
     """
@@ -601,6 +1187,9 @@ def ecdf_collection(
     output : bokeh.plotting.Figure instance
         Plot populated with ECDFs.
     """
+    
+    # warnings.warn('`ecdf_collection` is deprecated and will be removed in version 1.0. Use `catplot`.', DeprecationWarning)
+
     if x_axis_label is None:
         x_axis_label = val
     if y_axis_label is None:
@@ -676,6 +1265,8 @@ def colored_ecdf(
     output : bokeh.plotting.Figure instance
         Plot populated with a colored ECDF.
     """
+    # warnings.warn('`colored_ecdf` is deprecated and will be removed in version 1.0. Use `catplot`.', DeprecationWarning)
+
     if x_axis_label is None:
         x_axis_label = val
     if y_axis_label is None:
@@ -698,153 +1289,6 @@ def colored_ecdf(
                     formal=False,
                     order=order, 
                     x_axis_type=x_axis_type,
-                    **kwargs)
-
-
-def jitter(df, cats, val, p=None, x_axis_label=None, y_axis_label=None, 
-           title=None, plot_height=300, plot_width=400, 
-           palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
-           jitter_width=0.5, order=None, **kwargs):
-    """
-    Make a jitter plot from a tidy DataFrame.
-
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        DataFrame containing tidy data for plotting.
-    cats : hashable or list of hastables
-        Name of column(s) to use as categorical variable (x-axis). This is
-        akin to a kdim in HoloViews.
-    val : hashable
-        Name of column to use as value variable. This is akin to a kdim
-        in HoloViews.
-    p : bokeh.plotting.Figure instance, or None (default)
-        If None, create a new figure. Otherwise, populate the existing
-        figure `p`.
-    x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
-    y_axis_label : str, default 'ECDF'
-        Label for the y-axis. Ignored is `p` is not None.
-    title : str, default None
-        Title of the plot. Ignored is `p` is not None.
-    plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
-    plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
-    palette : list of strings of hex colors, or since hex string
-        If a list, color palette to use. If a single string representing
-        a hex color, all glyphs are colored with that color. Default is
-        the default color cycle employed by HoloViews.
-    jitter_width : float, default 0.5
-        Maximum allowable width of jittered points. A value of 1 means
-        that the points take the entire space allotted.
-    order : list or None
-        If not None, must be a list of unique entries in `df[val]`. The
-        order of the list specifies the order of the boxes. If None,
-        the boxes appear in the order in which they appeared in the
-        inputted DataFrame.
-    kwargs
-        Any kwargs to be passed to p.circle when making the jitter plot.
-
-    Returns
-    -------
-    output : bokeh.plotting.Figure instance
-        Plot populated with jitter plot.
-    """
-    return _catplot(df,
-                    cats, 
-                    val, 
-                    'jitter', 
-                    p=p, 
-                    x_axis_label=x_axis_label,
-                    y_axis_label=y_axis_label,
-                    title=title,
-                    plot_height=plot_height, 
-                    plot_width=plot_width, 
-                    palette=palette, 
-                    width=jitter_width, 
-                    show_legend=False,
-                    order=order, 
-                    **kwargs)
-
-
-def boxwhisker(df, cats, val, p=None, x_axis_label=None, y_axis_label=None, 
-               title=None, plot_height=300, plot_width=400, 
-               palette=['#30a2da', '#fc4f30', '#e5ae38', '#6d904f', '#8b8b8b'],
-               box_width=0.5, order=None, **kwargs):
-    """
-    Make a box-and-whisker plot from a tidy DataFrame.
-
-    Parameters
-    ----------
-    df : Pandas DataFrame
-        DataFrame containing tidy data for plotting.
-    cats : hashable or list of hastables
-        Name of column(s) to use as categorical variable (x-axis). This is
-        akin to a kdim in HoloViews.
-    val : hashable
-        Name of column to use as value variable. This is akin to a kdim
-        in HoloViews.
-    p : bokeh.plotting.Figure instance, or None (default)
-        If None, create a new figure. Otherwise, populate the existing
-        figure `p`.
-    x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
-    y_axis_label : str, default 'ECDF'
-        Label for the y-axis. Ignored is `p` is not None.
-    title : str, default None
-        Title of the plot. Ignored is `p` is not None.
-    plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
-    plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
-    palette : list of strings of hex colors, or since hex string
-        If a list, color palette to use. If a single string representing
-        a hex color, all boxes are colored with that color. Default is
-        the default color cycle employed by HoloViews.
-    box_width : float, default 0.5
-        Maximum allowable width of the boxes. A value of 1 means that
-        the boxes take the entire space allotted.
-    order : list or None
-        If not None, must be a list of unique entries in `df[val]`. The
-        order of the list specifies the order of the boxes. If None,
-        the boxes appear in the order in which they appeared in the
-        inputted DataFrame.
-    kwargs
-        Any kwargs to be passed to p.quad when making the plot.
-
-    Returns
-    -------
-    output : bokeh.plotting.Figure instance
-        Plot populated with box-and-whisker plot.
-
-    Notes
-    -----
-    .. Uses the Tukey convention for box plots. The top and bottom of
-       the box are respectively the 75th and 25th percentiles of the
-       data. The line in the middle of the box is the median. The 
-       top whisker extends to the lesser of the largest data point and
-       the top of the box plus 1.5 times the interquartile region (the
-       height of the box). The bottom whisker extends to the greater of 
-       the smallest data point and the bottom of the box minus 1.5 times
-       the interquartile region. Data points not between the ends of the
-       whiskers are considered outliers and are plotted as individual
-       points.
-    """
-    return _catplot(df,
-                    cats, 
-                    val, 
-                    'box', 
-                    p=p, 
-                    x_axis_label=x_axis_label,
-                    y_axis_label=y_axis_label,
-                    title=title,
-                    plot_height=plot_height, 
-                    plot_width=plot_width, 
-                    palette=palette,
-                    width=box_width, 
-                    show_legend=False,
-                    order=order, 
                     **kwargs)
 
 

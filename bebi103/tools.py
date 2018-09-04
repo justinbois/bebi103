@@ -3,6 +3,10 @@ import statsmodels.tools.numdiff as smnd
 
 def approx_hess(x, f, epsilon=None, args=(), kwargs={}):
     """
+    .. deprecated:: 0.0.23
+          `approx_hess` will be removed in in version 1.0.0.
+          Use `statsmodels.tools.numdiff.approx_hess3`.
+
     Parameters
     ----------
     x : array_like
