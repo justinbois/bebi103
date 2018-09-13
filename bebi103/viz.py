@@ -2454,8 +2454,8 @@ def distribution_plot_app(x_min=None, x_max=None, scipy_dist=None,
             x_c = x_cdf = x
 
         # Compute PDF and CDF
-        y_p = fun_p(x, *param_vals, **kwargs)
-        y_c = fun_c(x_cdf, *param_vals, **kwargs)
+        y_p = fun_p(x, *param_vals)
+        y_c = fun_c(x_cdf, *param_vals)
         if discrete:
             y_c_plot = np.empty_like(x_c)
             y_c_plot[::2] = y_c
