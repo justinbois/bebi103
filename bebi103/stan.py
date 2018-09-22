@@ -1,9 +1,15 @@
+import copy
 import pickle
 import hashlib
 import logging
+import multiprocessing
+
+import tqdm
 
 import numpy as np
 import pandas as pd
+import numba
+import scipy.stats as st
 
 import pystan
 
@@ -289,6 +295,9 @@ def extract_array(df, name):
 def plot_predictive_ecdf(df, name, plot_width=350, plot_height=200,
                          x_axis_label=None, y_axis_label='ECDF',
                          color='blue', x=None, discrete=False):
+    if 'StanFit4Model' in str(type(df)):
+        df = df.to_dataframe(diagnostics=False)
+
     if color not in ['green', 'blue', 'red', 'gray', 
                      'purple', 'orange', 'betancourt']:
         raise RuntimeError("Only allowed colors are 'green', 'blue', 'red', 'gray', 'purple', 'orange'")
@@ -458,8 +467,7 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
     n_iter = len(fit.extract()['lp__'])
     ratio = n_effs / n_iter
 
-    pass_check = np.logical_or(np.isnan(ratio), 
-                               ratio > n_eff_rule_of_thumb).all()
+    pass_check = (ratio[~np.isnan(ratio)] > n_eff_rule_of_thumb).all()
 
     if not quiet:
         if not pass_check:
@@ -490,8 +498,8 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
 
     rhat = np.array([x[-1] for x in fit_summary['summary']])
 
-    pass_check = np.logical_or(np.logical_and(np.isnan(rhat), known_nan),
-                               rhat < rhat_rule_of_thumb).all()
+    pass_check = (np.isnan(rhat[~np.array(known_nan)]).sum() == 0 
+                  and np.all(rhat[~np.array(known_nan)] < rhat_rule_of_thumb))
 
     if not quiet:
         if not pass_check:
@@ -559,6 +567,273 @@ def parse_warning_code(warning_code):
     if warning_code == 0:
         print("No diagnostic warnings")
 
+
+def _perform_sbc(args):
+
+    logging.getLogger('pystan').setLevel(logging.CRITICAL)
+
+    (prior_predictive_model,
+     posterior_model, 
+     prior_predictive_model_data,
+     posterior_model_data,
+     measured_data,
+     parameters,
+     chains,
+     warmup,
+     iter,
+     thin,
+     prior_sd) = args
+
+    posterior_model_data = copy.deepcopy(posterior_model_data)
+
+    prior_sample = prior_predictive_model.sampling(
+        data=prior_predictive_model_data, 
+        algorithm='Fixed_param', 
+        iter=1,
+        chains=1,
+        warmup=0)
+    
+    # Extract data generated from the prior predictive calculation
+    for data in measured_data:
+        ar = prior_sample.extract(data)[data]
+        if len(ar.shape) == 0:
+            posterior_model_data[data] = np.asscalar(ar)
+        else:
+            posterior_model_data[data] = ar[0]
+
+    # Store what the parameters were to generate prior predictive data
+    param_priors = {param: float(prior_sample.extract(param)[param])
+                            for param in parameters}
+
+    # Generate posterior samples
+    posterior_samples = posterior_model.sampling(
+            data=posterior_model_data,
+            iter=iter,
+            chains=chains,
+            warmup=warmup,
+            n_jobs=1,
+            thin=thin)
+
+    # Extract summary
+    summary = posterior_samples.summary(probs=[])
+    row_names = tuple(summary['summary_rownames'])
+    col_names = tuple(summary['summary_colnames'])
+
+    # Omit Rhat calculations on parameters we are not interested in
+    known_rhat_nans = list(set(row_names) - set(parameters))
+    warning_code = check_all_diagnostics(posterior_samples, 
+                                         quiet=True,
+                                         known_rhat_nans=known_rhat_nans)
+
+    # Generate output dictionary
+    output = {param+'_rank_statistic': 
+        (posterior_samples.extract(param)[param] < param_priors[param]).sum()
+                for param in parameters}
+    for param, p_prior in param_priors.items():
+        output[param + '_prior'] = p_prior
+
+    # Compute posterior sensitivities
+    for param in parameters:
+        mean_i = col_names.index('mean')
+        sd_i = col_names.index('sd')
+        param_i = row_names.index(param)
+        output[param+'_mean'] = summary['summary'][param_i, mean_i]
+        output[param+'_sd'] = summary['summary'][param_i, sd_i]
+        output[param+'_z_score'] = np.abs(
+                (output[param+'_mean'] - output[param + '_prior']) 
+                / output[param+'_sd'])
+        output[param+'_shrinkage'] = (1 - 
+                (output[param+'_sd'] / prior_sd[param])**2)
+
+    output['warning_code'] = warning_code
+
+    return output
+
+
+def _get_prior_sds(prior_predictive_model, 
+               prior_predictive_model_data, 
+               parameters,
+               n_prior_draws_for_sd):
+
+    prior_samples = prior_predictive_model.sampling(
+        data=prior_predictive_model_data, 
+        algorithm='Fixed_param', 
+        iter=n_prior_draws_for_sd,
+        chains=1,
+        warmup=0)
+
+    # Make sure only scalar parameters are being checked
+    for param in parameters:
+        if param not in prior_samples.model_pars:
+            raise RuntimeError(f'Parameter {param} not in the model.')
+        ind = prior_samples.model_pars.index(param)
+        if prior_samples.par_dims[ind] != []:
+            err = """Can only perform SBC checks on scalar parameters.
+Parameter {} is not a scalar. If you want to check elements
+of this parameter, use an entry in the `generated quantities` 
+block to store the element as a scalar.""".format(param)
+            raise RuntimeError(err)    
+
+    # Compute prior sd's
+    prior_sd = {}
+    summary = prior_samples.summary(probs=[])
+    sd_i = tuple(summary['summary_colnames']).index('sd')
+    for param in parameters:
+        param_i = tuple(summary['summary_rownames']).index(param)
+        prior_sd[param] = summary['summary'][param_i, sd_i]
+
+    return prior_sd
+
+
+def sbc(prior_predictive_model=None,
+        posterior_model=None, 
+        prior_predictive_model_data=None,
+        posterior_model_data=None,
+        measured_data=None,
+        parameters=None,
+        chains=4,
+        warmup=1000,
+        iter=2000,
+        thin=10,
+        n_jobs=1,
+        N=400,
+        n_prior_draws_for_sd=1000,
+        progress_bar=False):
+
+    if prior_predictive_model is None:
+        raise RuntimeError('`prior_predictive_model` must be specified.')
+    if posterior_model is None:
+        raise RuntimeError('`posterior_model` must be specified.')
+    if prior_predictive_model_data is None:
+        raise RuntimeError('`prior_predictive_model_data` must be specified.')
+    if posterior_model_data is None:
+        raise RuntimeError('`posterior_model_data` must be specified.')
+    if measured_data is None:
+        raise RuntimeError('`measured_data` must be specified.')
+    if parameters is None:
+        raise RuntimeError('`parameters` must be specified.')
+
+    # Determine prior SDs for parameters of interest
+    prior_sd = _get_prior_sds(prior_predictive_model, 
+                              prior_predictive_model_data, 
+                              parameters,
+                              n_prior_draws_for_sd)
+
+    def arg_input_generator():
+        counter = 0
+        while counter < N:
+            counter += 1
+            yield (prior_predictive_model,
+                   posterior_model, 
+                   prior_predictive_model_data,
+                   posterior_model_data,
+                   measured_data,
+                   parameters,
+                   chains,
+                   warmup,
+                   iter,
+                   thin,
+                   prior_sd)
+    
+    with multiprocessing.Pool(n_jobs) as pool:
+        if progress_bar == 'notebook':
+            output = list(tqdm.tqdm_notebook(pool.imap(_perform_sbc, 
+                                             arg_input_generator()),
+                                             total=N))
+        elif progress_bar == True:
+            output = list(tqdm.tqdm(pool.imap(_perform_sbc, 
+                                    arg_input_generator()),
+                                    total=N))
+        elif progress_bar == False:
+            output = pool.map(_perform_sbc, arg_input_generator())
+        else:
+            raise RuntimeError('Invalid `progress_bar`.')
+
+    output = pd.DataFrame(output)
+    output['L'] = (iter - warmup) * chains // thin
+
+    return output
+
+
+@numba.jit(nopython=True)
+def _y_ecdf(data, x):
+    y = np.arange(len(data) + 1) / len(data)
+    return y[np.searchsorted(np.sort(data), x, side='right')]
+
+@numba.jit(nopython=True)
+def _draw_ecdf_bootstrap(a, b, n, n_bs_reps=100000):
+    x = np.arange(L+1)
+    ys = np.empty((n_bs_reps, len(x)))
+    for i in range(n_bs_reps):
+        draws = np.random.randint(0, L+1, size=n)
+        ys[i, :] = _y_ecdf(draws, x)
+    return ys
+
+
+
+def _sbc_envelope(L, n, ptile=95, diff=True, bootstrap=False, n_bs_reps=None):
+    x = np.arange(L+1)
+    y = st.randint.cdf(x, 0, L+1)
+    std = np.sqrt(y * (1 - y) / n)
+        
+    if bootstrap:
+        if n_bs_reps is None:
+            n_bs_reps = int(max(n, max(L+1, 100/(100-ptile))) * 100)
+        ys = draw_ecdf_bootstrap(a, b, n, n_bs_reps=n_bs_reps)
+        y_low, y_high = np.percentile(ys, 
+                                      [50 - ptile/2, 50 + ptile/2], 
+                                      axis=0)
+    else:
+        y_low = np.concatenate(
+            (st.norm.ppf((50 - ptile/2)/100, y[:-1], std[:-1]), (1.0,)))
+        y_high = np.concatenate(
+            (st.norm.ppf((50 + ptile/2)/100, y[:-1], std[:-1]), (1.0,)))
+        
+    # Ensure that ends are appropriate
+    y_low = np.maximum(0, y_low)
+    y_high = np.minimum(1, y_high)
+    
+    # Make "formal" stepped ECDFs
+    _, y_low = viz._to_formal(x, y_low)
+    x_formal, y_high = viz._to_formal(x, y_high)
+        
+    if diff:
+        _, y = viz._to_formal(x, y)
+        y_low -= y
+        y_high -= y
+        
+    return x_formal, y_low, y_high
+
+
+def _ecdf_diff(data, formal=False):
+    x, y = viz._ecdf_vals(data)
+    y_uniform = (x + 1)/len(x)
+    if formal:
+        x, y = viz._to_formal(x, y)
+        _, y_uniform = viz._to_formal(np.arange(len(data)), y_uniform)
+    y -= y_uniform
+
+    return x, y
+
+
+def sbc_plot(df, param, diff=True, formal=False):
+    L = df['L'].iloc[0]
+    x, y_low, y_high = _sbc_envelope(L, len(df), ptile=99, diff=diff, bootstrap=False, n_bs_reps=100000)
+
+    if diff:
+        x_data, y_data = _ecdf_diff(df[param+'_rank_statistic'], formal=formal)
+    else:
+        x_data, y_data = viz._ecdf_vals(df[param+'rank_statistic'])
+
+    p = viz.fill_between(x1=x, x2=x, y1=y_high, y2=y_low, fill_color='gray', 
+                         fill_alpha=0.5, show_line=True, line_color='gray')
+    if formal:
+        p.line(x_data, y_data)
+    else:
+        p.circle(x_data, y_data)
+
+    return p
+    
 
 def hpd(x, mass_frac) :
     """

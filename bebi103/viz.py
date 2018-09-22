@@ -107,6 +107,7 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
             alpha=fill_alpha,
             fill_color=fill_color,
             line_width=0,
+            line_alpha=0,
             **kwargs)
 
     if show_line:
@@ -1480,10 +1481,22 @@ def _check_cat_input(df, cats, val, color_column, tooltips, palette, kwargs):
             if cat not in df.columns:
                 raise RuntimeError(
                         f'{cat} is not a column in the inputted data frame')
+            if df[cat].dtype not in [str, object]:
+                raise RuntimeError(f'Column {cat} does not have dtype str. '
+                                    + 'All cat columns must have dtype str.')
+            if df[cat].dtype == object:
+                for entry in df[cat]:
+                    if type(entry) != str:
+                        raise RuntimeError(
+                            'All entries in a cat column must have type str. '
+                            + f'Column {cat} has non-string entries.')
     else:
         if cats not in df.columns:
             raise RuntimeError(
                         f'{cats} is not a column in the inputted data frame')
+        if df[cats].dtype not in [str, object]:
+            raise RuntimeError(f'Column {cats} does not have dtype str. '
+                                + 'All cat columns must have dtype str.')
 
     if color_column is not None and color_column not in df.columns:
         raise RuntimeError(
