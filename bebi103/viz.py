@@ -6,9 +6,8 @@ import scipy.stats as st
 
 try:
     import pymc3 as pm
-except ImportError as e:
-    warnings.warn(f"""PyMC3 import failed with error "{e}".
-Features requiring PyMC3 will not work and you will get exceptions.""")
+except:
+    pass
 
 import scipy.ndimage
 import skimage
@@ -880,6 +879,10 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     plot_height : int
         Height of the plot in pixels. The width is scaled so that the 
         x and y distance between pixels is the same.
+    plot_width : int or None (default)
+        If None, the width is scaled so that the x and y distance 
+        between pixels is approximately the same. Otherwise, the width
+        of the plot in pixels.
     length_units : str, default 'pixels'
         The units of length in the image.
     interpixel_distance : float, default 1.0
@@ -892,6 +895,12 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
         If True, include a colorbar.
     no_ticks : bool, default False
         If True, no ticks are displayed. See note below.
+    x_axis_label : str, default None
+        Label for the x-axis. If None, labeled with `length_units`.
+    y_axis_label : str, default None
+        Label for the y-axis. If None, labeled with `length_units`.
+    title : str, default None
+        The title of the plot.
     flip : bool, default True
         If True, flip image so it displays right-side up. This is
         necessary because traditionally images have their 0,0 pixel
@@ -899,6 +908,9 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     return_im : bool, default False
         If True, return the GlyphRenderer instance of the image being
         displayed.
+    saturate_channels : bool, default True
+        If True, each of the channels have their displayed pixel values
+        extended to range from 0 to 255 to show the full dynamic range.
     min_intensity : int or float, default None
         Minimum possible intensity of a pixel in the image. If None,
         the image is scaled based on the dynamic range in the image.
@@ -1778,9 +1790,14 @@ def corner(trace, vars=None, labels=None, datashade=True, plot_width=150,
     if type(trace) == pd.core.frame.DataFrame:
         df = trace
     elif 'pymc3' in str(type(trace)):
-        df = pm.trace_to_dataframe(trace) 
-    elif 'stanfit' in str(type(trace)):
-        df = pd.DataFrame(stan_fit.extract(vars))
+        try:
+            df = pm.trace_to_dataframe(trace) 
+        except:
+            raise RuntimeError(
+                'PyMC3 could not be imported. Check your installation.'
+                + ' PyMC3 features will soon be deprecated.')
+    elif 'StanFit4Model' in str(type(trace)):
+        df = trace.to_dataframe(diagnostics=False)
 
     if len(vars) > 6:
         raise RuntimeError(
@@ -2526,52 +2543,6 @@ def distribution_plot_app(x_min=None, x_max=None, scipy_dist=None,
 
     handler = bokeh.application.handlers.FunctionHandler(_plot_app)
     return bokeh.application.Application(handler)
-
-
-def im_click(im, color_mapper=None, plot_height=400, plot_width=None,
-             length_units='pixels', interpixel_distance=1.0,
-             x_range=None, y_range=None,
-             no_ticks=False, x_axis_label=None, y_axis_label=None, 
-             title=None, flip=True):
-    """
-    """
-
-    def display_event(div, attributes=[],
-                      style='float:left;clear:left;font_size=0.5pt'):
-        """Build a suitable CustomJS to display the current event
-        in the div model."""
-        return bokeh.models.CustomJS(args=dict(div=div), code="""
-            var attrs = %s; var args = [];
-            for (var i=0; i<attrs.length; i++ ) {
-                args.push(Number(cb_obj[attrs[i]]).toFixed(4));
-            }
-            var line = "<span style=%r>[" + args.join(", ") + "],</span>\\n";
-            var text = div.text.concat(line);
-            var lines = text.split("\\n")
-            if ( lines.length > 35 ) { lines.shift(); }
-            div.text = lines.join("\\n");
-        """ % (attributes, style))
-
-    p = imshow(im,
-               color_mapper=color_mapper,
-               plot_height=plot_height, 
-               plot_width=plot_width,
-               length_units=length_units, 
-               interpixel_distance=interpixel_distance,
-               x_range=x_range, 
-               y_range=y_range,
-               no_ticks=no_ticks, 
-               x_axis_label=x_axis_label, 
-               y_axis_label=y_axis_label, 
-               title=title, 
-               flip=flip)
-
-    div = bokeh.models.Div(width=200)
-    layout = bokeh.layouts.row(p, div)
-
-    p.js_on_event(bokeh.events.Tap, display_event(div, attributes=['x', 'y']))
-
-    return layout
 
 
 def mpl_cmap_to_color_mapper(cmap):

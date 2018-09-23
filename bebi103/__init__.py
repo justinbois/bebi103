@@ -16,11 +16,6 @@ from . import image
 try:
     from . import pm
 except:
-    warnings.warn('Count not import `pm` submodule. Perhaps PyMC3 and/or Theano are not properly installed.')
-
-try:
-    from . import tools
-except:
     pass
 
 try:
@@ -31,9 +26,9 @@ except:
 try:
     from . import stan
 except:
-    warnings.warn('Count not import `stan` submodule. Perhaps pystan is not properly installed.')
+    warnings.warn('Could not import `stan` submodule. Perhaps pystan is not properly installed.')
 
 
 __author__ = """Justin Bois"""
 __email__ = 'bois@caltech.edu'
-__version__ = '0.0.22'
+__version__ = '0.0.23'

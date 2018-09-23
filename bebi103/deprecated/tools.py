@@ -87,6 +87,7 @@ def approx_hess(x, f, epsilon=None, args=(), kwargs={}):
     OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
     DAMAGE.
     """
+    warnings.warn('`approx_hess` is deprecated and will be removed in future versions. Use `box`.', DeprecationWarning)
     n = len(x)
     h = smnd._get_epsilon(x, 4, epsilon, n)
     ee = np.diag(h)

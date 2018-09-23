@@ -752,7 +752,34 @@ def sbc(prior_predictive_model=None,
     output = pd.DataFrame(output)
     output['L'] = (iter - warmup) * chains // thin
 
-    return output
+    return _tidy_sbc_output(output)
+
+
+def _tidy_sbc_output(sbc_output):
+    """Tidy output from sbc().
+
+    Returns
+    -------
+    output : DataFrame
+        Tidy data frame with SBC results.
+    """
+    df = sbc_output.copy()
+    df['trial'] = df.index.values
+
+    rank_stat_cols = list(
+                df.columns[df.columns.str.contains('_rank_statistic')])
+    params = [col[:col.rfind('_rank_statistic')] for col in rank_stat_cols]
+
+    dfs = []
+    stats = ['prior', 'rank_statistic', 'mean', 'sd', 'shrinkage', 'z_score']
+    aux_cols = ['warning_code', 'L', 'trial']
+    for param in params:
+        cols = [param+'_'+stat for stat in stats]
+        sub_df = df[cols+aux_cols].rename(columns={old_col: new_col for old_col, new_col in zip(cols, stats)})
+        sub_df['parameter'] = param
+        dfs.append(sub_df)
+
+    return pd.concat(dfs, ignore_index=True)
 
 
 @numba.jit(nopython=True)
@@ -760,8 +787,9 @@ def _y_ecdf(data, x):
     y = np.arange(len(data) + 1) / len(data)
     return y[np.searchsorted(np.sort(data), x, side='right')]
 
+
 @numba.jit(nopython=True)
-def _draw_ecdf_bootstrap(a, b, n, n_bs_reps=100000):
+def _draw_ecdf_bootstrap(L, n, n_bs_reps=100000):
     x = np.arange(L+1)
     ys = np.empty((n_bs_reps, len(x)))
     for i in range(n_bs_reps):
@@ -770,8 +798,8 @@ def _draw_ecdf_bootstrap(a, b, n, n_bs_reps=100000):
     return ys
 
 
-
-def _sbc_envelope(L, n, ptile=95, diff=True, bootstrap=False, n_bs_reps=None):
+def _sbc_rank_envelope(L, n, ptile=95, diff=True, bootstrap=False, 
+                       n_bs_reps=None):
     x = np.arange(L+1)
     y = st.randint.cdf(x, 0, L+1)
     std = np.sqrt(y * (1 - y) / n)
@@ -779,7 +807,7 @@ def _sbc_envelope(L, n, ptile=95, diff=True, bootstrap=False, n_bs_reps=None):
     if bootstrap:
         if n_bs_reps is None:
             n_bs_reps = int(max(n, max(L+1, 100/(100-ptile))) * 100)
-        ys = draw_ecdf_bootstrap(a, b, n, n_bs_reps=n_bs_reps)
+        ys = _draw_ecdf_bootstrap(L, n, n_bs_reps=n_bs_reps)
         y_low, y_high = np.percentile(ys, 
                                       [50 - ptile/2, 50 + ptile/2], 
                                       axis=0)
@@ -816,21 +844,113 @@ def _ecdf_diff(data, formal=False):
     return x, y
 
 
-def sbc_plot(df, param, diff=True, formal=False):
-    L = df['L'].iloc[0]
-    x, y_low, y_high = _sbc_envelope(L, len(df), ptile=99, diff=diff, bootstrap=False, n_bs_reps=100000)
+def sbc_rank_ecdf_plot(sbc_output, params, diff=True, formal=False, ptile=99,
+        bootstrap_envelope=False, n_bs_reps=None, show_envelope=True, p=None,
+        plot_height=300, plot_width=450, x_axis_label=None, y_axis_label=None,
+        color=None, alpha=1, color_by_warning_code=False, palette=None, 
+        fill_color='gray', fill_alpha=0.5, show_line=True, line_color='gray', 
+        show_legend=False, **kwargs):
+    """Make a rank ECDF plot from SBC.
 
-    if diff:
-        x_data, y_data = _ecdf_diff(df[param+'_rank_statistic'], formal=formal)
+    color input can only be a solid color. Otherwise, if `color_by_warning_code` is false, it colors by parameter.
+    """
+
+    if formal and color_by_warning_code:
+        raise RuntimeError('Cannot color by warning code for formal ECDFs.')
+    if color is not None and color_by_warning_code:
+        raise RuntimeError(
+            '`color` must be `None` if `color_by_warning_code` is True.')
+
+    if type(params) not in [list, tuple]:
+        params = [params]
+
+    L = sbc_output['L'].iloc[0]
+    df = sbc_output.loc[sbc_output['parameter'].isin(params), 
+                        ['parameter', 'rank_statistic', 'warning_code']]
+    n = (df['parameter'] == df['parameter'].unique()[0]).sum()
+
+    if show_envelope:
+        x, y_low, y_high = _sbc_rank_envelope(L, n, ptile=ptile, diff=diff,
+                    bootstrap=bootstrap_envelope, n_bs_reps=n_bs_reps)
+        p = viz.fill_between(x1=x, x2=x, y1=y_high, y2=y_low, 
+                     plot_height=plot_height, plot_width=plot_width,
+                     x_axis_label=x_axis_label, y_axis_label=y_axis_label,
+                     fill_color=fill_color, fill_alpha=fill_alpha,
+                     show_line=show_line, line_color=line_color, p=p)
     else:
-        x_data, y_data = viz._ecdf_vals(df[param+'rank_statistic'])
+        p = bokeh.plotting.figure(plot_height=plot_height, 
+            plot_width=plot_width, x_axis_label=x_axis_label, 
+            y_axis_label=y_axis_label)
 
-    p = viz.fill_between(x1=x, x2=x, y1=y_high, y2=y_low, fill_color='gray', 
-                         fill_alpha=0.5, show_line=True, line_color='gray')
     if formal:
-        p.line(x_data, y_data)
+        dfs = []
+        for param in params:
+            if diff:
+                x_data, y_data = _ecdf_diff(
+                    df.loc[df['parameter']==param, 'rank_statistic'], 
+                    formal=True)
+            else:
+                x_data, y_data = viz._ecdf_vals(
+                    df.loc[df['parameter']==param, 'rank_statistic'], 
+                    formal=True)
+            dfs.append(pd.DataFrame(data=dict(rank_statistic=x_data,
+                                              __ECDF=y_data,
+                                              parameter=param)))
+        df = pd.concat(dfs, ignore_index=True)
     else:
-        p.circle(x_data, y_data)
+        df['__ECDF'] = df.groupby('parameter')['rank_statistic'].transform(
+                                                                viz._ecdf_y)
+        df['warning_code'] = df['warning_code'].astype(str)
+        if diff:
+            df['__ECDF'] -= (df['rank_statistic'] + 1) / n
+
+
+    cat = 'warning_code' if color_by_warning_code else 'parameter'
+    source = viz._cat_source(df, cat, ['__ECDF', 'rank_statistic'])
+
+    _, _, color_factors = viz._get_cat_range(df, 
+                             df.groupby(cat), 
+                             None, 
+                             None, 
+                             False)
+
+    if palette is None:
+        if len(df[cat].unique()) <= 8:
+            palette = bokeh.palettes.Colorblind8
+        elif len(df[cat].unique()) <= 10:
+            palette = bokeh.palettes.d3.Category10
+        elif len(df[cat].unique()) <= 20:
+            palette = bokeh.palettes.d3.Category20
+        else:
+            palette = bokeh.palettes.Viridis256[::8]
+
+    if formal:
+        if color is None:
+            color = palette
+        else:
+            color = [color]*len(params)
+    elif color is None:
+        color = bokeh.transform.factor_cmap('cat', 
+                                            palette=palette, 
+                                            factors=color_factors)
+
+    if y_axis_label is None:
+        if diff:
+            y_axis_label = 'diff from Uniform CDF'
+        else:
+            y_axis_label = 'ECDF'
+
+    if x_axis_label is None:
+        x_axis_label = 'rank statistic'
+
+
+    if formal:
+        for i, (param, g) in enumerate(df.groupby('parameter')):
+            p.line(source=g, x='rank_statistic', y='__ECDF', color=color[i],
+                   legend=param if show_legend else None, **kwargs)
+    else:
+        p.circle(source=source, x='rank_statistic', y='__ECDF', color=color, 
+                 legend='__label' if show_legend else None, **kwargs)
 
     return p
     
