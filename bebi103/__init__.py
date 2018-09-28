@@ -14,16 +14,6 @@ from . import viz
 from . import image
 
 try:
-    from . import pm
-except:
-    pass
-
-try:
-    from . import emcee
-except:
-    pass
-
-try:
     from . import stan
 except:
     warnings.warn('Could not import `stan` submodule. Perhaps pystan is not properly installed.')

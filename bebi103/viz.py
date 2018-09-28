@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import scipy.stats as st
+import numba
 
 try:
     import pymc3 as pm
@@ -30,14 +31,15 @@ Features requiring DataShader will not work and you will get exceptions.""")
 
 
 from . import utils
+from . import stan
 
         
-def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
+def fill_between(x1=None, y1=None, x2=None, y2=None, 
+                 x_axis_label=None, y_axis_label=None,
                  x_axis_type='linear', y_axis_type='linear',
                  title=None, plot_height=300, plot_width=450,
                  fill_color='#1f77b4', line_color='#1f77b4', show_line=True,
-                 line_width=1, fill_alpha=1, line_alpha=1, p=None, 
-                 backend='bokeh', **kwargs):
+                 line_width=1, fill_alpha=1, line_alpha=1, p=None,  **kwargs):
     """
     Create a filled region between two curves.
 
@@ -79,8 +81,6 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
-    backend : str, either 'bokeh' or 'altair'
-        Whether to output a Bokeh or Altair plot.
 
     Returns
     -------
@@ -91,8 +91,6 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
     -----
     .. Any remaining kwargs are passed to bokeh.models.patch().
     """
-    if backend != 'bokeh':
-        raise RuntimeError('Only Bokeh plots are supported.')
 
     if p is None:
         p = bokeh.plotting.figure(
@@ -124,9 +122,10 @@ def fill_between(x1, y1, x2, y2, x_axis_label=None, y_axis_label=None,
     return p
 
 
-def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
-         plot_height=300, plot_width=450, formal=False, complementary=False,
-         x_axis_type='linear', y_axis_type='linear', **kwargs):
+def ecdf(data=None, p=None, x_axis_label=None, y_axis_label='ECDF', 
+         title=None, plot_height=300, plot_width=450, formal=False, 
+         complementary=False, x_axis_type='linear', y_axis_type='linear', 
+         **kwargs):
     """
     Create a plot of an ECDF.
 
@@ -193,9 +192,9 @@ def ecdf(data, p=None, x_axis_label=None, y_axis_label='ECDF', title=None,
     return p
 
 
-def histogram(data, bins=10, p=None, x_axis_label=None, y_axis_label=None,
-              title=None, plot_height=300, plot_width=450, density=True,
-              kind='step', **kwargs):
+def histogram(data=None, bins=10, p=None, x_axis_label=None, 
+              y_axis_label=None, title=None, plot_height=300, plot_width=450,
+              density=False, kind='step', **kwargs):
     """
     Make a plot of a histogram of a data set.
 
@@ -221,7 +220,7 @@ def histogram(data, bins=10, p=None, x_axis_label=None, y_axis_label=None,
         Height of plot, in pixels. Ignored is `p` is not None.
     plot_width : int, default 450
         Width of plot, in pixels. Ignored is `p` is not None.
-    density : bool, default True
+    density : bool, default False
         If True, normalized the histogram. Otherwise, base the histogram
         on counts.
     kind : str, default 'step'
@@ -233,11 +232,21 @@ def histogram(data, bins=10, p=None, x_axis_label=None, y_axis_label=None,
     output : Bokeh figure
         Figure populated with histogram.
     """
+    if data is None:
+        raise RuntimeError('Input `data` must be specified.')
+
     # Instantiate Bokeh plot if not already passed in
     if p is None:
+        if y_axis_label is None:
+            if density:
+                y_axis_label = 'density'
+            else:
+                y_axis_label = 'count'
+
         p = bokeh.plotting.figure(
             plot_height=plot_height, plot_width=plot_width, 
-            x_axis_label=x_axis_label, y_axis_label=y_axis_label, title=title)
+            x_axis_label=x_axis_label, y_axis_label=y_axis_label, 
+            title=title, y_range = bokeh.models.DataRange1d(start=0))
 
     if bins == 'exact':
         a = np.unique(data)
@@ -323,6 +332,13 @@ def jitter(data=None, cats=None, val=None, p=None, horizontal=False,
     val_axis_type : str, default 'linear'
         Type of scaling for the quantitative axis, wither 'linear' or
         'log'.
+    show_legend : bool, default False
+        If True, display legend.
+    color_column : str, default None
+        Column of `data` to use in determining color of glyphs. If None,
+        then `cats` is used.
+    tooltips : list of Bokeh tooltips
+        Tooltips to add to the plot.
     kwargs
         Any kwargs to be passed to p.circle when making the jitter plot.
 
@@ -391,13 +407,14 @@ def jitter(data=None, cats=None, val=None, p=None, horizontal=False,
     return p
 
 
-def box(data, cats, val, p=None, horizontal=False, x_axis_label=None,
-        y_axis_label=None, title=None, plot_height=300, plot_width=400, 
+def box(data=None, cats=None, val=None, p=None, horizontal=False, 
+        x_axis_label=None, y_axis_label=None, title=None, plot_height=300, 
+        plot_width=400, 
         palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
                  '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
-        width=0.4, order=None, tooltips=None,val_axis_type='linear', 
-        display_outliers=True, box_kwargs={}, whisker_kwargs=None, 
-        outlier_kwargs=None):
+        color_column=None, width=0.4, order=None, tooltips=None, 
+        val_axis_type='linear', display_outliers=True, box_kwargs={}, 
+        whisker_kwargs=None, outlier_kwargs=None):
     """
     Make a box-and-whisker plot from a tidy DataFrame.
 
@@ -429,14 +446,21 @@ def box(data, cats, val, p=None, horizontal=False, x_axis_label=None,
     width : float, default 0.4
         Maximum allowable width of the boxes. A value of 1 means that
         the boxes take the entire space allotted.
+    val_axis_type : str, default 'linear'
+        Type of scaling for the quantitative axis, wither 'linear' or
+        'log'.
+    show_legend : bool, default False
+        If True, display legend.
+    color_column : str, default None
+        Column of `data` to use in determining color of glyphs. If None,
+        then `cats` is used.
+    tooltips : list of Bokeh tooltips
+        Tooltips to add to the plot.
     order : list or None
         If not None, must be a list of unique entries in `df[val]`. The
         order of the list specifies the order of the boxes. If None,
         the boxes appear in the order in which they appeared in the
         inputted DataFrame.
-    val_axis_type : str, default 'linear'
-        Type of scaling for the quantitative axis, wither 'linear' or
-        'log'.
     display_outliers : bool, default True
         If True, display outliers, otherwise suppress them. This should
         only be False when making an overlay with a jitter plot.
@@ -694,6 +718,9 @@ def ecdf_collection(data=None, cats=None, val=None, p=None,
         y = '__ECDF'
         if y_axis_label is None:
             y_axis_label = 'ECDF'
+
+    if x_axis_label is None:
+        x_axis_label = val
 
 
     if p is None:
@@ -1274,6 +1301,1004 @@ def boxwhisker(data, cats, val, p=None, horizontal=False, x_axis_label=None,
                outlier_kwargs)
 
 
+def predictive_ecdf(samples=None, name=None, diff=False, data=None,
+                    ptiles=[10, 20, 30, 40, 50, 60, 70, 80, 90],
+                    plot_width=350, plot_height=225,
+                    x_axis_label=None, y_axis_label='ECDF',
+                    color='blue', data_color='orange', data_line=True,
+                    data_size=2, x=None, discrete=False):
+    """Plot a predictive ECDF from samples.
+
+    Parameters
+    ----------
+    samples : StanFit4Model instance of Pandas DataFrame
+        Samples generated from running a Stan calculation.
+    name : str
+        Name of the array to use in plotting the predictive ECDF. The
+        array must be one-dimensional.
+    diff : bool, default True
+        If True, the ECDFs minus median of the predictive ECDF are 
+        plotted.
+    data : 1D Numpy array, default None
+        If not None, ECDF of measured data, overlaid with predictive
+        ECDF. 
+    color : str
+        One of ['green', 'blue', 'red', 'gray', 'purple', 'orange'].
+        There are used to make the color scheme of shading of
+        percentiles.
+    x : Numpy array, default None
+        Points at which to evaluate the ECDF. If None, points are 
+        automatically generated based on the data range.
+    discrete : bool, default False TO BE IMPLEMENTED, CURRENTLY IGNORED
+        If True, the samples take on discrete values.
+
+    Returns
+    -------
+    output : Bokeh figure
+        Figure populated with glyphs describing range of values for the
+        ECDF of the samples. The shading goes according to percentiles
+        of samples of the ECDF, from outermost to innermost, (10, 90),
+        (20, 80), (30, 70), and (40, 60), with the median ECDF plotted
+        as line in the middle.
+    """
+    df = stan._fit_to_df(samples, diagnostics=False)
+
+    if color not in ['green', 'blue', 'red', 'gray', 
+                     'purple', 'orange', 'betancourt']:
+        raise RuntimeError("Only allowed colors are 'green', 'blue', 'red', 'gray', 'purple', 'orange'")
+
+    if x_axis_label is None:
+        x_axis_label=str(name)
+
+    sub_df = stan.extract_array(df, name)
+
+    if 'index_j' in sub_df:
+        raise RuntimeError('Can only plot ECDF for one-dimensional data.')
+
+    colors = {'blue': ['#9ecae1','#6baed6','#4292c6','#2171b5','#084594'],
+              'green': ['#a1d99b','#74c476','#41ab5d','#238b45','#005a32'],
+              'red': ['#fc9272','#fb6a4a','#ef3b2c','#cb181d','#99000d'],
+              'orange': ['#fdae6b','#fd8d3c','#f16913','#d94801','#8c2d04'],
+              'purple': ['#bcbddc','#9e9ac8','#807dba','#6a51a3','#4a1486'],
+              'gray': ['#bdbdbd','#969696','#737373','#525252','#252525'],
+              'betancourt': ['#DCBCBC', '#C79999', '#B97C7C', 
+                             '#A25050', '#8F2727', '#7C0000']}
+
+    data_range = sub_df[name].max() - sub_df[name].min()
+    if x is None:
+      x = np.linspace(sub_df[name].min() - 0.05*data_range,
+                      sub_df[name].max() + 0.05*data_range,
+                      400)
+
+    df_ecdf =  _ecdf_from_samples(sub_df, name, ptiles, x)
+
+    if diff:
+        for ptile in filter(lambda item: item!=50, ptiles):
+            df_ecdf[ptile] -= df_ecdf[50]
+        df_ecdf[50] = 0.0
+
+    if data is not None and diff:
+        df_ecdf_data_median = _ecdf_from_samples(sub_df, 
+                                                 name,
+                                                 [50], 
+                                                 np.sort(data))
+
+    if diff and y_axis_label == 'ECDF':
+        y_axis_label = 'ECDF diff. from median PPC'
+
+    p = bokeh.plotting.figure(plot_width=plot_width, 
+                              plot_height=plot_height,
+                              x_axis_label=x_axis_label, 
+                              y_axis_label=y_axis_label)
+
+    for i, ptile in enumerate([10, 20, 30, 40]):
+        fill_between(df_ecdf['x'], df_ecdf[ptile],
+                         df_ecdf['x'], df_ecdf[100-ptile],
+                         p=p,
+                         show_line=False,
+                         fill_color=colors[color][i])
+
+    # The median as a solid line
+    p.line(df_ecdf['x'],
+           df_ecdf[50], 
+           line_width=2, 
+           color=colors[color][-1])
+
+    # Overlay data set
+    if data is not None:
+        x_data, y_data = _ecdf_vals(data, formal=False)
+        if diff:
+            y_data -= df_ecdf_data_median[50]
+        if data_line:
+            x_data, y_data = _to_formal(x_data, y_data)
+            p.line(x_data, y_data, color=data_color, line_width=data_size)
+        else:
+            p.circle(x_data, y_data, color=data_color, size=data_size)
+
+    return p
+
+
+def sbc_rank_ecdf(sbc_output, params, diff=True, formal=False, ptile=99,
+        bootstrap_envelope=False, n_bs_reps=None, show_envelope=True, p=None,
+        plot_height=300, plot_width=450, x_axis_label=None, y_axis_label=None,
+        color=None, alpha=1, color_by_warning_code=False, palette=None, 
+        fill_color='gray', fill_alpha=0.5, show_line=True, line_color='gray', 
+        show_legend=False, **kwargs):
+    """Make a rank ECDF plot from SBC.
+
+    color input can only be a solid color. Otherwise, if `color_by_warning_code` is false, it colors by parameter.
+    """
+
+    if formal and color_by_warning_code:
+        raise RuntimeError('Cannot color by warning code for formal ECDFs.')
+    if color is not None and color_by_warning_code:
+        raise RuntimeError(
+            '`color` must be `None` if `color_by_warning_code` is True.')
+
+    if type(params) not in [list, tuple]:
+        params = [params]
+
+    L = sbc_output['L'].iloc[0]
+    df = sbc_output.loc[sbc_output['parameter'].isin(params), 
+                        ['parameter', 'rank_statistic', 'warning_code']]
+    n = (df['parameter'] == df['parameter'].unique()[0]).sum()
+
+    if show_envelope:
+        x, y_low, y_high = _sbc_rank_envelope(L, n, ptile=ptile, diff=diff,
+                    bootstrap=bootstrap_envelope, n_bs_reps=n_bs_reps)
+        p = fill_between(x1=x, x2=x, y1=y_high, y2=y_low, 
+                     plot_height=plot_height, plot_width=plot_width,
+                     x_axis_label=x_axis_label, y_axis_label=y_axis_label,
+                     fill_color=fill_color, fill_alpha=fill_alpha,
+                     show_line=show_line, line_color=line_color, p=p)
+    else:
+        p = bokeh.plotting.figure(plot_height=plot_height, 
+            plot_width=plot_width, x_axis_label=x_axis_label, 
+            y_axis_label=y_axis_label)
+
+    if formal:
+        dfs = []
+        for param in params:
+            if diff:
+                x_data, y_data = _ecdf_diff(
+                    df.loc[df['parameter']==param, 'rank_statistic'], 
+                    formal=True)
+            else:
+                x_data, y_data = _ecdf_vals(
+                    df.loc[df['parameter']==param, 'rank_statistic'], 
+                    formal=True)
+            dfs.append(pd.DataFrame(data=dict(rank_statistic=x_data,
+                                              __ECDF=y_data,
+                                              parameter=param)))
+        df = pd.concat(dfs, ignore_index=True)
+    else:
+        df['__ECDF'] = df.groupby('parameter')['rank_statistic'].transform(
+                                                                _ecdf_y)
+        df['warning_code'] = df['warning_code'].astype(str)
+        if diff:
+            df['__ECDF'] -= (df['rank_statistic'] + 1) / n
+
+
+    cat = 'warning_code' if color_by_warning_code else 'parameter'
+    source = _cat_source(df, cat, ['__ECDF', 'rank_statistic'])
+
+    _, _, color_factors = _get_cat_range(df, 
+                             df.groupby(cat), 
+                             None, 
+                             None, 
+                             False)
+
+    if palette is None:
+        if len(df[cat].unique()) <= 8:
+            palette = bokeh.palettes.Colorblind8
+        elif len(df[cat].unique()) <= 10:
+            palette = bokeh.palettes.d3.Category10
+        elif len(df[cat].unique()) <= 20:
+            palette = bokeh.palettes.d3.Category20
+        else:
+            palette = bokeh.palettes.Viridis256[::8]
+
+    if formal:
+        if color is None:
+            color = palette
+        else:
+            color = [color]*len(params)
+    elif color is None:
+        color = bokeh.transform.factor_cmap('cat', 
+                                            palette=palette, 
+                                            factors=color_factors)
+
+    if y_axis_label is None:
+        if diff:
+            y_axis_label = 'diff from Uniform CDF'
+        else:
+            y_axis_label = 'ECDF'
+
+    if x_axis_label is None:
+        x_axis_label = 'rank statistic'
+
+
+    if formal:
+        for i, (param, g) in enumerate(df.groupby('parameter')):
+            p.line(source=g, x='rank_statistic', y='__ECDF', color=color[i],
+                   legend=param if show_legend else None, **kwargs)
+    else:
+        p.circle(source=source, x='rank_statistic', y='__ECDF', color=color, 
+                 legend='__label' if show_legend else None, **kwargs)
+
+    return p
+
+
+def corner(samples=None, vars=None, labels=None, datashade=False, 
+           plot_width=150, plot_ecdf=False, cmap='black', 
+           divergence_color='orange', alpha=1, single_param_color='black', 
+           bins=20, show_contours=False, contour_color='black', bins_2d=50, 
+           levels=None, weights=None, smooth=1, extend_contour_domain=False,
+           plot_width_correction=50, plot_height_correction=40):
+    """
+    Make a corner plot of MCMC results. Heavily influenced by the corner
+    package by Dan Foreman-Mackey.
+
+    Parameters
+    ----------
+    samples : StanFit4Model instance or Pandas DataFrame
+        Result of MCMC sampling.
+    vars : list
+        List of variables as strings included in `samples` to construct
+        corner plot.
+    labels : list, default None
+        List of labels for the respective variables given in `vars`. If
+        None, the variable names from `vars` are used.
+    datashade : bool, default False
+        Whether or not to convert sampled points to a raster image using
+        Datashader.
+    plot_width : int, default 150
+        Width of each plot in the corner plot in pixels. The height is
+        computed from the width to make the plots roughly square.
+    plot_ecdf : bool, default False
+        If True, plot ECDFs of samples on the diagonal of the corner
+        plot. If False, histograms are plotted.
+    cmap : str, default 'black'
+        Valid colormap string for DataShader or for coloring Bokeh
+        glyphs.
+    divergence_color : str, default 'orange'
+        Color to use for showing points where the sampler experienced a
+        divergence.
+    alpha : float, default 1.0
+        Opacity of glyphs. Ignored if `datashade` is True.
+    single_param_color : str, default 'black'
+        Color of histogram or ECDF lines.
+    bins : int, default 20
+        Number of bins to use in constructing histograms. Ignored if
+        `plot_ecdf` is True.
+    show_contours : bool, default False
+        If True, show contour plot on top of samples.
+    contour_color : str, default 'black'
+        Color of contour lines
+    bins_2d : int, default 50
+        Number of bins in each direction for binning 2D histograms when
+        computing contours.
+    levels : list of floats, default None
+        Levels to use when constructing contours. By default, these are
+        chosen according to this principle from Dan Foreman-Mackey:
+        http://corner.readthedocs.io/en/latest/pages/sigmas.html
+    weights : default None
+        Value to pass as `weights` kwarg to np.histogram2d(), used in
+        constructing contours.
+    smooth : int or None, default 1
+        Width of smoothing kernel for making contours.    plot_width_correction : int, default 50
+        Correction for width of plot taking into account tick and axis
+        labels.
+    extend_contour_domain : bool, default False
+        If True, extend the domain of the contours a little bit beyond
+        the extend of the samples. This is done in the corner package,
+        but I prefer not to do it.
+    plot_width_correction : int, default 50
+        Correction for width of plot taking into account tick and axis
+        labels.
+    plot_height_correction : int, default 40
+        Correction for height of plot taking into account tick and axis
+        labels.
+
+    Returns
+    -------
+    output : Bokeh gridplot
+        Corner plot as a Bokeh gridplot.
+    """
+
+    if vars is None:
+        raise RuntimeError('Must specify vars.')
+
+    if type(vars) not in (list, tuple):
+        raise RuntimeError('`vars` must be a list or tuple.')
+
+    if divergence_color is None:
+        divergence_color = cmap
+
+    if type(samples) == pd.core.frame.DataFrame:
+        df = samples          
+    elif 'pymc3' in str(type(samples)):
+        try:
+            df = pm.trace_to_dataframe(samples) 
+        except:
+            raise RuntimeError(
+                'PyMC3 could not be imported. Check your installation.'
+                + ' PyMC3 features will soon be deprecated.')
+    elif 'StanFit4Model' in str(type(samples)):
+        df = samples.to_dataframe(diagnostics=True)
+
+    if 'divergent__' not in df.columns and divergence_color is not None:
+            raise RuntimeError('No divergence information available. '
+                + 'You may want to use the `divergence_color=None` kwarg.')
+
+    if len(vars) > 6:
+        raise RuntimeError(
+                    'For space purposes, can show only six variables.')
+        
+    for col in vars:
+        if col not in df.columns:
+            raise RuntimeError(
+                        'Column ' + col + ' not in the columns of DataFrame.')
+            
+    if labels is None:
+        labels = vars
+    elif len(labels) != len(vars):
+        raise RuntimeError('len(vars) must equal len(labels)')
+
+    if len(vars) == 1:
+        x = vars[0]
+        if plot_ecdf:
+            if datashade:
+                if plot_width == 150:
+                    plot_height = 200
+                    plot_width = 300
+                else:
+                    plot_width = 200
+                    plot_height=200
+                x_range, _ = _data_range(df, vars[0], vars[0])
+                p = bokeh.plotting.figure(
+                        x_range=x_range, y_range=[-0.02, 1.02], 
+                        plot_width=plot_width, plot_height=plot_height)
+                x_ecdf, y_ecdf = _ecdf_vals(df[vars[0]], formal=True)
+                df_ecdf = pd.DataFrame(data={vars[0]: x_ecdf, 'ECDF': y_ecdf})
+                _ = datashader.bokeh_ext.InteractiveImage(
+                        p, _create_line_image, df=df_ecdf, 
+                        x=x, y='ECDF', cmap=single_param_color)
+            else:
+                return ecdf(df[vars[0]], formal=True,
+                            line_width=2, line_color=single_param_color)
+        else:
+            return histogram(df[vars[0]],
+                             bins=bins,
+                             density=True, 
+                             line_width=2,
+                             color=single_param_color,
+                             x_axis_label=vars[0])
+        
+    if not datashade:
+        if len(df) > 10000:
+            raise RuntimeError(
+                'Cannot render more than 10,000 samples without DataShader.')
+        elif len(df) > 5000:
+            warnings.warn(
+                'Rendering so many points without DataShader is ill-advised.')
+
+    plots = [[None for _ in range(len(vars))] for _ in range(len(vars))]
+    
+    for i, j in zip(*np.tril_indices(len(vars))):
+        pw = plot_width
+        ph = plot_width
+        if j == 0:
+            pw += plot_width_correction
+        if i == len(vars) - 1:
+            ph += plot_height_correction
+            
+        x = vars[j]
+        if i != j:
+            y = vars[i]
+            x_range, y_range = _data_range(df, x, y)
+            plots[i][j] = bokeh.plotting.figure(
+                    x_range=x_range, y_range=y_range,
+                    plot_width=pw, plot_height=ph)
+            if datashade:
+                _ = datashader.bokeh_ext.InteractiveImage(
+                    plots[i][j], _create_points_image, df=df, x=x, y=y, 
+                    cmap=cmap)
+                plots[i][j].circle(df.loc[df['divergent__']==1, x], 
+                   df.loc[df['divergent__']==1, y], 
+                   size=2, 
+                   color=divergence_color)
+            else:
+                if divergence_color is None:
+                    plots[i][j].circle(df[x], df[y], size=2, 
+                                       alpha=alpha, color=cmap)
+                else:
+                    plots[i][j].circle(df.loc[df['divergent__']==0, x], 
+                                       df.loc[df['divergent__']==0, y], 
+                                       size=2, 
+                                       alpha=alpha, 
+                                       color=cmap)
+                    plots[i][j].circle(df.loc[df['divergent__']==1, x], 
+                                       df.loc[df['divergent__']==1, y], 
+                                       size=2, 
+                                       color=divergence_color)
+
+            if show_contours:
+                xs, ys = _get_contour_lines_from_samples(
+                                df[x].values,
+                                df[y].values, 
+                                bins=bins_2d, 
+                                smooth=smooth, 
+                                levels=levels,
+                                weights=weights, 
+                                extend_domain=extend_contour_domain)
+                plots[i][j].multi_line(xs, ys, line_color=contour_color, 
+                                       line_width=2)
+        else:
+            if plot_ecdf:
+                x_range, _ = _data_range(df, x, x)
+                plots[i][i] = bokeh.plotting.figure(
+                        x_range=x_range, y_range=[-0.02, 1.02], 
+                        plot_width=pw, plot_height=ph)
+                if datashade:
+                    x_ecdf, y_ecdf = _ecdf_vals(df[x], formal=True)
+                    df_ecdf = pd.DataFrame(data={x: x_ecdf, 'ECDF': y_ecdf}) 
+                    _ = datashader.bokeh_ext.InteractiveImage(
+                            plots[i][i], _create_line_image, df=df_ecdf, 
+                            x=x, y='ECDF', cmap=single_param_color)
+                else:
+                    plots[i][i] = ecdf(df[x], p=plots[i][i], formal=True,
+                                line_width=2, line_color=single_param_color)
+            else:
+                x_range, _ = _data_range(df, x, x)
+                plots[i][i] = bokeh.plotting.figure(
+                            x_range=x_range, 
+                            y_range=bokeh.models.DataRange1d(start=0.0),
+                            plot_width=pw, plot_height=ph)
+                f, e = np.histogram(df[x], bins=bins, density=True)
+                e0 = np.empty(2*len(e))
+                f0 = np.empty(2*len(e))
+                e0[::2] = e
+                e0[1::2] = e
+                f0[0] = 0
+                f0[-1] = 0
+                f0[1:-1:2] = f
+                f0[2:-1:2] = f
+                
+                plots[i][i].line(e0, f0, line_width=2, 
+                                 color=single_param_color)
+
+    # Link axis ranges
+    for i in range(1,len(vars)):
+        for j in range(i):
+            plots[i][j].x_range = plots[j][j].x_range
+            plots[i][j].y_range = plots[i][i].x_range
+
+    # Label axes
+    for i, label in enumerate(labels):
+        plots[-1][i].xaxis.axis_label = label
+
+    for i, label in enumerate(labels[1:]):
+        plots[i+1][0].yaxis.axis_label = label
+
+    if plot_ecdf:
+        plots[0][0].yaxis.axis_label = 'ECDF'
+        
+    # Take off tick labels
+    for i in range(len(vars)-1):
+        for j in range(i+1):
+            plots[i][j].xaxis.major_label_text_font_size = '0pt'
+
+    if not plot_ecdf:
+        plots[0][0].yaxis.major_label_text_font_size = '0pt'
+
+    for i in range(1, len(vars)):
+        for j in range(1, i+1):
+            plots[i][j].yaxis.major_label_text_font_size = '0pt'
+    
+    grid = bokeh.layouts.gridplot(plots, toolbar_location='left',
+                                  toolbar_sticky=False)
+    return grid
+
+
+def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350, 
+            plot_height=300, x_axis_label='x', y_axis_label='y', title=None, 
+            line_color=None, line_width=2, color_mapper=None,
+            overlay_grid=False, fill=False, fill_palette=None,
+            fill_alpha=0.75, **kwargs):
+    """
+    Make a contour plot, possibly overlaid on an image.
+
+    Parameters
+    ----------
+    X : 2D Numpy array
+        Array of x-values, as would be produced using np.meshgrid()
+    Y : 2D Numpy array
+        Array of y-values, as would be produced using np.meshgrid()
+    Z : 2D Numpy array
+        Array of z-values.
+    levels : array_like
+        Levels to plot, ranging from 0 to 1. The contour around a given
+        level contains that fraction of the total probability if the
+        contour plot is for a 2D probability density function. By 
+        default, the levels are given by the one, two, three, and four
+        sigma levels corresponding to a marginalized distribution from
+        a 2D Gaussian distribution.
+    p : bokeh plotting object, default None
+        If not None, the contour are added to `p`. This option is not
+        allowed if `overlaid` is True.
+    overlaid : bool, default False
+        If True, `Z` is displayed as an image and the contours are
+        overlaid.
+    plot_width : int, default 350
+        Width of the plot in pixels. Ignored if `p` is not None.
+    plot_height : int, default 300
+        Height of the plot in pixels. Ignored if `p` is not None.
+    x_axis_label : str, default 'x'
+        Label for the x-axis. Ignored if `p` is not None.
+    y_axis_label : str, default 'y'
+        Label for the y-axis. Ignored if `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored if `p` is not None.
+    line_color : str, defaults to Bokeh default
+        Color, either named CSS color or hex, of contour lines.
+    line_width : int, default 2
+        Width of contour lines.
+    color_mapper : bokeh.models.LinearColorMapper, default Viridis
+        Mapping of `Z` level to color. Ignored if `overlaid` is False.
+    overlay_grid : bool, default False
+        If True, faintly overlay the grid on top of image. Ignored if
+        overlaid is False.
+
+    Returns
+    -------
+    output : Bokeh plotting object
+        Plot populated with contours, possible with an image.
+    """
+    if len(X.shape) != 2 or Y.shape != X.shape or Z.shape != X.shape:
+        raise RuntimeError('All arrays must be 2D and of same shape.')
+
+    if overlaid and p is not None:
+        raise RuntimeError('Cannot specify `p` if showing image.')
+
+    if line_color is None:
+        if overlaid:
+            line_color = 'white'
+        else:
+            line_color = 'black'
+
+    if p is None:
+        if overlaid:
+            p = imshow(Z,
+                       color_mapper=color_mapper,
+                       plot_height=plot_height,
+                       plot_width=plot_width,
+                       x_axis_label=x_axis_label,
+                       y_axis_label=y_axis_label,
+                       title=title,
+                       x_range = [X.min(), X.max()],
+                       y_range = [Y.min(), Y.max()],
+                       no_ticks=False, 
+                       flip=False, 
+                       return_im=False)
+        else:
+            p = bokeh.plotting.figure(plot_width=plot_width,
+                                      plot_height=plot_height,
+                                      x_axis_label=x_axis_label,
+                                      y_axis_label=y_axis_label,
+                                      title=title)
+
+    # Set default levels
+    if levels is None:
+        levels = 1.0 - np.exp(-np.arange(0.5, 2.1, 0.5)**2 / 2)
+
+    # Compute contour lines
+    if fill or line_width:
+        xs, ys = _contour_lines(X, Y, Z, levels)
+
+    # Make fills. This is currently not supported
+    if fill:
+        raise NotImplementedError('Filled contours are not yet implemented.')
+        if fill_palette is None:
+            if len(levels) <= 6:
+                fill_palette = bokeh.palettes.Greys[len(levels)+3][1:-1]
+            elif len(levels) <= 10:
+                fill_palette = bokeh.palettes.Viridis[len(levels)+1]
+            else:
+                raise RuntimeError(
+                    'Can only have maximally 10 levels with filled contours' +
+                    ' unless user specifies `fill_palette`.')
+        elif len(fill_palette) != len(levels) + 1:
+            raise RuntimeError('`fill_palette` must have 1 more entry' +
+                               ' than `levels`')
+
+        p.patch(xs[-1], ys[-1],
+                color=fill_palette[0],
+                alpha=fill_alpha,
+                line_color=None)
+        for i in range(1, len(levels)):
+            x_p = np.concatenate((xs[-1-i], xs[-i][::-1]))
+            y_p = np.concatenate((ys[-1-i], ys[-i][::-1]))
+            print(len(x_p), len(y_p))
+            p.patch(x_p, 
+                    y_p, 
+                    color=fill_palette[i],
+                    alpha=fill_alpha,
+                    line_color=None)
+
+        p.background_fill_color=fill_palette[-1]
+
+    # Populate the plot with contour lines
+    if line_width:
+        p.multi_line(xs, ys, line_color=line_color, line_width=line_width,
+                     **kwargs)
+
+    if overlay_grid and overlaid:
+        p.grid.level = 'overlay'
+        p.grid.grid_line_alpha = 0.2
+
+    return p
+
+
+def ds_line_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
+                 x_axis_label=None, y_axis_label=None, title=None,
+                 margin=0.02):
+    """
+    Make a datashaded line plot.
+
+    Params
+    ------
+    df : pandas DataFrame
+        DataFrame containing the data
+    x : Valid column name of Pandas DataFrame
+        Column containing the x-data.
+    y : Valid column name of Pandas DataFrame
+        Column containing the y-data.
+    cmap : str, default '#1f77b4'
+        Valid colormap string for DataShader and for coloring Bokeh
+        glyphs.
+    plot_height : int, default 300
+        Height of plot, in pixels.
+    plot_width : int, default 500
+        Width of plot, in pixels.
+    x_axis_label : str, default None
+        Label for the x-axis.
+    y_axis_label : str, default None
+        Label for the y-axis.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    margin : float, default 0.02
+        Margin, in units of `plot_width` or `plot_height`, to leave
+        around the plotted line.
+
+    Returns
+    -------
+    output : datashader.bokeh_ext.InteractiveImage
+        Interactive image of plot. Note that you should *not* use
+        bokeh.io.show() to view the image. For most use cases, you
+        should just call this function without variable assignment.
+    """
+
+    if x_axis_label is None:
+        if type(x) == str:
+            x_axis_label = x
+        else:
+            x_axis_label = 'x'
+
+    if y_axis_label is None:
+        if type(y) == str:
+            y_axis_label = y
+        else:
+            y_axis_label = 'y'
+
+    x_range, y_range = _data_range(df, x, y, margin=margin)
+    p = bokeh.plotting.figure(plot_height=plot_height,
+                              plot_width=plot_width,
+                              x_range=x_range,
+                              y_range=y_range,
+                              x_axis_label=x_axis_label,
+                              y_axis_label=y_axis_label,
+                              title=title)
+    return datashader.bokeh_ext.InteractiveImage(p,
+                                                 _create_line_image,
+                                                 df=df, 
+                                                 x=x, 
+                                                 y=y,
+                                                 cmap=cmap)
+
+
+def ds_point_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
+                  x_axis_label=None, y_axis_label=None, title=None,
+                  margin=0.02):
+    """
+    Make a datashaded point plot.
+
+    Params
+    ------
+    df : pandas DataFrame
+        DataFrame containing the data
+    x : Valid column name of Pandas DataFrame
+        Column containing the x-data.
+    y : Valid column name of Pandas DataFrame
+        Column containing the y-data.
+    cmap : str, default '#1f77b4'
+        Valid colormap string for DataShader and for coloring Bokeh
+        glyphs.
+    plot_height : int, default 300
+        Height of plot, in pixels.
+    plot_width : int, default 500
+        Width of plot, in pixels.
+    x_axis_label : str, default None
+        Label for the x-axis.
+    y_axis_label : str, default None
+        Label for the y-axis.
+    title : str, default None
+        Title of the plot. Ignored is `p` is not None.
+    margin : float, default 0.02
+        Margin, in units of `plot_width` or `plot_height`, to leave
+        around the plotted line.
+
+    Returns
+    -------
+    output : datashader.bokeh_ext.InteractiveImage
+        Interactive image of plot. Note that you should *not* use
+        bokeh.io.show() to view the image. For most use cases, you
+        should just call this function without variable assignment.
+    """
+
+    if x_axis_label is None:
+        if type(x) == str:
+            x_axis_label = x
+        else:
+            x_axis_label = 'x'
+
+    if y_axis_label is None:
+        if type(y) == str:
+            y_axis_label = y
+        else:
+            y_axis_label = 'y'
+
+    x_range, y_range = _data_range(df, x, y, margin=margin)
+    p = bokeh.plotting.figure(plot_height=plot_height,
+                              plot_width=plot_width,
+                              x_range=x_range,
+                              y_range=y_range,
+                              x_axis_label=x_axis_label,
+                              y_axis_label=y_axis_label,
+                              title=title)
+    return datashader.bokeh_ext.InteractiveImage(p,
+                                                 _create_points_image,
+                                                 df=df, 
+                                                 x=x, 
+                                                 y=y,
+                                                 cmap=cmap)
+
+
+def distribution_plot_app(x_min=None, x_max=None, scipy_dist=None,
+    transform=None, custom_pdf=None, custom_pmf=None, custom_cdf=None, 
+    params=None, n=400, plot_height=200, plot_width=300, x_axis_label='x', 
+    title=None):
+    """
+    Build interactive Bokeh app displaying a univariate
+    probability distribution.
+
+    Parameters
+    ----------
+    x_min : float
+        Minimum value that the random variable can take in plots.
+    x_max : float
+        Maximum value that the random variable can take in plots.
+    scipy_dist : scipy.stats distribution
+        Distribution to use in plotting.
+    transform : function or None (default)
+        A function of call signature `transform(*params)` that takes
+        a tuple or Numpy array of parameters and returns a tuple of
+        the same length with transformed parameters.
+    custom_pdf : function
+        Function with call signature f(x, *params) that computes the
+        PDF of a distribution.
+    custom_pmf : function    
+        Function with call signature f(x, *params) that computes the
+        PDF of a distribution.
+    custom_cdf : function
+        Function with call signature F(x, *params) that computes the
+        CDF of a distribution.
+    params : list of dicts
+        A list of parameter specifications. Each entry in the list gives
+        specifications for a parameter of the distribution stored as a
+        dictionary. Each dictionary must have the following keys.
+            name : str, name of the parameter
+            start : float, starting point of slider for parameter (the
+                smallest allowed value of the parameter)
+            end : float, ending point of slider for parameter (the
+                largest allowed value of the parameter)
+            value : float, the value of the parameter that the slider
+                takes initially. Must be between start and end.
+            step : float, the step size for the slider
+    n : int, default 400
+        Number of points to use in making plots of PDF and CDF for 
+        continuous distributions. This should be large enough to give
+        smooth plots.
+    plot_height : int, default 200
+        Height of plots.
+    plot_width : int, default 300
+        Width of plots.
+    x_axis_label : str, default 'x'
+        Label for x-axis.
+    title : str, default None
+        Title to be displayed above the PDF or PMF plot.
+
+    Returns
+    -------
+    output : Bokeh app
+        An app to visualize the PDF/PMF and CDF. It can be displayed
+        with bokeh.io.show(). If it is displayed in a notebook, the
+        notebook_url kwarg should be specified.
+    """
+    if None in [x_min, x_max]:
+        raise RuntimeError('`x_min` and `x_max` must be specified.')
+
+    if scipy_dist is None:
+        fun_c = custom_cdf
+        if (custom_pdf is None and custom_pmf is None) or custom_cdf is None:
+            raise RuntimeError('For custom distributions, both PDF/PMF and'
+                                + ' CDF must be specified.')
+        if custom_pdf is not None and custom_pmf is not None:
+            raise RuntimeError('Can only specify custom PMF or PDF.')
+        if custom_pmf is None:
+            discrete = False
+            fun_p = custom_pdf
+        else:
+            discrete = True
+            fun_p = custom_pmf
+    elif (   custom_pdf is not None 
+          or custom_pmf is not None
+          or custom_cdf is not None):
+        raise RuntimeError(
+            'Can only specify either custom or scipy distribution.')
+    else:
+        fun_c = scipy_dist.cdf
+        if hasattr(scipy_dist, 'pmf'):
+            discrete = True
+            fun_p = scipy_dist.pmf
+        else:
+            discrete = False
+            fun_p = scipy_dist.pdf
+                
+    if discrete:
+        p_y_axis_label = 'PMF'
+    else:
+        p_y_axis_label = 'PDF'
+
+    if params is None:
+        raise RuntimeError('`params` must be specified.')
+        
+
+    def _plot_app(doc):
+        p_p = bokeh.plotting.figure(plot_height=plot_height,
+                                    plot_width=plot_width,
+                                    x_axis_label=x_axis_label,
+                                    y_axis_label=p_y_axis_label,
+                                    title=title)
+        p_c = bokeh.plotting.figure(plot_height=plot_height,
+                                    plot_width=plot_width,
+                                    x_axis_label=x_axis_label,
+                                    y_axis_label='CDF')
+
+        # Link the axes
+        p_c.x_range = p_p.x_range
+
+        # Make sure CDF y_range is zero to one
+        p_c.y_range = bokeh.models.Range1d(-0.05, 1.05)
+
+        # Make array of parameter values
+        param_vals = np.array([param['value'] for param in params])
+        if transform is not None:
+            param_vals = transform(*param_vals)
+
+        # Set up data for plot
+        if discrete:
+            x = np.arange(int(np.ceil(x_min)), 
+                          int(np.floor(x_max))+1)
+            x_size = x[-1] - x[0]
+            x_c = np.empty(2*len(x))
+            x_c[::2] = x
+            x_c[1::2] = x
+            x_c = np.concatenate(((max(x[0] - 0.05*x_size, x[0] - 0.95),), 
+                                  x_c,
+                                  (min(x[-1] + 0.05*x_size, x[-1] + 0.95),)))
+            x_cdf = np.concatenate(((x_c[0],), x))
+        else:
+            x = np.linspace(x_min, x_max, n)
+            x_c = x_cdf = x
+
+        # Compute PDF and CDF
+        y_p = fun_p(x, *param_vals)
+        y_c = fun_c(x_cdf, *param_vals)
+        if discrete:
+            y_c_plot = np.empty_like(x_c)
+            y_c_plot[::2] = y_c
+            y_c_plot[1::2] = y_c
+            y_c = y_c_plot
+
+        # Set up data sources
+        source_p = bokeh.models.ColumnDataSource(data={'x': x,
+                                                       'y_p': y_p})
+        source_c = bokeh.models.ColumnDataSource(data={'x': x_c, 
+                                                       'y_c': y_c})
+
+        # Plot PDF and CDF
+        p_c.line('x', 'y_c', source=source_c, line_width=2)
+        if discrete:
+            p_p.circle('x', 'y_p', source=source_p, size=5)
+            p_p.segment(x0='x',
+                        x1='x',
+                        y0=0, 
+                        y1='y_p', 
+                        source=source_p, 
+                        line_width=2)
+        else:
+            p_p.line('x', 'y_p', source=source_p, line_width=2)
+            
+        
+        def _callback(attr, old, new):
+            param_vals = tuple([slider.value for slider in sliders])
+            if transform is not None:
+                param_vals = transform(*param_vals)
+            
+            # Compute PDF and CDF
+            source_p.data['y_p'] = fun_p(x, *param_vals)
+            y_c = fun_c(x_cdf, *param_vals)
+            if discrete:
+                y_c_plot = np.empty_like(x_c)
+                y_c_plot[::2] = y_c
+                y_c_plot[1::2] = y_c
+                y_c = y_c_plot
+            source_c.data['y_c'] = y_c
+
+        sliders = [bokeh.models.Slider(start=param['start'],
+                                       end=param['end'],
+                                       value=param['value'],
+                                       step=param['step'],
+                                       title=param['name'])
+                            for param in params]
+        for slider in sliders:
+            slider.on_change('value', _callback)
+
+        # Add the plot to the app
+        widgets = bokeh.layouts.widgetbox(sliders)
+        grid = bokeh.layouts.gridplot([p_p, p_c], ncols=2)
+        doc.add_root(bokeh.layouts.column(widgets, grid))
+
+    handler = bokeh.application.handlers.FunctionHandler(_plot_app)
+    return bokeh.application.Application(handler)
+
+
+def mpl_cmap_to_color_mapper(cmap):
+    """
+    Convert a Matplotlib colormap to a bokeh.models.LinearColorMapper
+    instance.
+
+    Parameters
+    ----------
+    cmap : str
+        A string giving the name of the color map.
+
+    Returns
+    -------
+    output : bokeh.models.LinearColorMapper instance
+        A linear color_mapper with 25 gradations.
+
+    Notes
+    -----
+    .. See https://matplotlib.org/examples/color/colormaps_reference.html
+       for available Matplotlib colormaps.
+    """
+    cm = mpl_get_cmap(cmap)
+    palette = [rgb_frac_to_hex(cm(i)[:3]) for i in range(256)]
+    return bokeh.models.LinearColorMapper(palette=palette)
+
+
 def adjust_range(element, buffer=0.05):
     """
     Adjust soft ranges of dimensions of HoloViews element.
@@ -1320,6 +2345,7 @@ def adjust_range(element, buffer=0.05):
 
     return element
 
+
 def _ecdf_vals(data, formal=False, complementary=False):
     """Get x, y, values of an ECDF for plotting.
     Parameters
@@ -1352,6 +2378,29 @@ def _ecdf_vals(data, formal=False, complementary=False):
     return x, y
 
 
+@numba.jit(nopython=True)
+def _ecdf_arbitrary_points(data, x):
+    """Give the value of an ECDF at arbitrary points x."""
+    y = np.arange(len(data) + 1) / len(data)
+    return y[np.searchsorted(np.sort(data), x, side='right')]
+
+
+def _ecdf_from_samples(df, name, ptiles, x):
+    """Compute ECDFs and percentiles from samples."""
+    df_ecdf = pd.DataFrame()
+    df_ecdf_vals = pd.DataFrame()
+    grouped = df.groupby(['chain', 'chain_idx'])
+    for i, g in grouped:
+        df_ecdf_vals[i] = _ecdf_arbitrary_points(g[name].values, x)
+        
+    for ptile in ptiles:
+        df_ecdf[ptile] = df_ecdf_vals.quantile(
+                            ptile/100, axis=1, interpolation='higher')
+    df_ecdf['x'] = x
+
+    return df_ecdf
+
+
 def _to_formal(x, y):
     """Convert to formal ECDF."""
     # Set up output arrays
@@ -1368,6 +2417,68 @@ def _to_formal(x, y):
     x_formal[1::2] = x
 
     return x_formal, y_formal
+
+
+@numba.jit(nopython=True)
+def _y_ecdf(data, x):
+    y = np.arange(len(data) + 1) / len(data)
+    return y[np.searchsorted(np.sort(data), x, side='right')]
+
+
+@numba.jit(nopython=True)
+def _draw_ecdf_bootstrap(L, n, n_bs_reps=100000):
+    x = np.arange(L+1)
+    ys = np.empty((n_bs_reps, len(x)))
+    for i in range(n_bs_reps):
+        draws = np.random.randint(0, L+1, size=n)
+        ys[i, :] = _y_ecdf(draws, x)
+    return ys
+
+
+def _sbc_rank_envelope(L, n, ptile=95, diff=True, bootstrap=False, 
+                       n_bs_reps=None):
+    x = np.arange(L+1)
+    y = st.randint.cdf(x, 0, L+1)
+    std = np.sqrt(y * (1 - y) / n)
+        
+    if bootstrap:
+        if n_bs_reps is None:
+            n_bs_reps = int(max(n, max(L+1, 100/(100-ptile))) * 100)
+        ys = _draw_ecdf_bootstrap(L, n, n_bs_reps=n_bs_reps)
+        y_low, y_high = np.percentile(ys, 
+                                      [50 - ptile/2, 50 + ptile/2], 
+                                      axis=0)
+    else:
+        y_low = np.concatenate(
+            (st.norm.ppf((50 - ptile/2)/100, y[:-1], std[:-1]), (1.0,)))
+        y_high = np.concatenate(
+            (st.norm.ppf((50 + ptile/2)/100, y[:-1], std[:-1]), (1.0,)))
+        
+    # Ensure that ends are appropriate
+    y_low = np.maximum(0, y_low)
+    y_high = np.minimum(1, y_high)
+    
+    # Make "formal" stepped ECDFs
+    _, y_low = _to_formal(x, y_low)
+    x_formal, y_high = _to_formal(x, y_high)
+        
+    if diff:
+        _, y = _to_formal(x, y)
+        y_low -= y
+        y_high -= y
+        
+    return x_formal, y_low, y_high
+
+
+def _ecdf_diff(data, formal=False):
+    x, y = _ecdf_vals(data)
+    y_uniform = (x + 1)/len(x)
+    if formal:
+        x, y = _to_formal(x, y)
+        _, y_uniform = _to_formal(np.arange(len(data)), y_uniform)
+    y -= y_uniform
+
+    return x, y
 
 
 def _get_cat_range(df, grouped, order, color_column, horizontal):
@@ -1709,521 +2820,6 @@ def _display_clicks(div, attributes=[],
     """ % (attributes, style))
 
 
-def corner(trace, vars=None, labels=None, datashade=True, plot_width=150, 
-           smooth=1, bins=20, cmap='black', contour_color='black', 
-           hist_color='black', alpha=1, bins_2d=50, plot_ecdf=False,
-           plot_width_correction=50, plot_height_correction=40, levels=None,
-           weights=None, show_contours=True, extend_contour_domain=False):
-    """
-    Make a corner plot of MCMC results. Heavily influenced by the corner
-    package by Dan Foreman-Mackey.
-
-    Parameters
-    ----------
-    trace : PyMC3 Trace or MultiTrace instance or Pandas DataFrame
-        Trace of MCMC sampler.
-    vars : list
-        List of variables as strings included in `trace` to construct
-        corner plot.
-    labels : list, default None
-        List of labels for the respective variables given in `vars`. If
-        None, the variable names from `vars` are used.
-    datashade : bool, default True
-        Whether or not to convert sampled points to a raster image using
-        Datashader. For almost all applications, this should be true.
-        Otherwise, you will try to render thousands and thousands of
-        points.
-    plot_width : int, default 150
-        Width of each plot in the corner plot in pixels. The height is
-        computed from the width to make the plots roughly square.
-    smooth : int or None, default 1
-        Width of smoothing kernel for making contours.
-    bins : int, default 20
-        Number of binds to use in constructing histograms. Ignored if
-        `plot_ecdf` is True.
-    cmap : str, default 'black'
-        Valid colormap string for DataShader and for coloring Bokeh
-        glyphs.
-    contour_color : str, default 'black'
-        Color of contour lines
-    hist_color : str, default 'black'
-        Color of histogram lines
-    alpha : float, default 1.0
-        Opacity of glyphs. Ignored if `datashade` is True.
-    bins_2d : int, default 50
-        Number of bins in each direction for binning 2D histograms when
-        computing contours
-    plot_ecdf : bool, default False
-        If True, plot ECDFs of samples on the diagonal of the corner
-        plot. If False, histograms are plotted.
-    plot_width_correction : int, default 50
-        Correction for width of plot taking into account tick and axis
-        labels.
-    plot_height_correction : int, default 40
-        Correction for height of plot taking into account tick and axis
-        labels.
-    levels : list of floats, default None
-        Levels to use when constructing contours. By default, these are
-        chosen according to this principle from Dan Foreman-Mackey:
-        http://corner.readthedocs.io/en/latest/pages/sigmas.html
-    weights : default None
-        Value to pass as `weights` kwarg to np.histogram2d().
-    show_contours : bool, default True
-        If True, show contour plot on top of samples.
-    extend_contour_domain : bool, default False
-        If True, extend the domain of the contours a little bit beyond
-        the extend of the samples. This is done in the corner module,
-        but I prefer not to do it.
-
-    Returns
-    -------
-    output : Bokeh gridplot
-        Corner plot as a Bokeh gridplot.
-    """
-
-    if vars is None:
-        raise RuntimeError('Must specify vars.')
-
-    if type(vars) not in (list, tuple):
-        raise RuntimeError('`vars` must be a list or tuple.')
-
-    if type(trace) == pd.core.frame.DataFrame:
-        df = trace
-    elif 'pymc3' in str(type(trace)):
-        try:
-            df = pm.trace_to_dataframe(trace) 
-        except:
-            raise RuntimeError(
-                'PyMC3 could not be imported. Check your installation.'
-                + ' PyMC3 features will soon be deprecated.')
-    elif 'StanFit4Model' in str(type(trace)):
-        df = trace.to_dataframe(diagnostics=False)
-
-    if len(vars) > 6:
-        raise RuntimeError(
-                    'For space purposes, can show only six variables.')
-        
-    for col in vars:
-        if col not in df.columns:
-            raise RuntimeError(
-                        'Column ' + col + ' not in the columns of DataFrame.')
-            
-    if labels is None:
-        labels = vars
-    elif len(labels) != len(vars):
-        raise RuntimeError('len(vars) must equal len(labels)')
-
-    if len(vars) == 1:
-        x = vars[0]
-        if plot_ecdf:
-            if datashade:
-                if plot_width == 150:
-                    plot_height = 200
-                    plot_width = 300
-                else:
-                    plot_width = 200
-                    plot_height=200
-                x_range, _ = _data_range(df, vars[0], vars[0])
-                p = bokeh.plotting.figure(
-                        x_range=x_range, y_range=[-0.02, 1.02], 
-                        plot_width=plot_width, plot_height=plot_height)
-                x_ecdf, y_ecdf = _ecdf_vals(df[vars[0]], formal=True)
-                df_ecdf = pd.DataFrame(data={vars[0]: x_ecdf, 'ECDF': y_ecdf})
-                _ = datashader.bokeh_ext.InteractiveImage(
-                        p, _create_line_image, df=df_ecdf, 
-                        x=x, y='ECDF', cmap=hist_color)
-            else:
-                return ecdf(df[vars[0]], formal=True,
-                            line_width=2, line_color=hist_color)
-        else:
-            return histogram(df[vars[0]],
-                             bins=bins,
-                             density=True, 
-                             line_width=2,
-                             color=hist_color,
-                             x_axis_label=vars[0])
-        
-    if not datashade:
-        if len(df) > 10000:
-            raise RuntimeError(
-                'Cannot render more than 10,000 samples without DataShader.')
-        elif len(df) > 1000:
-            warnings.warn(
-                'Rendering so many points without DataShader is ill-advised.')
-
-    plots = [[None for _ in range(len(vars))] for _ in range(len(vars))]
-    
-    for i, j in zip(*np.tril_indices(len(vars))):
-        pw = plot_width
-        ph = plot_width
-        if j == 0:
-            pw += plot_width_correction
-        if i == len(vars) - 1:
-            ph += plot_height_correction
-            
-        x = vars[j]
-        if i != j:
-            y = vars[i]
-            x_range, y_range = _data_range(df, x, y)
-            plots[i][j] = bokeh.plotting.figure(
-                    x_range=x_range, y_range=y_range,
-                    plot_width=pw, plot_height=ph)
-            if datashade:
-                _ = datashader.bokeh_ext.InteractiveImage(
-                    plots[i][j], _create_points_image, df=df, x=x, y=y, 
-                    cmap=cmap)
-            else:
-                plots[i][j].circle(df[x], df[y], size=2, 
-                                   alpha=alpha, color=cmap)
-
-            if show_contours:
-                xs, ys = _get_contour_lines_from_samples(
-                                df[x].values,
-                                df[y].values, 
-                                bins=bins_2d, 
-                                smooth=smooth, 
-                                levels=levels,
-                                weights=weights, 
-                                extend_domain=extend_contour_domain)
-                plots[i][j].multi_line(xs, ys, line_color=contour_color, 
-                                       line_width=2)
-        else:
-            if plot_ecdf:
-                x_range, _ = _data_range(df, x, x)
-                plots[i][i] = bokeh.plotting.figure(
-                        x_range=x_range, y_range=[-0.02, 1.02], 
-                        plot_width=pw, plot_height=ph)
-                if datashade:
-                    x_ecdf, y_ecdf = _ecdf_vals(df[x], formal=True)
-                    df_ecdf = pd.DataFrame(data={x: x_ecdf, 'ECDF': y_ecdf}) 
-                    _ = datashader.bokeh_ext.InteractiveImage(
-                            plots[i][i], _create_line_image, df=df_ecdf, 
-                            x=x, y='ECDF', cmap=hist_color)
-                else:
-                    plots[i][i] = ecdf(df[x], p=plots[i][i], formal=True,
-                                       line_width=2, line_color=hist_color)
-            else:
-                x_range, _ = _data_range(df, x, x)
-                plots[i][i] = bokeh.plotting.figure(
-                            x_range=x_range, plot_width=pw, plot_height=ph)
-                f, e = np.histogram(df[x], bins=bins, density=True)
-                e0 = np.empty(2*len(e))
-                f0 = np.empty(2*len(e))
-                e0[::2] = e
-                e0[1::2] = e
-                f0[0] = 0
-                f0[-1] = 0
-                f0[1:-1:2] = f
-                f0[2:-1:2] = f
-                
-                plots[i][i].line(e0, f0, line_width=2, color=hist_color)
-
-    # Link axis ranges
-    for i in range(1,len(vars)):
-        for j in range(i):
-            plots[i][j].x_range = plots[j][j].x_range
-            plots[i][j].y_range = plots[i][i].x_range
-
-    # Label axes
-    for i, label in enumerate(labels):
-        plots[-1][i].xaxis.axis_label = label
-
-    for i, label in enumerate(labels[1:]):
-        plots[i+1][0].yaxis.axis_label = label
-
-    if plot_ecdf:
-        plots[0][0].yaxis.axis_label = 'ECDF'
-        
-    # Take off tick labels
-    for i in range(len(vars)-1):
-        for j in range(i+1):
-            plots[i][j].xaxis.major_label_text_font_size = '0pt'
-
-    if not plot_ecdf:
-        plots[0][0].yaxis.major_label_text_font_size = '0pt'
-
-    for i in range(1, len(vars)):
-        for j in range(1, i+1):
-            plots[i][j].yaxis.major_label_text_font_size = '0pt'
-    
-    grid = bokeh.layouts.gridplot(plots, toolbar_location='left',
-                                  toolbar_sticky=False)
-    return grid
-
-
-def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350, 
-            plot_height=300, x_axis_label='x', y_axis_label='y', title=None, 
-            line_color=None, line_width=2, color_mapper=None,
-            overlay_grid=False, fill=False, fill_palette=None,
-            fill_alpha=0.75, **kwargs):
-    """
-    Make a contour plot, possibly overlaid on an image.
-
-    Parameters
-    ----------
-    X : 2D Numpy array
-        Array of x-values, as would be produced using np.meshgrid()
-    Y : 2D Numpy array
-        Array of y-values, as would be produced using np.meshgrid()
-    Z : 2D Numpy array
-        Array of z-values.
-    levels : array_like
-        Levels to plot, ranging from 0 to 1. The contour around a given
-        level contains that fraction of the total probability if the
-        contour plot is for a 2D probability density function. By 
-        default, the levels are given by the one, two, three, and four
-        sigma levels corresponding to a marginalized distribution from
-        a 2D Gaussian distribution.
-    p : bokeh plotting object, default None
-        If not None, the contour are added to `p`. This option is not
-        allowed if `overlaid` is True.
-    overlaid : bool, default False
-        If True, `Z` is displayed as an image and the contours are
-        overlaid.
-    plot_width : int, default 350
-        Width of the plot in pixels. Ignored if `p` is not None.
-    plot_height : int, default 300
-        Height of the plot in pixels. Ignored if `p` is not None.
-    x_axis_label : str, default 'x'
-        Label for the x-axis. Ignored if `p` is not None.
-    y_axis_label : str, default 'y'
-        Label for the y-axis. Ignored if `p` is not None.
-    title : str, default None
-        Title of the plot. Ignored if `p` is not None.
-    line_color : str, defaults to Bokeh default
-        Color, either named CSS color or hex, of contour lines.
-    line_width : int, default 2
-        Width of contour lines.
-    color_mapper : bokeh.models.LinearColorMapper, default Viridis
-        Mapping of `Z` level to color. Ignored if `overlaid` is False.
-    overlay_grid : bool, default False
-        If True, faintly overlay the grid on top of image. Ignored if
-        overlaid is False.
-
-    Returns
-    -------
-    output : Bokeh plotting object
-        Plot populated with contours, possible with an image.
-    """
-    if len(X.shape) != 2 or Y.shape != X.shape or Z.shape != X.shape:
-        raise RuntimeError('All arrays must be 2D and of same shape.')
-
-    if overlaid and p is not None:
-        raise RuntimeError('Cannot specify `p` if showing image.')
-
-    if line_color is None:
-        if overlaid:
-            line_color = 'white'
-        else:
-            line_color = 'black'
-
-    if p is None:
-        if overlaid:
-            p = imshow(Z,
-                       color_mapper=color_mapper,
-                       plot_height=plot_height,
-                       plot_width=plot_width,
-                       x_axis_label=x_axis_label,
-                       y_axis_label=y_axis_label,
-                       title=title,
-                       x_range = [X.min(), X.max()],
-                       y_range = [Y.min(), Y.max()],
-                       no_ticks=False, 
-                       flip=False, 
-                       return_im=False)
-        else:
-            p = bokeh.plotting.figure(plot_width=plot_width,
-                                      plot_height=plot_height,
-                                      x_axis_label=x_axis_label,
-                                      y_axis_label=y_axis_label,
-                                      title=title)
-
-    # Set default levels
-    if levels is None:
-        levels = 1.0 - np.exp(-np.arange(0.5, 2.1, 0.5)**2 / 2)
-
-    # Compute contour lines
-    if fill or line_width:
-        xs, ys = _contour_lines(X, Y, Z, levels)
-
-    # Make fills. This is currently not supported
-    if fill:
-        raise NotImplementedError('Filled contours are not yet implemented.')
-        if fill_palette is None:
-            if len(levels) <= 6:
-                fill_palette = bokeh.palettes.Greys[len(levels)+3][1:-1]
-            elif len(levels) <= 10:
-                fill_palette = bokeh.palettes.Viridis[len(levels)+1]
-            else:
-                raise RuntimeError(
-                    'Can only have maximally 10 levels with filled contours' +
-                    ' unless user specifies `fill_palette`.')
-        elif len(fill_palette) != len(levels) + 1:
-            raise RuntimeError('`fill_palette` must have 1 more entry' +
-                               ' than `levels`')
-
-        p.patch(xs[-1], ys[-1],
-                color=fill_palette[0],
-                alpha=fill_alpha,
-                line_color=None)
-        for i in range(1, len(levels)):
-            x_p = np.concatenate((xs[-1-i], xs[-i][::-1]))
-            y_p = np.concatenate((ys[-1-i], ys[-i][::-1]))
-            print(len(x_p), len(y_p))
-            p.patch(x_p, 
-                    y_p, 
-                    color=fill_palette[i],
-                    alpha=fill_alpha,
-                    line_color=None)
-
-        p.background_fill_color=fill_palette[-1]
-
-    # Populate the plot with contour lines
-    if line_width:
-        p.multi_line(xs, ys, line_color=line_color, line_width=line_width,
-                     **kwargs)
-
-    if overlay_grid and overlaid:
-        p.grid.level = 'overlay'
-        p.grid.grid_line_alpha = 0.2
-
-    return p
-
-
-def ds_line_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
-                 x_axis_label=None, y_axis_label=None, title=None,
-                 margin=0.02):
-    """
-    Make a datashaded line plot.
-
-    Params
-    ------
-    df : pandas DataFrame
-        DataFrame containing the data
-    x : Valid column name of Pandas DataFrame
-        Column containing the x-data.
-    y : Valid column name of Pandas DataFrame
-        Column containing the y-data.
-    cmap : str, default '#1f77b4'
-        Valid colormap string for DataShader and for coloring Bokeh
-        glyphs.
-    plot_height : int, default 300
-        Height of plot, in pixels.
-    plot_width : int, default 500
-        Width of plot, in pixels.
-    x_axis_label : str, default None
-        Label for the x-axis.
-    y_axis_label : str, default None
-        Label for the y-axis.
-    title : str, default None
-        Title of the plot. Ignored is `p` is not None.
-    margin : float, default 0.02
-        Margin, in units of `plot_width` or `plot_height`, to leave
-        around the plotted line.
-
-    Returns
-    -------
-    output : datashader.bokeh_ext.InteractiveImage
-        Interactive image of plot. Note that you should *not* use
-        bokeh.io.show() to view the image. For most use cases, you
-        should just call this function without variable assignment.
-    """
-
-    if x_axis_label is None:
-        if type(x) == str:
-            x_axis_label = x
-        else:
-            x_axis_label = 'x'
-
-    if y_axis_label is None:
-        if type(y) == str:
-            y_axis_label = y
-        else:
-            y_axis_label = 'y'
-
-    x_range, y_range = _data_range(df, x, y, margin=margin)
-    p = bokeh.plotting.figure(plot_height=plot_height,
-                              plot_width=plot_width,
-                              x_range=x_range,
-                              y_range=y_range,
-                              x_axis_label=x_axis_label,
-                              y_axis_label=y_axis_label,
-                              title=title)
-    return datashader.bokeh_ext.InteractiveImage(p,
-                                                 _create_line_image,
-                                                 df=df, 
-                                                 x=x, 
-                                                 y=y,
-                                                 cmap=cmap)
-    return p
-
-
-def ds_point_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
-                  x_axis_label=None, y_axis_label=None, title=None,
-                  margin=0.02):
-    """
-    Make a datashaded point plot.
-
-    Params
-    ------
-    df : pandas DataFrame
-        DataFrame containing the data
-    x : Valid column name of Pandas DataFrame
-        Column containing the x-data.
-    y : Valid column name of Pandas DataFrame
-        Column containing the y-data.
-    cmap : str, default '#1f77b4'
-        Valid colormap string for DataShader and for coloring Bokeh
-        glyphs.
-    plot_height : int, default 300
-        Height of plot, in pixels.
-    plot_width : int, default 500
-        Width of plot, in pixels.
-    x_axis_label : str, default None
-        Label for the x-axis.
-    y_axis_label : str, default None
-        Label for the y-axis.
-    title : str, default None
-        Title of the plot. Ignored is `p` is not None.
-    margin : float, default 0.02
-        Margin, in units of `plot_width` or `plot_height`, to leave
-        around the plotted line.
-
-    Returns
-    -------
-    output : datashader.bokeh_ext.InteractiveImage
-        Interactive image of plot. Note that you should *not* use
-        bokeh.io.show() to view the image. For most use cases, you
-        should just call this function without variable assignment.
-    """
-
-    if x_axis_label is None:
-        if type(x) == str:
-            x_axis_label = x
-        else:
-            x_axis_label = 'x'
-
-    if y_axis_label is None:
-        if type(y) == str:
-            y_axis_label = y
-        else:
-            y_axis_label = 'y'
-
-    x_range, y_range = _data_range(df, x, y, margin=margin)
-    p = bokeh.plotting.figure(plot_height=plot_height,
-                              plot_width=plot_width,
-                              x_range=x_range,
-                              y_range=y_range,
-                              x_axis_label=x_axis_label,
-                              y_axis_label=y_axis_label,
-                              title=title)
-    return datashader.bokeh_ext.InteractiveImage(p,
-                                                 _create_points_image,
-                                                 df=df, 
-                                                 x=x, 
-                                                 y=y,
-                                                 cmap=cmap)
-    return p
 
 
 def _data_range(df, x, y, margin=0.02):
@@ -2343,229 +2939,3 @@ def _get_contour_lines_from_samples(x, y, smooth=1, levels=None, bins=50,
         H2 = H
 
     return _contour_lines(X2, Y2, H2.transpose(), levels)
-
-
-def distribution_plot_app(x_min=None, x_max=None, scipy_dist=None,
-    transform=None, custom_pdf=None, custom_pmf=None, custom_cdf=None, 
-    params=None, n=400, plot_height=200, plot_width=300, x_axis_label='x', 
-    title=None):
-    """
-    Build interactive Bokeh app displaying a univariate
-    probability distribution.
-
-    Parameters
-    ----------
-    x_min : float
-        Minimum value that the random variable can take in plots.
-    x_max : float
-        Maximum value that the random variable can take in plots.
-    scipy_dist : scipy.stats distribution
-        Distribution to use in plotting.
-    transform : function or None (default)
-        A function of call signature `transform(*params)` that takes
-        a tuple or Numpy array of parameters and returns a tuple of
-        the same length with transformed parameters.
-    custom_pdf : function
-        Function with call signature f(x, *params) that computes the
-        PDF of a distribution.
-    custom_pmf : function    
-        Function with call signature f(x, *params) that computes the
-        PDF of a distribution.
-    custom_cdf : function
-        Function with call signature F(x, *params) that computes the
-        CDF of a distribution.
-    params : list of dicts
-        A list of parameter specifications. Each entry in the list gives
-        specifications for a parameter of the distribution stored as a
-        dictionary. Each dictionary must have the following keys.
-            name : str, name of the parameter
-            start : float, starting point of slider for parameter (the
-                smallest allowed value of the parameter)
-            end : float, ending point of slider for parameter (the
-                largest allowed value of the parameter)
-            value : float, the value of the parameter that the slider
-                takes initially. Must be between start and end.
-            step : float, the step size for the slider
-    n : int, default 400
-        Number of points to use in making plots of PDF and CDF for 
-        continuous distributions. This should be large enough to give
-        smooth plots.
-    plot_height : int, default 200
-        Height of plots.
-    plot_width : int, default 300
-        Width of plots.
-    x_axis_label : str, default 'x'
-        Label for x-axis.
-    title : str, default None
-        Title to be displayed above the PDF or PMF plot.
-
-    Returns
-    -------
-    output : Bokeh app
-        An app to visualize the PDF/PMF and CDF. It can be displayed
-        with bokeh.io.show(). If it is displayed in a notebook, the
-        notebook_url kwarg should be specified.
-    """
-    if None in [x_min, x_max]:
-        raise RuntimeError('`x_min` and `x_max` must be specified.')
-
-    if scipy_dist is None:
-        fun_c = custom_cdf
-        if (custom_pdf is None and custom_pmf is None) or custom_cdf is None:
-            raise RuntimeError('For custom distributions, both PDF/PMF and'
-                                + ' CDF must be specified.')
-        if custom_pdf is not None and custom_pmf is not None:
-            raise RuntimeError('Can only specify custom PMF or PDF.')
-        if custom_pmf is None:
-            discrete = False
-            fun_p = custom_pdf
-        else:
-            discrete = True
-            fun_p = custom_pmf
-    elif (   custom_pdf is not None 
-          or custom_pmf is not None
-          or custom_cdf is not None):
-        raise RuntimeError(
-            'Can only specify either custom or scipy distribution.')
-    else:
-        fun_c = scipy_dist.cdf
-        if hasattr(scipy_dist, 'pmf'):
-            discrete = True
-            fun_p = scipy_dist.pmf
-        else:
-            discrete = False
-            fun_p = scipy_dist.pdf
-                
-    if discrete:
-        p_y_axis_label = 'PMF'
-    else:
-        p_y_axis_label = 'PDF'
-
-    if params is None:
-        raise RuntimeError('`params` must be specified.')
-        
-
-    def _plot_app(doc):
-        p_p = bokeh.plotting.figure(plot_height=plot_height,
-                                    plot_width=plot_width,
-                                    x_axis_label=x_axis_label,
-                                    y_axis_label=p_y_axis_label,
-                                    title=title)
-        p_c = bokeh.plotting.figure(plot_height=plot_height,
-                                    plot_width=plot_width,
-                                    x_axis_label=x_axis_label,
-                                    y_axis_label='CDF')
-
-        # Link the axes
-        p_c.x_range = p_p.x_range
-
-        # Make sure CDF y_range is zero to one
-        p_c.y_range = bokeh.models.Range1d(-0.05, 1.05)
-
-        # Make array of parameter values
-        param_vals = np.array([param['value'] for param in params])
-        if transform is not None:
-            param_vals = transform(*param_vals)
-
-        # Set up data for plot
-        if discrete:
-            x = np.arange(int(np.ceil(x_min)), 
-                          int(np.floor(x_max))+1)
-            x_size = x[-1] - x[0]
-            x_c = np.empty(2*len(x))
-            x_c[::2] = x
-            x_c[1::2] = x
-            x_c = np.concatenate(((max(x[0] - 0.05*x_size, x[0] - 0.95),), 
-                                  x_c,
-                                  (min(x[-1] + 0.05*x_size, x[-1] + 0.95),)))
-            x_cdf = np.concatenate(((x_c[0],), x))
-        else:
-            x = np.linspace(x_min, x_max, n)
-            x_c = x_cdf = x
-
-        # Compute PDF and CDF
-        y_p = fun_p(x, *param_vals)
-        y_c = fun_c(x_cdf, *param_vals)
-        if discrete:
-            y_c_plot = np.empty_like(x_c)
-            y_c_plot[::2] = y_c
-            y_c_plot[1::2] = y_c
-            y_c = y_c_plot
-
-        # Set up data sources
-        source_p = bokeh.models.ColumnDataSource(data={'x': x,
-                                                       'y_p': y_p})
-        source_c = bokeh.models.ColumnDataSource(data={'x': x_c, 
-                                                       'y_c': y_c})
-
-        # Plot PDF and CDF
-        p_c.line('x', 'y_c', source=source_c, line_width=2)
-        if discrete:
-            p_p.circle('x', 'y_p', source=source_p, size=5)
-            p_p.segment(x0='x',
-                        x1='x',
-                        y0=0, 
-                        y1='y_p', 
-                        source=source_p, 
-                        line_width=2)
-        else:
-            p_p.line('x', 'y_p', source=source_p, line_width=2)
-            
-        
-        def _callback(attr, old, new):
-            param_vals = tuple([slider.value for slider in sliders])
-            if transform is not None:
-                param_vals = transform(*param_vals)
-            
-            # Compute PDF and CDF
-            source_p.data['y_p'] = fun_p(x, *param_vals)
-            y_c = fun_c(x_cdf, *param_vals)
-            if discrete:
-                y_c_plot = np.empty_like(x_c)
-                y_c_plot[::2] = y_c
-                y_c_plot[1::2] = y_c
-                y_c = y_c_plot
-            source_c.data['y_c'] = y_c
-
-        sliders = [bokeh.models.Slider(start=param['start'],
-                                       end=param['end'],
-                                       value=param['value'],
-                                       step=param['step'],
-                                       title=param['name'])
-                            for param in params]
-        for slider in sliders:
-            slider.on_change('value', _callback)
-
-        # Add the plot to the app
-        widgets = bokeh.layouts.widgetbox(sliders)
-        grid = bokeh.layouts.gridplot([p_p, p_c], ncols=2)
-        doc.add_root(bokeh.layouts.column(widgets, grid))
-
-    handler = bokeh.application.handlers.FunctionHandler(_plot_app)
-    return bokeh.application.Application(handler)
-
-
-def mpl_cmap_to_color_mapper(cmap):
-    """
-    Convert a Matplotlib colormap to a bokeh.models.LinearColorMapper
-    instance.
-
-    Parameters
-    ----------
-    cmap : str
-        A string giving the name of the color map.
-
-    Returns
-    -------
-    output : bokeh.models.LinearColorMapper instance
-        A linear color_mapper with 25 gradations.
-
-    Notes
-    -----
-    .. See https://matplotlib.org/examples/color/colormaps_reference.html
-       for available Matplotlib colormaps.
-    """
-    cm = mpl_get_cmap(cmap)
-    palette = [rgb_frac_to_hex(cm(i)[:3]) for i in range(256)]
-    return bokeh.models.LinearColorMapper(palette=palette)
-

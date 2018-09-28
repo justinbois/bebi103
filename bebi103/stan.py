@@ -17,33 +17,6 @@ import bokeh.plotting
 
 from . import viz
 
-def normal_rng(mu, sigma, size=None):
-
-    model_code = """
-data {
-  real mu;
-  real sigma;
-}
-
-generated quantities {
-  real output = normal_rng(mu, sigma);
-}
-    """
-    if size is None:
-        size = 1
-
-    data = dict(mu=mu, sigma=sigma)
-    sm = StanModel(model_code=model_code, model_name='normal_rng', quiet=True)
-    fit = sm.sampling(data=data,
-                      algorithm='Fixed_param', 
-                      iter=size, 
-                      chains=1,
-                      warmup=0)
-    output = fit.extract('output')['output']
-    if size == 1:
-        return float(output)
-    else:
-        return output.flatten()
 
 def StanModel(file=None, model_name='anon_model', model_code=None,
               charset='utf-8', force_compile=False, quiet=False, **kwargs):
@@ -97,153 +70,31 @@ def StanModel(file=None, model_name='anon_model', model_code=None,
     return sm
 
 
-def stan_rng(dist, *params, size=1):
-    """Draw random samples from a distribution using Stan."""
+def extract_array(samples, name):
+    """Extract an array values from a DataFrame containing samples.
 
-    stan_int_rng_code = """
-data {
-  real real_param_1;
-  real real_param_2;
-  real real_param_3;
-  int int_param_1;
-  int int_param_2;
-  int int_param_3;
+    Parameters
+    ----------
+    samples : StanFit4Model instance or Pandas DataFrame
+        Samples from a Stan calculation that contains an array for
+        extraction.
+    name : str
+        The name of the array to extract. For example, if `name` is 
+        'my_array', and the array is one-dimensional, entries with
+        variable names 'my_array[1]', 'my_array[2]', ... are extracted.
 
-  int n;
+    Returns
+    -------
+    output : Pandas DataFrame
+        A tidy DataFrame with the extracted array. For a 1-D array, the 
+        DataFrame has columns: 
+            ['chain', 'chain_idx', 'warmup', 'index_i', 'name'] 
+        For a 2D array, there is an additional column named 'index_j'. A
+        3D array has a column 'index_k' and so on through 'index_l',
+        'index_m', and 'index_n'.
+    """
+    df = _fit_to_df(samples)
 
-  int section;
-  int subsection;
-}
-
-generated quantities {
-  int output[n];
-
-  // Bernoulli
-  if (section == 50 && subsection == 1) {
-    for (i in 1:n) {
-      output[i] = bernoulli_rng(real_param_1);
-    }
-  }
-
-  // Bernoulli logit
-  else if (section == 50 && subsection == 2) {
-    for (i in 1:n) {
-      output[i] = bernoulli_logit_rng(real_param_1);
-    }    
-  }
-
-}
-"""
-
-    stan_real_rng_code = """
-data {
-  real real_param_1;
-  real real_param_2;
-  real real_param_3;
-  int int_param_1;
-  int int_param_2;
-  int int_param_3;
-
-  int n;
-
-  int section;
-  int subsection;
-}
-
-generated quantities {
-  real output[n];
-
-  // Normal
-  if (section == 54 && subsection == 1) {
-    for (i in 1:n) {
-      output[i] = normal_rng(real_param_1, real_param_2);
-    }    
-  }
-
-}
-"""
-
-    dist_dict = {'bernoulli': {'section': 50, 
-                               'subsection': 1, 
-                               'param_types': [float], 
-                               'param_bounds': [[0, 1]],
-                               'output_type': int},
-                 'bernoulli_logit': {'section': 50, 
-                                     'subsection': 2,
-                                     'param_types': [float],
-                                     'param_bounds': [[-np.inf, np.inf]],
-                                     'output_type': int},
-                 'binomial': {'section': 51, 
-                              'subsection': 1,
-                              'param_types': [int, float],
-                              'param_bounds': [[0, np.inf],
-                                               [0, 1]],
-                              'output_type': int},
-                 'normal': {'section': 54, 
-                            'subsection': 1,
-                            'param_types': [float, float],
-                            'param_bounds': [[-np.inf, np.inf],
-                                             [0, np.inf]],
-                            'output_type': float},
-                }
-
-    if dist not in dist_dict:
-        raise RuntimeError('Distribution not found.')
-
-    d = dist_dict[dist]
-
-    if len(params) != len(d['param_types']):
-        raise RuntimeError('Incompatible number of parameters.')
-
-    param_iterator = zip(params,
-                         d['param_types'],
-                         d['param_bounds'])
-    int_params = [0, 0, 0]
-    real_params = [0.0, 0.0, 0.0]
-    for i, (param, param_type, param_bounds) in enumerate(param_iterator):
-        if type(param) not in [int, float]:
-            raise RuntimeError('All inputted params must be `int` or `float`')
-        if type(param) == float and param_type == int:
-            raise RuntimeError(f'param {param} should be an `int`.')
-        if not (param_bounds[0] <= param <= param_bounds[1]):
-            raise RuntimeError(f'param {param} out of bounds.')
-        if param_type == int:
-            int_params[i] = param
-        else:
-            real_params[i] = float(param)
-
-    data = data = {'real_param_1': real_params[0], 
-                   'real_param_2': real_params[1], 
-                   'real_param_3': real_params[1], 
-                   'int_param_1': int_params[0], 
-                   'int_param_2': int_params[1],
-                   'int_param_3': int_params[2], 
-                   'n': size, 
-                   'section': d['section'], 
-                   'subsection': d['subsection']}
-
-    if d['output_type'] == int:
-        sm = StanModel(model_code=stan_int_rng_code, 
-                       model_name='int_rng_model',
-                       quiet=True)
-    else:
-        sm = StanModel(model_code=stan_real_rng_code, 
-                       model_name='real_rng_model',
-                       quiet=True)
-
-    fit = sm.sampling(data=data, 
-                      algorithm='Fixed_param', 
-                      chains=1, 
-                      iter=1, 
-                      warmup=0)
-
-    samples = fit.extract('output')['output'].flatten()
-    if d['output_type'] == int:
-        return samples.astype(int)
-    return samples
-
-
-def extract_array(df, name):
     ind_names = 'ijklmn'
 
     regex_name = name
@@ -252,6 +103,11 @@ def extract_array(df, name):
 
     # Extract columns that match the name
     sub_df = df.filter(regex=regex_name+'\[(\d+)(,\d+)*\]')
+
+    if len(sub_df.columns) == 0:
+        raise RuntimeError(
+                "column '{}' is either absent or scalar-valued.".format(name))
+
 
     # Set up a multiindex
     multiindex = [None for _ in range(len(sub_df.columns))]
@@ -292,89 +148,9 @@ def extract_array(df, name):
     return sub_df
 
 
-def plot_predictive_ecdf(df, name, plot_width=350, plot_height=200,
-                         x_axis_label=None, y_axis_label='ECDF',
-                         color='blue', x=None, discrete=False):
-    if 'StanFit4Model' in str(type(df)):
-        df = df.to_dataframe(diagnostics=False)
-
-    if color not in ['green', 'blue', 'red', 'gray', 
-                     'purple', 'orange', 'betancourt']:
-        raise RuntimeError("Only allowed colors are 'green', 'blue', 'red', 'gray', 'purple', 'orange'")
-
-    if x_axis_label is None:
-        x_axis_label=str(name)
-
-    sub_df = extract_array(df, name)
-
-    if 'index_j' in sub_df:
-        raise RuntimeError('Can only plot ECDF for one-dimensional data.')
-
-    colors = {'blue': ['#9ecae1','#6baed6','#4292c6','#2171b5','#084594'],
-              'green': ['#a1d99b','#74c476','#41ab5d','#238b45','#005a32'],
-              'red': ['#fc9272','#fb6a4a','#ef3b2c','#cb181d','#99000d'],
-              'orange': ['#fdae6b','#fd8d3c','#f16913','#d94801','#8c2d04'],
-              'purple': ['#bcbddc','#9e9ac8','#807dba','#6a51a3','#4a1486'],
-              'gray': ['#bdbdbd','#969696','#737373','#525252','#252525'],
-              'betancourt': ['#DCBCBC', '#C79999', '#B97C7C', 
-                             '#A25050', '#8F2727', '#7C0000']}
-
-    data_range = sub_df[name].max() - sub_df[name].min()
-    if x is None:
-      x = np.linspace(sub_df[name].min() - 0.05*data_range,
-                      sub_df[name].max() + 0.05*data_range,
-                      400)
-
-    df_ecdf = pd.DataFrame()
-    df_ecdf_vals = pd.DataFrame()
-    grouped = sub_df.groupby(['chain', 'chain_idx'])
-    for i, g in grouped:
-        df_ecdf_vals[i] = _ecdf_arbitrary_points(g[name], x)
-        
-    for ptile in [10, 20, 30, 40, 50, 60, 70, 80, 90]:
-        df_ecdf[ptile] = df_ecdf_vals.quantile(
-                            ptile/100, axis=1, interpolation='higher')
-    df_ecdf['x'] = x
-
-    p = bokeh.plotting.figure(plot_width=plot_width, 
-                              plot_height=plot_height,
-                              x_axis_label=x_axis_label, 
-                              y_axis_label=y_axis_label)
-
-    for i, ptile in enumerate([10, 20, 30, 40]):
-        viz.fill_between(df_ecdf['x'], df_ecdf[ptile],
-                         df_ecdf['x'], df_ecdf[100-ptile],
-                         p=p,
-                         show_line=False,
-                         fill_color=colors[color][i])
-
-    p.line(df_ecdf['x'],
-           df_ecdf[50], 
-           line_width=2, 
-           color=colors[color][-1])
-
-    return p
-
-
-def _ecdf_arbitrary_points(data, x):
-    y = np.arange(len(data) + 1) / len(data)
-    return y[np.searchsorted(np.sort(data), x, side='right')]
-
-
-def _fit_to_df(fit):
-    """Convert StanFit4Model to data frame."""
-    if 'StanFit4Model' in str(type(fit)):
-        df = fit.to_dataframe(inc_warmup=False)
-    elif type(fit) != pd.core.frame.DataFrame:
-        raise RuntimeError('`fit` must be a StanModel or Pandas data frame.')
-    else:
-        df = fit.loc[fit['warmup']==0, :]
-
-    return df
-
-
-def check_div(fit, quiet=False, return_diagnostics=False):
-    """Check transitions that ended with a divergence"""
+def check_divergences(fit, quiet=False, return_diagnostics=False):
+    """Check transitions that ended with a divergence.
+    """
 
     df = _fit_to_df(fit)
 
@@ -421,13 +197,9 @@ def check_treedepth(fit, max_treedepth=10, quiet=False,
     return pass_check
 
 
-def _ebfmi(energy):
-    return np.sum(np.diff(energy)**2) / (len(energy) - 1) / np.var(energy)
-
-
 def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2, 
                  return_diagnostics=False):
-    """Checks the energy fraction of missing information (E-FMI)"""
+    """Checks the energy-Bayes fraction of missing information (E-BFMI)"""
     df = _fit_to_df(fit)
 
     result = (df.groupby('chain')['energy__']
@@ -443,7 +215,7 @@ def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2,
             print('E-BFMI indicated no pathological behavior')
         else:
             for _, r in result.iterrows():
-                print('Chain {}: E-BFMI = {}'.format(r['chain'], r['E=BFMI']))
+                print('Chain {}: E-BFMI = {}'.format(r['chain'], r['E-BFMI']))
             print('  E-BFMI below 0.2 indicates you may need to '
                     + 'reparametrize your model.')
 
@@ -536,7 +308,7 @@ def check_all_diagnostics(fit, max_treedepth=10, e_bfmi_rule_of_thumb=0.2,
 
     df = _fit_to_df(fit)
 
-    if not check_div(df, quiet=quiet):
+    if not check_divergences(df, quiet=quiet):
         warning_code = warning_code | (1 << 2)
 
     if not check_treedepth(df, 
@@ -555,17 +327,141 @@ def check_all_diagnostics(fit, max_treedepth=10, e_bfmi_rule_of_thumb=0.2,
 def parse_warning_code(warning_code):
     """Parses warning code into individual failures"""
     if warning_code & (1 << 0):
-        print("n_eff / iteration warning")
+        print('n_eff / iteration warning')
     if warning_code & (1 << 1):
-        print("rhat warning")
+        print('rhat warning')
     if warning_code & (1 << 2):
-        print("divergence warning")
+        print('divergence warning')
     if warning_code & (1 << 3):
-        print("treedepth warning")
+        print('treedepth warning')
     if warning_code & (1 << 4):
-        print("energy warning")
+        print('energy warning')
     if warning_code == 0:
-        print("No diagnostic warnings")
+        print('No diagnostic warnings')
+
+
+def sbc(prior_predictive_model=None,
+        posterior_model=None, 
+        prior_predictive_model_data=None,
+        posterior_model_data=None,
+        measured_data=None,
+        parameters=None,
+        chains=4,
+        warmup=1000,
+        iter=2000,
+        thin=10,
+        n_jobs=1,
+        N=400,
+        n_prior_draws_for_sd=1000,
+        progress_bar=False):
+
+    if prior_predictive_model is None:
+        raise RuntimeError('`prior_predictive_model` must be specified.')
+    if posterior_model is None:
+        raise RuntimeError('`posterior_model` must be specified.')
+    if prior_predictive_model_data is None:
+        raise RuntimeError('`prior_predictive_model_data` must be specified.')
+    if posterior_model_data is None:
+        raise RuntimeError('`posterior_model_data` must be specified.')
+    if measured_data is None:
+        raise RuntimeError('`measured_data` must be specified.')
+    if parameters is None:
+        raise RuntimeError('`parameters` must be specified.')
+
+    # Determine prior SDs for parameters of interest
+    prior_sd = _get_prior_sds(prior_predictive_model, 
+                              prior_predictive_model_data, 
+                              parameters,
+                              n_prior_draws_for_sd)
+
+    def arg_input_generator():
+        counter = 0
+        while counter < N:
+            counter += 1
+            yield (prior_predictive_model,
+                   posterior_model, 
+                   prior_predictive_model_data,
+                   posterior_model_data,
+                   measured_data,
+                   parameters,
+                   chains,
+                   warmup,
+                   iter,
+                   thin,
+                   prior_sd)
+    
+    with multiprocessing.Pool(n_jobs) as pool:
+        if progress_bar == 'notebook':
+            output = list(tqdm.tqdm_notebook(pool.imap(_perform_sbc, 
+                                             arg_input_generator()),
+                                             total=N))
+        elif progress_bar == True:
+            output = list(tqdm.tqdm(pool.imap(_perform_sbc, 
+                                    arg_input_generator()),
+                                    total=N))
+        elif progress_bar == False:
+            output = pool.map(_perform_sbc, arg_input_generator())
+        else:
+            raise RuntimeError('Invalid `progress_bar`.')
+
+    output = pd.DataFrame(output)
+    output['L'] = (iter - warmup) * chains // thin
+
+    return _tidy_sbc_output(output)
+
+
+def hpd(x, mass_frac) :
+    """
+    Returns highest probability density region given by
+    a set of samples.
+
+    Parameters
+    ----------
+    x : array
+        1D array of MCMC samples for a single variable
+    mass_frac : float with 0 < mass_frac <= 1
+        The fraction of the probability to be included in
+        the HPD.  For example, `massfrac` = 0.95 gives a
+        95% HPD.
+        
+    Returns
+    -------
+    output : array, shape (2,)
+        The bounds of the HPD
+    """
+    # Get sorted list
+    d = np.sort(np.copy(x))
+
+    # Number of total samples taken
+    n = len(x)
+    
+    # Get number of samples that should be included in HPD
+    n_samples = np.floor(mass_frac * n).astype(int)
+    
+    # Get width (in units of data) of all intervals with n_samples samples
+    int_width = d[n_samples:] - d[:n-n_samples]
+    
+    # Pick out minimal interval
+    min_int = np.argmin(int_width)
+    
+    # Return interval
+    return np.array([d[min_int], d[min_int+n_samples]])
+
+
+def _fit_to_df(fit, **kwargs):
+    """Convert StanFit4Model to data frame."""
+    if 'StanFit4Model' in str(type(fit)):
+        df = fit.to_dataframe(inc_warmup=False, **kwargs)
+    elif type(fit) != pd.core.frame.DataFrame:
+        raise RuntimeError('`fit` must be a StanModel or Pandas data frame.')
+    else:
+        df = fit.loc[fit['warmup']==0, :]
+
+    return df
+
+
+def _ebfmi(energy):
+    return np.sum(np.diff(energy)**2) / (len(energy) - 1) / np.var(energy)
 
 
 def _perform_sbc(args):
@@ -685,76 +581,6 @@ block to store the element as a scalar.""".format(param)
     return prior_sd
 
 
-def sbc(prior_predictive_model=None,
-        posterior_model=None, 
-        prior_predictive_model_data=None,
-        posterior_model_data=None,
-        measured_data=None,
-        parameters=None,
-        chains=4,
-        warmup=1000,
-        iter=2000,
-        thin=10,
-        n_jobs=1,
-        N=400,
-        n_prior_draws_for_sd=1000,
-        progress_bar=False):
-
-    if prior_predictive_model is None:
-        raise RuntimeError('`prior_predictive_model` must be specified.')
-    if posterior_model is None:
-        raise RuntimeError('`posterior_model` must be specified.')
-    if prior_predictive_model_data is None:
-        raise RuntimeError('`prior_predictive_model_data` must be specified.')
-    if posterior_model_data is None:
-        raise RuntimeError('`posterior_model_data` must be specified.')
-    if measured_data is None:
-        raise RuntimeError('`measured_data` must be specified.')
-    if parameters is None:
-        raise RuntimeError('`parameters` must be specified.')
-
-    # Determine prior SDs for parameters of interest
-    prior_sd = _get_prior_sds(prior_predictive_model, 
-                              prior_predictive_model_data, 
-                              parameters,
-                              n_prior_draws_for_sd)
-
-    def arg_input_generator():
-        counter = 0
-        while counter < N:
-            counter += 1
-            yield (prior_predictive_model,
-                   posterior_model, 
-                   prior_predictive_model_data,
-                   posterior_model_data,
-                   measured_data,
-                   parameters,
-                   chains,
-                   warmup,
-                   iter,
-                   thin,
-                   prior_sd)
-    
-    with multiprocessing.Pool(n_jobs) as pool:
-        if progress_bar == 'notebook':
-            output = list(tqdm.tqdm_notebook(pool.imap(_perform_sbc, 
-                                             arg_input_generator()),
-                                             total=N))
-        elif progress_bar == True:
-            output = list(tqdm.tqdm(pool.imap(_perform_sbc, 
-                                    arg_input_generator()),
-                                    total=N))
-        elif progress_bar == False:
-            output = pool.map(_perform_sbc, arg_input_generator())
-        else:
-            raise RuntimeError('Invalid `progress_bar`.')
-
-    output = pd.DataFrame(output)
-    output['L'] = (iter - warmup) * chains // thin
-
-    return _tidy_sbc_output(output)
-
-
 def _tidy_sbc_output(sbc_output):
     """Tidy output from sbc().
 
@@ -780,214 +606,9 @@ def _tidy_sbc_output(sbc_output):
         dfs.append(sub_df)
 
     return pd.concat(dfs, ignore_index=True)
-
-
-@numba.jit(nopython=True)
-def _y_ecdf(data, x):
-    y = np.arange(len(data) + 1) / len(data)
-    return y[np.searchsorted(np.sort(data), x, side='right')]
-
-
-@numba.jit(nopython=True)
-def _draw_ecdf_bootstrap(L, n, n_bs_reps=100000):
-    x = np.arange(L+1)
-    ys = np.empty((n_bs_reps, len(x)))
-    for i in range(n_bs_reps):
-        draws = np.random.randint(0, L+1, size=n)
-        ys[i, :] = _y_ecdf(draws, x)
-    return ys
-
-
-def _sbc_rank_envelope(L, n, ptile=95, diff=True, bootstrap=False, 
-                       n_bs_reps=None):
-    x = np.arange(L+1)
-    y = st.randint.cdf(x, 0, L+1)
-    std = np.sqrt(y * (1 - y) / n)
-        
-    if bootstrap:
-        if n_bs_reps is None:
-            n_bs_reps = int(max(n, max(L+1, 100/(100-ptile))) * 100)
-        ys = _draw_ecdf_bootstrap(L, n, n_bs_reps=n_bs_reps)
-        y_low, y_high = np.percentile(ys, 
-                                      [50 - ptile/2, 50 + ptile/2], 
-                                      axis=0)
-    else:
-        y_low = np.concatenate(
-            (st.norm.ppf((50 - ptile/2)/100, y[:-1], std[:-1]), (1.0,)))
-        y_high = np.concatenate(
-            (st.norm.ppf((50 + ptile/2)/100, y[:-1], std[:-1]), (1.0,)))
-        
-    # Ensure that ends are appropriate
-    y_low = np.maximum(0, y_low)
-    y_high = np.minimum(1, y_high)
-    
-    # Make "formal" stepped ECDFs
-    _, y_low = viz._to_formal(x, y_low)
-    x_formal, y_high = viz._to_formal(x, y_high)
-        
-    if diff:
-        _, y = viz._to_formal(x, y)
-        y_low -= y
-        y_high -= y
-        
-    return x_formal, y_low, y_high
-
-
-def _ecdf_diff(data, formal=False):
-    x, y = viz._ecdf_vals(data)
-    y_uniform = (x + 1)/len(x)
-    if formal:
-        x, y = viz._to_formal(x, y)
-        _, y_uniform = viz._to_formal(np.arange(len(data)), y_uniform)
-    y -= y_uniform
-
-    return x, y
-
-
-def sbc_rank_ecdf_plot(sbc_output, params, diff=True, formal=False, ptile=99,
-        bootstrap_envelope=False, n_bs_reps=None, show_envelope=True, p=None,
-        plot_height=300, plot_width=450, x_axis_label=None, y_axis_label=None,
-        color=None, alpha=1, color_by_warning_code=False, palette=None, 
-        fill_color='gray', fill_alpha=0.5, show_line=True, line_color='gray', 
-        show_legend=False, **kwargs):
-    """Make a rank ECDF plot from SBC.
-
-    color input can only be a solid color. Otherwise, if `color_by_warning_code` is false, it colors by parameter.
-    """
-
-    if formal and color_by_warning_code:
-        raise RuntimeError('Cannot color by warning code for formal ECDFs.')
-    if color is not None and color_by_warning_code:
-        raise RuntimeError(
-            '`color` must be `None` if `color_by_warning_code` is True.')
-
-    if type(params) not in [list, tuple]:
-        params = [params]
-
-    L = sbc_output['L'].iloc[0]
-    df = sbc_output.loc[sbc_output['parameter'].isin(params), 
-                        ['parameter', 'rank_statistic', 'warning_code']]
-    n = (df['parameter'] == df['parameter'].unique()[0]).sum()
-
-    if show_envelope:
-        x, y_low, y_high = _sbc_rank_envelope(L, n, ptile=ptile, diff=diff,
-                    bootstrap=bootstrap_envelope, n_bs_reps=n_bs_reps)
-        p = viz.fill_between(x1=x, x2=x, y1=y_high, y2=y_low, 
-                     plot_height=plot_height, plot_width=plot_width,
-                     x_axis_label=x_axis_label, y_axis_label=y_axis_label,
-                     fill_color=fill_color, fill_alpha=fill_alpha,
-                     show_line=show_line, line_color=line_color, p=p)
-    else:
-        p = bokeh.plotting.figure(plot_height=plot_height, 
-            plot_width=plot_width, x_axis_label=x_axis_label, 
-            y_axis_label=y_axis_label)
-
-    if formal:
-        dfs = []
-        for param in params:
-            if diff:
-                x_data, y_data = _ecdf_diff(
-                    df.loc[df['parameter']==param, 'rank_statistic'], 
-                    formal=True)
-            else:
-                x_data, y_data = viz._ecdf_vals(
-                    df.loc[df['parameter']==param, 'rank_statistic'], 
-                    formal=True)
-            dfs.append(pd.DataFrame(data=dict(rank_statistic=x_data,
-                                              __ECDF=y_data,
-                                              parameter=param)))
-        df = pd.concat(dfs, ignore_index=True)
-    else:
-        df['__ECDF'] = df.groupby('parameter')['rank_statistic'].transform(
-                                                                viz._ecdf_y)
-        df['warning_code'] = df['warning_code'].astype(str)
-        if diff:
-            df['__ECDF'] -= (df['rank_statistic'] + 1) / n
-
-
-    cat = 'warning_code' if color_by_warning_code else 'parameter'
-    source = viz._cat_source(df, cat, ['__ECDF', 'rank_statistic'])
-
-    _, _, color_factors = viz._get_cat_range(df, 
-                             df.groupby(cat), 
-                             None, 
-                             None, 
-                             False)
-
-    if palette is None:
-        if len(df[cat].unique()) <= 8:
-            palette = bokeh.palettes.Colorblind8
-        elif len(df[cat].unique()) <= 10:
-            palette = bokeh.palettes.d3.Category10
-        elif len(df[cat].unique()) <= 20:
-            palette = bokeh.palettes.d3.Category20
-        else:
-            palette = bokeh.palettes.Viridis256[::8]
-
-    if formal:
-        if color is None:
-            color = palette
-        else:
-            color = [color]*len(params)
-    elif color is None:
-        color = bokeh.transform.factor_cmap('cat', 
-                                            palette=palette, 
-                                            factors=color_factors)
-
-    if y_axis_label is None:
-        if diff:
-            y_axis_label = 'diff from Uniform CDF'
-        else:
-            y_axis_label = 'ECDF'
-
-    if x_axis_label is None:
-        x_axis_label = 'rank statistic'
-
-
-    if formal:
-        for i, (param, g) in enumerate(df.groupby('parameter')):
-            p.line(source=g, x='rank_statistic', y='__ECDF', color=color[i],
-                   legend=param if show_legend else None, **kwargs)
-    else:
-        p.circle(source=source, x='rank_statistic', y='__ECDF', color=color, 
-                 legend='__label' if show_legend else None, **kwargs)
-
-    return p
     
 
-def hpd(x, mass_frac) :
-    """
-    Returns highest probability density region given by
-    a set of samples.
-
-    Parameters
-    ----------
-    x : array
-        1D array of MCMC samples for a single variable
-    mass_frac : float with 0 < mass_frac <= 1
-        The fraction of the probability to be included in
-        the HPD.  For example, `massfrac` = 0.95 gives a
-        95% HPD.
-        
-    Returns
-    -------
-    output : array, shape (2,)
-        The bounds of the HPD
-    """
-    # Get sorted list
-    d = np.sort(np.copy(x))
-
-    # Number of total samples taken
-    n = len(x)
-    
-    # Get number of samples that should be included in HPD
-    n_samples = np.floor(mass_frac * n).astype(int)
-    
-    # Get width (in units of data) of all intervals with n_samples samples
-    int_width = d[n_samples:] - d[:n-n_samples]
-    
-    # Pick out minimal interval
-    min_int = np.argmin(int_width)
-    
-    # Return interval
-    return np.array([d[min_int], d[min_int+n_samples]])
+def to_dataframe(fit, pars=None, permuted=False, dtypes=None, 
+                 inc_warmup=False, diagnostics=True):
+    """Convert output of a Stan calculation to a Pandas dataframe."""
+    raise NotImplementedError('Dataframe conversion not yet implemented. If you are using PyStan version >= 2.18, use the `.dataframe()` method.')
