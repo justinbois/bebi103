@@ -31,7 +31,11 @@ Features requiring DataShader will not work and you will get exceptions.""")
 
 
 from . import utils
-from . import stan
+
+try:
+    from . import stan
+except:
+    warnings.warn('Could not import `stan` submodule. Perhaps pystan is not properly installed.')
 
         
 def fill_between(x1=None, y1=None, x2=None, y2=None, 
