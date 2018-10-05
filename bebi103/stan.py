@@ -1,5 +1,6 @@
 import copy
 import itertools
+import re
 import pickle
 import hashlib
 import logging
@@ -87,11 +88,19 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
     dypes : dict
         Each entry key, value pair is param_name, data dtype. If None,
         all data types are floats. Be careful: results are cast into
+    inc_warmup : bool, default False
+        If True, include warmup samples.
+    diagnostics : bool, default True
+        If True, also include diagnostic information about the samples.
+        Note that if no Monte Carlo sampling is done (e.g., if the
+        Fixed_param algorithm is used).
 
     Returns
     -------
     output : DataFrame
-        A Pandas DataFrame containing the samples
+        A Pandas DataFrame containing the samples. Each row consists of
+        a single sample, including the parameters and diagnostics if
+        `diagnostics` is True.
 
     Notes
     -----
@@ -128,21 +137,22 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
         
     # Build parameters if not supplied
     if pars is None:
-        pars = fit.model_pars + ['lp__']
+        pars = tuple(fit.model_pars + ['lp__'])
     if isinstance(pars, str):
-        pars = [pars]
+        pars = tuple([pars, 'lp__'])
 
     # Build dtypes if not supplied
     if dtypes is None:
         dtypes = {par: float for par in pars}
+    else:
+        dtype['lp__'] = float
 
     # Make sure dtypes supplied for every parameter
     for par in pars:
         if par not in dtypes:
             raise RuntimeError(f"'{par}' not in `dtypes`.")
 
-    # To get diagnostics: use get_sampler_params()
-
+    # Retrieve samples
     samples = fit.extract(pars=pars,
                           permuted=permuted, 
                           dtypes=dtypes, 
@@ -193,22 +203,34 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
                                             for i in range(n_chains)])
             if diag in ['treedepth__', 'n_leapfrog__']:
                 df[diag] = df[diag].astype(int)
-        
-    for par in pars:
-        if len(dim_dict[par]) == 0:
-            df[par] = samples[par].flatten(order='F')
-        else:
-            for inds in itertools.product(*[range(dim) 
+
+    if isinstance(samples, np.ndarray):
+        for k, par in enumerate(fit.flatnames):
+            try:
+                indices = re.search('\[(\d+)(,\d+)*\]', par).group()
+                base_name = re.split('\[(\d+)(,\d+)*\]', par, maxsplit=1)[0]
+                col = (base_name 
+                    + re.sub('\d+', lambda x: str(int(x.group())+1), indices))
+            except AttributeError:
+                col = par
+
+            df[col] = samples[:,:,k].flatten(order='F')
+    else:
+        for par in pars:
+            if len(dim_dict[par]) == 0:
+                df[par] = samples[par].flatten(order='F')
+            else:
+                for inds in itertools.product(*[range(dim) 
                                                 for dim in dim_dict[par]]):
-                col = (par + '[' + 
+                    col = (par + '[' + 
                         ','.join([str(ind+1) for ind in inds[::-1]]) + ']')
 
-                if permuted:
-                    array_slice = tuple([slice(n), *inds[::-1]])
-                else:
-                    array_slice = tuple([slice(n), slice(n), *inds[::-1]])
+                    if permuted:
+                        array_slice = tuple([slice(n), *inds[::-1]])
+                    else:
+                        array_slice = tuple([slice(n), slice(n), *inds[::-1]])
 
-                df[col] = samples[par][array_slice].flatten(order='F')
+                    df[col] = samples[par][array_slice].flatten(order='F')
 
     return df
 
@@ -238,8 +260,6 @@ def extract_array(samples, name):
     """
     df = _fit_to_df(samples)
 
-    ind_names = 'ijklmn'
-
     regex_name = name
     for char in '[\^$.|?*+(){}':
         regex_name = regex_name.replace(char, '\\'+char)
@@ -251,47 +271,23 @@ def extract_array(samples, name):
         raise RuntimeError(
                 "column '{}' is either absent or scalar-valued.".format(name))
 
+    n_entries = len(sub_df.columns)
+    n = len(sub_df)
 
-    # Set up a multiindex
-    multiindex = [None for _ in range(len(sub_df.columns))]
-    for i, c_str in enumerate(sub_df.columns):
-        c = c_str[c_str.rfind('[')+1:-1]
-        if ',' in c:
-            c = c.split(',')
-            c = (int(char) for char in c)
-            multiindex[i] = (c_str[:c_str.rfind('[')], *c)
-        else:
-            multiindex[i] = (c_str[:c_str.rfind('[')], int(c))
+    df_out = pd.DataFrame(data={name: sub_df.values.flatten(order='F')})
+    for col in ['chain', 'chain_idx', 'warmup']:
+        if col in df:
+            df_out[col] = np.concatenate([df[col].values]*n_entries)
 
-    # Names for Multiindex
-    n_dim = len(multiindex[0]) - 1
-    if n_dim > 6:
-        raise RuntimeError('Can only have maximally six dimensions in array.')
-    names = (name,) + tuple('index_'+ind_names[i] for i in range(n_dim))
-
-    # Rename columns with Multiindex
-    sub_df.columns = pd.MultiIndex.from_tuples(multiindex, names=names)
-
-    # Stack
-    for _ in range(n_dim):
-        sub_df = sub_df.stack()
-    sub_df = sub_df.reset_index()
-
-    # Add in chain, chain_idx, and warmup
-    if 'warmup' in df:
-        sub_df['warmup'] = df.loc[sub_df['level_0'], 'warmup'].values
-    if 'chain' in df:
-        sub_df['chain'] = df.loc[sub_df['level_0'], 'chain'].values
-    if 'chain_idx' in df:
-        sub_df['chain_idx'] = df.loc[sub_df['level_0'], 'chain_idx'].values
-
-    # Clean out level 0
-    del sub_df['level_0']
-
-    # No need to have column headings named
-    sub_df.columns.name = None
-
-    return sub_df
+    indices = [re.search('\[(\d+)(,\d+)*\]', col).group()[1:-1].split(',') 
+                           for col in sub_df.columns]
+    indices = np.vstack([np.array([[int(i) for i in ind]]*n) 
+                            for ind in indices])
+    ind_df = pd.DataFrame(columns=['index_{0:d}'.format(i) 
+                                       for i in range(1, indices.shape[1]+1)], 
+                          data=indices)
+    
+    return pd.concat([ind_df, df_out], axis=1)
 
 
 def check_divergences(fit, quiet=False, return_diagnostics=False):
@@ -320,7 +316,29 @@ def check_divergences(fit, quiet=False, return_diagnostics=False):
 
 def check_treedepth(fit, max_treedepth=10, quiet=False,
                     return_diagnostics=False):
-    """Check transitions that ended prematurely due to maximum tree depth limit"""
+    """Check transitions that ended prematurely due to maximum tree depth limit.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Fit for which diagnostic is to be run.
+    max_treedepth : int, default 10
+        The maximum allowed tree depth.
+    quiet : bool, default False
+        If True, do no print diagnostic result to the screen.
+    return_diagnostics : bool, default False
+        If True, return both a Boolean about whether the diagnostic
+        passed and the number of samples where the tree depth was too
+        deep. Otherwise, only return Boolean if the test passed.
+
+    Results
+    -------
+    passed : bool
+        Return True if tree depth test passed. Return False otherwise.
+    n_too_deep : int, optional
+        Number of samplers wherein the tree depth was greater than
+        `max_treedepth`.
+    """
     df = _fit_to_df(fit)
 
     n_too_deep = (df['treedepth__'] >= max_treedepth).sum()
@@ -345,7 +363,30 @@ def check_treedepth(fit, max_treedepth=10, quiet=False,
 
 def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2, 
                  return_diagnostics=False):
-    """Checks the energy-Bayes fraction of missing information (E-BFMI)"""
+    """Checks the energy-Bayes fraction of missing information (E-BFMI)
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Fit for which diagnostic is to be run.
+    quiet : bool, default False
+        If True, do no print diagnostic result to the screen.
+    e_bfmi_rule_of_thumb : float, default 0.2
+        Rule of thumb value for E-BFMI. If below this value, there may
+        be cause for concern.
+    return_diagnostics : bool, default False
+        If True, return both a Boolean about whether the diagnostic
+        passed and a data frame containing results about the E-BMFI 
+        tests. Otherwise, only return Boolean if the test passed.
+
+    Results
+    -------
+    passed : bool
+        Return True if test passed. Return False otherwise.
+    e_bfmi_diagnostics : DataFrame
+        DataFrame with information about which chains had problematic
+        E-BFMIs.
+    """
     df = _fit_to_df(fit)
 
     result = (df.groupby('chain')['energy__']
@@ -374,7 +415,29 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
                 return_diagnostics=False):
     """Checks the effective sample size per iteration.
 
-    Parameters with n_eff given as NaN are not checked.
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Fit for which diagnostic is to be run.
+    quiet : bool, default False
+        If True, do no print diagnostic result to the screen.
+    n_eff_rule_of_thumb : float, default 0.001
+        Rule of thumb value for fractional number of effective samples.
+    return_diagnostics : bool, default False
+        If True, return both a Boolean about whether the diagnostic
+        passed and a data frame containing results about the number
+        of effective samples tests. Otherwise, only return Boolean if 
+        the test passed.
+
+    Results
+    -------
+    passed : bool
+        Return True if test passed. Return False otherwise.
+    n_eff_diagnostics : DataFrame
+        Data frame with information about problematic n_eff.
+
+    .. Notes
+       Parameters with n_eff given as NaN are not checked.
     """
     if 'StanFit4Model' not in str(type(fit)):
         raise RuntimeError('Must imput a StanFit4Model instance.')
@@ -406,7 +469,33 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
 
 def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[], 
                return_diagnostics=False):
-    """Checks the potential scale reduction factors"""
+    """Checks the potential issues with scale reduction factors.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Fit for which diagnostic is to be run.
+    quiet : bool, default False
+        If True, do no print diagnostic result to the screen.
+    rhat_rule_of_thumb : float, default 1.1
+        Rule of thumb value for maximum allowed R-hat.
+    known_rhat_nans : list, default []
+        List of parameter names which are known to have R-hat be NaN.
+        These are typically parameters that are deterministic. 
+        Parameters in this list are ignored.
+    return_diagnostics : bool, default False
+        If True, return both a Boolean about whether the diagnostic
+        passed and a data frame containing results about the number
+        of effective samples tests. Otherwise, only return Boolean if 
+        the test passed.
+
+    Results
+    -------
+    passed : bool
+        Return True if test passed. Return False otherwise.
+    rhat_diagnostics : DataFrame
+        Data frame with information about problematic R-hat values.
+    """
     if 'StanFit4Model' not in str(type(fit)):
         raise RuntimeError('Must imput a StanFit4Model instance.')
 
@@ -438,7 +527,40 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
 def check_all_diagnostics(fit, max_treedepth=10, e_bfmi_rule_of_thumb=0.2,
                           n_eff_rule_of_thumb=0.001, rhat_rule_of_thumb=1.1,
                           known_rhat_nans=[], quiet=False):
-    """Checks all MCMC diagnostics"""
+    """Checks all MCMC diagnostics
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Fit for which diagnostic is to be run.
+    max_treedepth : int, default 10
+        The maximum allowed tree depth.
+    e_bfmi_rule_of_thumb : float, default 0.2
+        Rule of thumb value for E-BFMI. If below this value, there may
+        be cause for concern.
+    rhat_rule_of_thumb : float, default 1.1
+        Rule of thumb value for maximum allowed R-hat.
+    known_rhat_nans : list, default []
+        List of parameter names which are known to have R-hat be NaN.
+        These are typically parameters that are deterministic. 
+        Parameters in this list are ignored.
+    quiet : bool, default False
+        If True, do no print diagnostic result to the screen.
+
+    Results
+    -------
+    warning_code : int
+        When converted to binary, each digit in the code stands for 
+        whether or not a test passed. A digit of zero indicates the test
+        passed. The ordering of the tests goes:
+            n_eff
+            r_hat
+            divergences
+            tree depth
+            E-BFMI
+        For example, a warning code of 12 has a binary representation
+        of 01100, which means that R-hat and divergences tests failed.
+    """
     warning_code = 0
 
     if not check_n_eff(fit, 
@@ -471,7 +593,23 @@ def check_all_diagnostics(fit, max_treedepth=10, e_bfmi_rule_of_thumb=0.2,
 
 
 def parse_warning_code(warning_code):
-    """Parses warning code into individual failures"""
+    """Parses warning code from `check_all_diagnostics()` into 
+    individual failures and prints results.
+
+    Parameters
+    ----------
+    warning_code : int
+        When converted to binary, each digit in the code stands for 
+        whether or not a test passed. A digit of zero indicates the test
+        passed. The ordering of the tests goes:
+            n_eff
+            r_hat
+            divergences
+            tree depth
+            E-BFMI
+        For example, a warning code of 12 has a binary representation
+        of 01100, which means that R-hat and divergences tests failed.    
+    """
     if warning_code & (1 << 0):
         print('n_eff / iteration warning')
     if warning_code & (1 << 1):
@@ -500,6 +638,13 @@ def sbc(prior_predictive_model=None,
         N=400,
         n_prior_draws_for_sd=1000,
         progress_bar=False):
+    """Perform simulation-based calibration on a Stan Model.
+
+    Parameters
+    ----------
+    
+
+    """
 
     if prior_predictive_model is None:
         raise RuntimeError('`prior_predictive_model` must be specified.')

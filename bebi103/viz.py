@@ -1629,7 +1629,7 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
                 'PyMC3 could not be imported. Check your installation.'
                 + ' PyMC3 features will soon be deprecated.')
     elif 'StanFit4Model' in str(type(samples)):
-        df = samples.to_dataframe(diagnostics=True)
+        df = stan.to_dataframe(samples, diagnostics=True)
 
     if 'divergent__' not in df.columns and divergence_color is not None:
             raise RuntimeError('No divergence information available. '
@@ -1923,7 +1923,6 @@ def contour(X, Y, Z, levels=None, p=None, overlaid=False, plot_width=350,
         for i in range(1, len(levels)):
             x_p = np.concatenate((xs[-1-i], xs[-i][::-1]))
             y_p = np.concatenate((ys[-1-i], ys[-i][::-1]))
-            print(len(x_p), len(y_p))
             p.patch(x_p, 
                     y_p, 
                     color=fill_palette[i],
