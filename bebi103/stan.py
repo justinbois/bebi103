@@ -1,4 +1,5 @@
 import copy
+import itertools
 import pickle
 import hashlib
 import logging
@@ -70,6 +71,148 @@ def StanModel(file=None, model_name='anon_model', model_code=None,
     return sm
 
 
+def to_dataframe(fit, pars=None, permuted=False, dtypes=None, 
+                 inc_warmup=False, diagnostics=True):
+    """
+    Convert the results of a fit to a DataFrame.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        The output of fitting a Stan model.
+    pars : str or list of strs
+        The parameters to extract into the outputted data frame.
+    permuted : bool, default False
+        If True, the chains are combined and the samples are permuted.
+    dypes : dict
+        Each entry key, value pair is param_name, data dtype. If None,
+        all data types are floats. Be careful: results are cast into
+
+    Returns
+    -------
+    output : DataFrame
+        A Pandas DataFrame containing the samples
+
+    Notes
+    -----
+    .. This functionality is present in PyStan >= 2.18. Due to
+       compilation issues with higher versions of PyStan, we include
+       this functionality here. The output of this function is meant to
+       match that of fit.to_dataframe() of a StanFit4Model instance
+       from PyStan 2.18 and above. Because of PyStan's GPL license,
+       I have re-written this functionality here to enable permissive
+       licensing of this module.
+    """
+    if permuted and inc_warmup:
+        raise RuntimeError(
+                'If `permuted` is True, `inc_warmup` must be False.')
+        
+    if permuted and diagnostics:
+        raise RuntimeError(
+                'Diagnostics are not available when `permuted` is True.')
+
+    if dtypes is not None and not permuted and pars is None:
+        raise RuntimeError('`dtypes` cannot be specified when `permuted`'
+                            + ' is False and `pars` is None.')
+
+    if pystan.__version__ >= '2.18':
+        return fit.to_dataframe(pars=pars, 
+                                permuted=permuted, 
+                                dtypes=dtypes, 
+                                inc_warmup=inc_warmup, 
+                                diagnostics=diagnostics)
+
+    # Diagnostics to pull out
+    diags = ['divergent__', 'energy__', 'treedepth__', 'accept_stat__', 
+             'stepsize__', 'n_leapfrog__']
+        
+    # Build parameters if not supplied
+    if pars is None:
+        pars = fit.model_pars + ['lp__']
+    if isinstance(pars, str):
+        pars = [pars]
+
+    # Build dtypes if not supplied
+    if dtypes is None:
+        dtypes = {par: float for par in pars}
+
+    # Make sure dtypes supplied for every parameter
+    for par in pars:
+        if par not in dtypes:
+            raise RuntimeError(f"'{par}' not in `dtypes`.")
+
+    # To get diagnostics: use get_sampler_params()
+
+    samples = fit.extract(pars=pars,
+                          permuted=permuted, 
+                          dtypes=dtypes, 
+                          inc_warmup=inc_warmup)
+
+    n_chains = len(fit.stan_args)
+    thin = fit.stan_args[0]['thin']
+    n_iters = fit.stan_args[0]['iter'] // thin
+    n_warmup = fit.stan_args[0]['warmup'] // thin
+    n_samples = n_iters - n_warmup
+
+    # Dimensions of parameters
+    dim_dict = {par: dim for par, dim in zip(fit.model_pars, fit.par_dims)}
+    dim_dict['lp__'] = []
+
+    if inc_warmup:
+        n = (n_warmup + n_samples)*n_chains
+        warmup = np.concatenate([[1]*n_warmup + [0]*n_samples 
+                                    for _ in range(n_chains)]).astype(int)
+        chain = np.concatenate([[i+1]*(n_warmup+n_samples) 
+                                    for i in range(n_chains)]).astype(int)
+        chain_idx = np.concatenate([np.arange(1, n_warmup+n_samples+1) 
+                                        for _ in range(n_chains)]).astype(int)
+    else:
+        n = n_samples * n_chains
+        warmup = np.array([0]*n, dtype=int)
+        chain = np.concatenate([[i+1]*n_samples
+                                    for i in range(n_chains)]).astype(int)
+        chain_idx = np.concatenate([np.arange(1, n_samples+1) 
+                                        for _ in range(n_chains)]).astype(int)
+
+    if permuted:
+        df = pd.DataFrame()
+    else:
+        df = pd.DataFrame(
+                data=dict(chain=chain, chain_idx=chain_idx, warmup=warmup))
+
+    if diagnostics:
+        sampler_params = fit.get_sampler_params(inc_warmup=inc_warmup)
+        diag_vals = list(sampler_params[0].keys())
+
+        # If they are standard, do same order as PyStan 2.18 to_dataframe
+        if (len(diag_vals) == len(diags) 
+                and sum([val not in diags for val in diag_vals]) == 0):
+            diag_vals = diags
+        for diag in diag_vals:
+            df[diag] = np.concatenate([sampler_params[i][diag] 
+                                            for i in range(n_chains)])
+            if diag in ['treedepth__', 'n_leapfrog__']:
+                df[diag] = df[diag].astype(int)
+        
+    for par in pars:
+        if len(dim_dict[par]) == 0:
+            df[par] = samples[par].flatten(order='F')
+        else:
+            for inds in itertools.product(*[range(dim) 
+                                                for dim in dim_dict[par]]):
+                col = (par + '[' + 
+                        ','.join([str(ind+1) for ind in inds[::-1]]) + ']')
+
+                if permuted:
+                    array_slice = tuple([slice(n), *inds[::-1]])
+                else:
+                    array_slice = tuple([slice(n), slice(n), *inds[::-1]])
+
+                df[col] = samples[par][array_slice].flatten(order='F')
+
+    return df
+
+
 def extract_array(samples, name):
     """Extract an array values from a DataFrame containing samples.
 
@@ -135,9 +278,12 @@ def extract_array(samples, name):
     sub_df = sub_df.reset_index()
 
     # Add in chain, chain_idx, and warmup
-    sub_df['warmup'] = df.loc[sub_df['level_0'], 'warmup'].values
-    sub_df['chain'] = df.loc[sub_df['level_0'], 'chain'].values
-    sub_df['chain_idx'] = df.loc[sub_df['level_0'], 'chain_idx'].values
+    if 'warmup' in df:
+        sub_df['warmup'] = df.loc[sub_df['level_0'], 'warmup'].values
+    if 'chain' in df:
+        sub_df['chain'] = df.loc[sub_df['level_0'], 'chain'].values
+    if 'chain_idx' in df:
+        sub_df['chain_idx'] = df.loc[sub_df['level_0'], 'chain_idx'].values
 
     # Clean out level 0
     del sub_df['level_0']
@@ -451,7 +597,7 @@ def hpd(x, mass_frac) :
 def _fit_to_df(fit, **kwargs):
     """Convert StanFit4Model to data frame."""
     if 'StanFit4Model' in str(type(fit)):
-        df = fit.to_dataframe(inc_warmup=False, **kwargs)
+        df = to_dataframe(fit, inc_warmup=False, **kwargs)
     elif type(fit) != pd.core.frame.DataFrame:
         raise RuntimeError('`fit` must be a StanModel or Pandas data frame.')
     else:
@@ -607,8 +753,3 @@ def _tidy_sbc_output(sbc_output):
 
     return pd.concat(dfs, ignore_index=True)
     
-
-def to_dataframe(fit, pars=None, permuted=False, dtypes=None, 
-                 inc_warmup=False, diagnostics=True):
-    """Convert output of a Stan calculation to a Pandas dataframe."""
-    raise NotImplementedError('Dataframe conversion not yet implemented. If you are using PyStan version >= 2.18, use the `.dataframe()` method.')
