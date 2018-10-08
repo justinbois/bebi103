@@ -968,6 +968,11 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
        if you choose `no_ticks` to be True, no tick or axes labels are
        present, and the pixels are displayed as square.
     """
+    if record_clicks:
+        warnings.warn(
+            '`record_clicks` is deprecated. Use `record_clicks()` instead.', 
+            DeprecationWarning)
+
     # If a single channel in 3D image, flatten and check shape
     if im.ndim == 3:
         if im.shape[2] == 1:
@@ -1105,6 +1110,154 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     if return_im:
         return p, im_bokeh
     return p
+
+
+def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
+                  point_color='white'):
+    """Display and record mouse clicks on a Bokeh plot of an image.
+
+    Parameters
+    ----------
+    im : 2D Numpy array
+        Image to display while clicking.
+    point_size : int, default 3
+        Size of points to display when clicking.
+    table_height : int, default 200
+        Height, in pixels, of table displaying mouse click locations.
+    crosshair_alpha : float, default 0.5
+        Opacity value for crosshairs when using the crosshair tool.
+    point_color : str, default 'white'
+        Color of the points displaying clicks.
+
+    Returns
+    -------
+    output : Bokeh ColumnDataSource
+        A Bokeh ColumnDataSource instance. This can be immediately 
+        converted to a Pandas DataFrame using the `to_df()` method. For
+        example, `output.to_df()`.
+    """
+    points_source = bokeh.models.ColumnDataSource({'x': [], 'y': []})
+
+    def modify_doc(doc):
+        p = bebi103.viz.imshow(im)
+
+        view = bokeh.models.CDSView(source=points_source)
+
+        renderer = p.scatter(x='x', y='y', source=points_source, view=view,
+                             color=point_color, size=point_size)
+        
+        columns = [bokeh.models.TableColumn(field='x', title='x'),
+                   bokeh.models.TableColumn(field='y', title='y')]
+
+        table = bokeh.models.DataTable(source=points_source, 
+                                       columns=columns, 
+                                       editable=True, 
+                                       height=table_height)
+
+        draw_tool = bokeh.models.PointDrawTool(renderers=[renderer])
+        p.add_tools(draw_tool)
+        p.add_tools(bokeh.models.CrosshairTool(line_alpha=crosshair_alpha))
+        p.toolbar.active_tap = draw_tool
+
+        doc.add_root(bokeh.layouts.column(p, table))
+
+    bokeh.io.show(modify_doc)
+
+    return points_source
+
+
+def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
+              color='white', fill_alpha=0.1, vertex_color='red', 
+              vertex_size=10):
+    """Draw and record polygonal regions of interest on a plot of a 
+    Bokeh image.
+
+    Parameters
+    ----------
+    im : 2D Numpy array
+        Image to display while clicking.
+    table_height : int, default 200
+        Height, in pixels, of table displaying polygon vertex locations.    
+    crosshair_alpha : float, default 0.5
+        Opacity value for crosshairs when using the crosshair tool.
+    color : str, default 'white'
+        Color of the ROI polygons (lines and fill).
+    fill_alpha : float, default 0.1
+        Opacity of drawn ROI polygons.
+    vertex_color : str, default 'red'
+        Color of vertices of the ROI polygons while using the polygon 
+        edit tool.
+    vertex_size: int, default 10
+        Size, in pixels, of vertices of the ROI polygons while using the
+        polygon edit tool.
+
+    Returns
+    -------
+    output : Bokeh ColumnDataSource
+        A Bokeh ColumnDataSource instance. This can be immediately 
+        converted to a Pandas DataFrame `roicds_to_df()` function. For
+        example, `bebi103.viz.roicds_to_df(output)`.
+
+    Notes
+    -----
+    .. The displayed table is not particularly useful because it
+       displays a list of points. It helps to make sure your clicks are
+       getting registered and to select which ROI number is which 
+       polygon.
+    """
+
+    poly_source = bokeh.models.ColumnDataSource({'xs': [], 'ys': []})
+
+    def modify_doc(doc):
+        p = bebi103.viz.imshow(im)
+
+        view = bokeh.models.CDSView(source=poly_source)
+        renderer = p.patches(xs='xs', ys='ys', source=poly_source, view=view,
+                             fill_alpha=fill_alpha, color=color)
+        vertex_renderer = p.circle([], [], size=vertex_size, color='red')
+        
+        columns = [bokeh.models.TableColumn(field='xs', title='xs'),
+                   bokeh.models.TableColumn(field='ys', title='ys')]
+
+        table = bokeh.models.DataTable(source=poly_source, 
+                                       index_header='roi',
+                                       columns=columns, 
+                                       height=table_height)
+        draw_tool = bokeh.models.PolyDrawTool(renderers=[renderer])
+        edit_tool = bokeh.models.PolyEditTool(renderers=[renderer], 
+                                              vertex_renderer=vertex_renderer)
+        p.add_tools(draw_tool)
+        p.add_tools(edit_tool)
+        p.add_tools(bokeh.models.CrosshairTool(line_alpha=crosshair_tool_alpha))
+        p.toolbar.active_tap = draw_tool
+   
+        doc.add_root(bokeh.layouts.column(p, table))
+
+    bokeh.io.show(modify_doc)
+
+    return poly_source
+
+
+def roicds_to_df(cds):
+    """Convert a ColumnDataSource outputted by `draw_rois()` to a Pandas
+    DataFrame.
+
+    Parameter
+    ---------
+    cds : Bokeh ColumnDataSource
+        ColumnDataSource outputted by `draw_rois()`
+    
+    Returns
+    -------
+    output : Pandas DataFrame
+        DataFrame with columns ['roi', 'x', 'y'] containing the 
+        positions of the vertices of the respective polygonal ROIs.
+    """
+    roi = np.concatenate([[i]*len(x_data) for i, x_data in enumerate(cds.data['xs'])])
+    x = np.concatenate(cds.data['xs'])
+    y = np.concatenate(cds.data['ys'])
+
+    return pd.DataFrame(data=dict(roi=roi, x=x, y=y))
 
 
 def im_merge(im_0, im_1, im_2=None, im_0_max=None,

@@ -253,10 +253,9 @@ def extract_array(samples, name):
     output : Pandas DataFrame
         A tidy DataFrame with the extracted array. For a 1-D array, the 
         DataFrame has columns: 
-            ['chain', 'chain_idx', 'warmup', 'index_i', 'name'] 
-        For a 2D array, there is an additional column named 'index_j'. A
-        3D array has a column 'index_k' and so on through 'index_l',
-        'index_m', and 'index_n'.
+            ['chain', 'chain_idx', 'warmup', 'index_1', 'name'] 
+        For a 2D array, there is an additional column named 'index_2'. A
+        3D array has a column 'index_3' and so on.
     """
     df = _fit_to_df(samples)
 
@@ -307,7 +306,7 @@ def check_divergences(fit, quiet=False, return_diagnostics=False):
     pass_check = n_divergent == 0
 
     if not pass_check and not quiet:
-        print('  Try running with larger adapt_delta to remove divergences')
+        print('  Try running with larger adapt_delta to remove divergences.')
 
     if return_diagnostics:
         return pass_check, n_divergent
@@ -354,7 +353,7 @@ def check_treedepth(fit, max_treedepth=10, quiet=False,
 
     if not pass_check and not quiet:
         print('  Try running again with max_treedepth set to a larger value'
-               + ' to avoid saturation')
+               + ' to avoid saturation.')
 
     if return_diagnostics:
         return pass_check, n_too_deep
@@ -399,7 +398,7 @@ def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2,
 
     if not quiet:
         if pass_check:
-            print('E-BFMI indicated no pathological behavior')
+            print('E-BFMI indicated no pathological behavior.')
         else:
             for _, r in result.iterrows():
                 print('Chain {}: E-BFMI = {}'.format(r['chain'], r['E-BFMI']))
@@ -457,9 +456,9 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
                     print('n_eff / iter for parameter {} is {}.'.format(name, 
                                                                         r))
             print('  n_eff / iter below 0.001 indicates that the effective'
-                  + ' sample size has likely been overestimated')
+                  + ' sample size has likely been overestimated.')
         else:
-            print('n_eff / iter looks reasonable for all parameters')
+            print('n_eff / iter looks reasonable for all parameters.')
 
     if return_diagnostics:
         return pass_check, pd.DataFrame(data={'parameter': names, 
@@ -642,7 +641,7 @@ def sbc(prior_predictive_model=None,
 
     Parameters
     ----------
-    
+
 
     """
 
