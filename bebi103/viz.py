@@ -58,18 +58,18 @@ def fill_between(x1=None, y1=None, x2=None, y2=None,
     y2 : array_like
         Array of y-values for second curve
     x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
+        Label for the x-axis. Ignored if `p` is not None.
     y_axis_label : str, default None
-        Label for the y-axis. Ignored is `p` is not None.
+        Label for the y-axis. Ignored if `p` is not None.
     x_axis_type : str, default 'linear'
         Either 'linear' or 'log'.
     y_axis_type : str, default 'linear'
         Either 'linear' or 'log'.    title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
+        Height of plot, in pixels. Ignored if `p` is not None.
     plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
+        Width of plot, in pixels. Ignored if `p` is not None.
     fill_color : str, default '#1f77b4'
         Color of fill as a hex string.
     line_color : str, default '#1f77b4'
@@ -141,18 +141,21 @@ def ecdf(data=None, p=None, x_axis_label=None, y_axis_label='ECDF',
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
     x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
+        Label for the x-axis. Ignored if `p` is not None.
     y_axis_label : str, default 'ECDF'
-        Label for the y-axis. Ignored is `p` is not None.
+        Label for the y-axis. Ignored if `p` is not None.
     title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
+        Height of plot, in pixels. Ignored if `p` is not None.
     plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
+        Width of plot, in pixels. Ignored if `p` is not None.
     formal : bool, default False
         If True, make a plot of a formal ECDF (staircase). If False,
         plot the ECDF as dots.
+    complementary : bool, default False
+        If True, plot the empirical complementary cumulative 
+        distribution functon.
     x_axis_type : str, default 'linear'
         Either 'linear' or 'log'.
     y_axis_type : str, default 'linear'
@@ -215,15 +218,15 @@ def histogram(data=None, bins=10, p=None, x_axis_label=None,
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
     x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
+        Label for the x-axis. Ignored if `p` is not None.
     y_axis_label : str, default None
-        Label for the y-axis. Ignored is `p` is not None.
+        Label for the y-axis. Ignored if `p` is not None.
     title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
+        Height of plot, in pixels. Ignored if `p` is not None.
     plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
+        Width of plot, in pixels. Ignored if `p` is not None.
     density : bool, default False
         If True, normalized the histogram. Otherwise, base the histogram
         on counts.
@@ -312,16 +315,16 @@ def jitter(data=None, cats=None, val=None, p=None, horizontal=False,
     horizontal : bool, default False
         If true, the categorical axis is the vertical axis.
     x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
+        Label for the x-axis. Ignored if `p` is not None.
     y_axis_label : str, default 'ECDF'
-        Label for the y-axis. Ignored is `p` is not None.
+        Label for the y-axis. Ignored if `p` is not None.
     title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
+        Height of plot, in pixels. Ignored if `p` is not None.
     plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
-    palette : list of strings of hex colors, or since hex string
+        Width of plot, in pixels. Ignored if `p` is not None.
+    palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         the default color cycle employed by Altair.
@@ -378,8 +381,6 @@ def jitter(data=None, cats=None, val=None, p=None, horizontal=False,
                                                    horizontal)
         if tooltips is not None:
             p.add_tools(bokeh.models.HoverTool(tooltips=tooltips))
-
-    source = _cat_source(data, cats, cols)
    
     if 'color' not in kwargs:
         if color_column is None:
@@ -387,6 +388,8 @@ def jitter(data=None, cats=None, val=None, p=None, horizontal=False,
         kwargs['color'] = bokeh.transform.factor_cmap(color_column, 
                                                       palette=palette, 
                                                       factors=color_factors)
+
+    source = _cat_source(data, cats, cols, color_column)
 
     if show_legend:
         kwargs['legend'] = '__label'
@@ -416,9 +419,9 @@ def box(data=None, cats=None, val=None, p=None, horizontal=False,
         plot_width=400, 
         palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
                  '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
-        color_column=None, width=0.4, order=None, tooltips=None, 
-        val_axis_type='linear', display_outliers=True, box_kwargs={}, 
-        whisker_kwargs=None, outlier_kwargs=None):
+        width=0.4, order=None, tooltips=None, val_axis_type='linear',
+        display_outliers=True, box_kwargs=None, whisker_kwargs=None, 
+        outlier_kwargs=None):
     """
     Make a box-and-whisker plot from a tidy DataFrame.
 
@@ -434,16 +437,16 @@ def box(data=None, cats=None, val=None, p=None, horizontal=False,
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
     x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
+        Label for the x-axis. Ignored if `p` is not None.
     y_axis_label : str, default 'ECDF'
-        Label for the y-axis. Ignored is `p` is not None.
+        Label for the y-axis. Ignored if `p` is not None.
     title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
+        Height of plot, in pixels. Ignored if `p` is not None.
     plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
-    palette : list of strings of hex colors, or since hex string
+        Width of plot, in pixels. Ignored if `p` is not None.
+    palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all boxes are colored with that color. Default is
         the default color cycle employed by Altair.
@@ -455,9 +458,6 @@ def box(data=None, cats=None, val=None, p=None, horizontal=False,
         'log'.
     show_legend : bool, default False
         If True, display legend.
-    color_column : str, default None
-        Column of `data` to use in determining color of glyphs. If None,
-        then `cats` is used.
     tooltips : list of Bokeh tooltips
         Tooltips to add to the plot.
     order : list or None
@@ -536,7 +536,7 @@ def box(data=None, cats=None, val=None, p=None, horizontal=False,
         _, factors, color_factors = _get_cat_range(data, 
                                                    grouped, 
                                                    order, 
-                                                   color_column, 
+                                                   None, 
                                                    horizontal)
 
     source_box, source_outliers = _box_source(data, cats, val, cols)
@@ -669,20 +669,23 @@ def ecdf_collection(data=None, cats=None, val=None, p=None,
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
+    complementary : bool, default False
+        If True, plot the empirical complementary cumulative 
+        distribution functon.
     formal : bool, default False
         If True, make a plot of a formal ECDF (staircase). If False,
         plot the ECDF as dots.
     x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
+        Label for the x-axis. Ignored if `p` is not None.
     y_axis_label : str, default 'ECDF'
-        Label for the y-axis. Ignored is `p` is not None.
+        Label for the y-axis. Ignored if `p` is not None.
     title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
+        Height of plot, in pixels. Ignored if `p` is not None.
     plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
-    palette : list of strings of hex colors, or since hex string
+        Width of plot, in pixels. Ignored if `p` is not None.
+    palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         the default color cycle employed by Altair.
@@ -755,6 +758,7 @@ def ecdf_collection(data=None, cats=None, val=None, p=None,
                                   order, 
                                   palette,
                                   show_legend,
+                                  y,
                                   p, 
                                   **kwargs)
 
@@ -790,20 +794,23 @@ def colored_ecdf(data=None, cats=None, val=None, p=None, complementary=False,
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
+    complementary : bool, default False
+        If True, plot the empirical complementary cumulative 
+        distribution functon.
     formal : bool, default False
         If True, make a plot of a formal ECDF (staircase). If False,
         plot the ECDF as dots.
     x_axis_label : str, default None
-        Label for the x-axis. Ignored is `p` is not None.
+        Label for the x-axis. Ignored if `p` is not None.
     y_axis_label : str, default 'ECDF'
-        Label for the y-axis. Ignored is `p` is not None.
+        Label for the y-axis. Ignored if `p` is not None.
     title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     plot_height : int, default 300
-        Height of plot, in pixels. Ignored is `p` is not None.
+        Height of plot, in pixels. Ignored if `p` is not None.
     plot_width : int, default 450
-        Width of plot, in pixels. Ignored is `p` is not None.
-    palette : list of strings of hex colors, or since hex string
+        Width of plot, in pixels. Ignored if `p` is not None.
+    palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         the default color cycle employed by Altair.
@@ -847,7 +854,7 @@ def colored_ecdf(data=None, cats=None, val=None, p=None, complementary=False,
     df = data.copy()
     df[y] = df[val].transform(_ecdf_y, complementary=complementary)
     cols += [y]
-    source = _cat_source(df, cats, cols)
+    source = _cat_source(df, cats, cols, None)
     _, _, color_factors = _get_cat_range(df, 
                                          df.groupby(cats), 
                                          order, 
@@ -1113,7 +1120,11 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
 
 
 def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
-                  point_color='white'):
+            point_color='white', color_mapper=None, plot_height=400, 
+            plot_width=None, length_units='pixels', interpixel_distance=1.0,
+            x_range=None, y_range=None, colorbar=False, no_ticks=False, 
+            x_axis_label=None, y_axis_label=None, title=None, flip=True, 
+            saturate_channels=True, min_intensity=None, max_intensity=None):
     """Display and record mouse clicks on a Bokeh plot of an image.
 
     Parameters
@@ -1128,6 +1139,49 @@ def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
         Opacity value for crosshairs when using the crosshair tool.
     point_color : str, default 'white'
         Color of the points displaying clicks.
+    color_mapper : str or bokeh.models.LinearColorMapper, default None
+        If `im` is an intensity image, `color_mapper` is a mapping of 
+        intensity to color. If None, default is 256-level Viridis.
+        If `im` is a color image, then `color_mapper` can either be
+        'rgb' or 'cmy' (default), for RGB or CMY merge of channels.
+    plot_height : int
+        Height of the plot in pixels. The width is scaled so that the 
+        x and y distance between pixels is the same.
+    plot_width : int or None (default)
+        If None, the width is scaled so that the x and y distance 
+        between pixels is approximately the same. Otherwise, the width
+        of the plot in pixels.
+    length_units : str, default 'pixels'
+        The units of length in the image.
+    interpixel_distance : float, default 1.0
+        Interpixel distance in units of `length_units`.
+    x_range : bokeh.models.Range1d instance, default None
+        Range of x-axis. If None, determined automatically.
+    y_range : bokeh.models.Range1d instance, default None
+        Range of y-axis. If None, determined automatically.
+    colorbar : bool, default False
+        If True, include a colorbar.
+    no_ticks : bool, default False
+        If True, no ticks are displayed. See note below.
+    x_axis_label : str, default None
+        Label for the x-axis. If None, labeled with `length_units`.
+    y_axis_label : str, default None
+        Label for the y-axis. If None, labeled with `length_units`.
+    title : str, default None
+        The title of the plot.
+    flip : bool, default True
+        If True, flip image so it displays right-side up. This is
+        necessary because traditionally images have their 0,0 pixel
+        index in the top left corner, and not the bottom left corner.
+    saturate_channels : bool, default True
+        If True, each of the channels have their displayed pixel values
+        extended to range from 0 to 255 to show the full dynamic range.
+    min_intensity : int or float, default None
+        Minimum possible intensity of a pixel in the image. If None,
+        the image is scaled based on the dynamic range in the image.
+    max_intensity : int or float, default None
+        Maximum possible intensity of a pixel in the image. If None,
+        the image is scaled based on the dynamic range in the image.
 
     Returns
     -------
@@ -1139,7 +1193,24 @@ def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
     points_source = bokeh.models.ColumnDataSource({'x': [], 'y': []})
 
     def modify_doc(doc):
-        p = bebi103.viz.imshow(im)
+        p = bebi103.viz.imshow(im, 
+                               color_mapper=color_mapper, 
+                               plot_height=plot_height, 
+                               plot_width=plot_width, 
+                               length_units=length_units, 
+                               interpixel_distance=interpixel_distance,
+                               x_range=x_range, 
+                               y_range=y_range, 
+                               colorbar=color_bar,
+                               no_ticks=no_ticks, 
+                               x_axis_label=x_axis_label, 
+                               y_axis_label=y_axis_label, 
+                               title=title, 
+                               flip=flip, 
+                               return_im=False,
+                               saturate_channels=saturate_channels,
+                               min_intensity=min_intensity,
+                               max_intensity=max_intensity)
 
         view = bokeh.models.CDSView(source=points_source)
 
@@ -1167,8 +1238,12 @@ def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
 
 
 def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
-              color='white', fill_alpha=0.1, vertex_color='red', 
-              vertex_size=10):
+            color='white', fill_alpha=0.1, vertex_color='red', 
+            vertex_size=10, color_mapper=None, plot_height=400, 
+            plot_width=None, length_units='pixels', interpixel_distance=1.0,
+            x_range=None, y_range=None, colorbar=False, no_ticks=False, 
+            x_axis_label=None, y_axis_label=None, title=None, flip=True, 
+            saturate_channels=True, min_intensity=None, max_intensity=None):
     """Draw and record polygonal regions of interest on a plot of a 
     Bokeh image.
 
@@ -1190,7 +1265,50 @@ def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
     vertex_size: int, default 10
         Size, in pixels, of vertices of the ROI polygons while using the
         polygon edit tool.
-
+    color_mapper : str or bokeh.models.LinearColorMapper, default None
+        If `im` is an intensity image, `color_mapper` is a mapping of 
+        intensity to color. If None, default is 256-level Viridis.
+        If `im` is a color image, then `color_mapper` can either be
+        'rgb' or 'cmy' (default), for RGB or CMY merge of channels.
+    plot_height : int
+        Height of the plot in pixels. The width is scaled so that the 
+        x and y distance between pixels is the same.
+    plot_width : int or None (default)
+        If None, the width is scaled so that the x and y distance 
+        between pixels is approximately the same. Otherwise, the width
+        of the plot in pixels.
+    length_units : str, default 'pixels'
+        The units of length in the image.
+    interpixel_distance : float, default 1.0
+        Interpixel distance in units of `length_units`.
+    x_range : bokeh.models.Range1d instance, default None
+        Range of x-axis. If None, determined automatically.
+    y_range : bokeh.models.Range1d instance, default None
+        Range of y-axis. If None, determined automatically.
+    colorbar : bool, default False
+        If True, include a colorbar.
+    no_ticks : bool, default False
+        If True, no ticks are displayed. See note below.
+    x_axis_label : str, default None
+        Label for the x-axis. If None, labeled with `length_units`.
+    y_axis_label : str, default None
+        Label for the y-axis. If None, labeled with `length_units`.
+    title : str, default None
+        The title of the plot.
+    flip : bool, default True
+        If True, flip image so it displays right-side up. This is
+        necessary because traditionally images have their 0,0 pixel
+        index in the top left corner, and not the bottom left corner.
+    saturate_channels : bool, default True
+        If True, each of the channels have their displayed pixel values
+        extended to range from 0 to 255 to show the full dynamic range.
+    min_intensity : int or float, default None
+        Minimum possible intensity of a pixel in the image. If None,
+        the image is scaled based on the dynamic range in the image.
+    max_intensity : int or float, default None
+        Maximum possible intensity of a pixel in the image. If None,
+        the image is scaled based on the dynamic range in the image.
+        
     Returns
     -------
     output : Bokeh ColumnDataSource
@@ -1209,7 +1327,24 @@ def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
     poly_source = bokeh.models.ColumnDataSource({'xs': [], 'ys': []})
 
     def modify_doc(doc):
-        p = bebi103.viz.imshow(im)
+        p = bebi103.viz.imshow(im, 
+                               color_mapper=color_mapper, 
+                               plot_height=plot_height, 
+                               plot_width=plot_width, 
+                               length_units=length_units, 
+                               interpixel_distance=interpixel_distance,
+                               x_range=x_range, 
+                               y_range=y_range, 
+                               colorbar=color_bar,
+                               no_ticks=no_ticks, 
+                               x_axis_label=x_axis_label, 
+                               y_axis_label=y_axis_label, 
+                               title=title, 
+                               flip=flip, 
+                               return_im=False,
+                               saturate_channels=saturate_channels,
+                               min_intensity=min_intensity,
+                               max_intensity=max_intensity)
 
         view = bokeh.models.CDSView(source=poly_source)
         renderer = p.patches(xs='xs', ys='ys', source=poly_source, view=view,
@@ -1459,16 +1594,16 @@ def boxwhisker(data, cats, val, p=None, horizontal=False, x_axis_label=None,
 
 
 def predictive_ecdf(samples=None, name=None, diff=False, data=None,
-                    ptiles=[10, 20, 30, 40, 50, 60, 70, 80, 90],
+                    percentiles=[80, 60, 40, 20],
+                    x_axis_label=None, y_axis_label=None, title=None,
                     plot_width=350, plot_height=225,
-                    x_axis_label=None, y_axis_label='ECDF',
                     color='blue', data_color='orange', data_line=True,
                     data_size=2, x=None, discrete=False):
-    """Plot a predictive ECDF from samples.
+    """Plot a median predictive ECDF from samples.
 
     Parameters
     ----------
-    samples : StanFit4Model instance of Pandas DataFrame
+    samples : StanFit4Model instance or Pandas DataFrame
         Samples generated from running a Stan calculation.
     name : str
         Name of the array to use in plotting the predictive ECDF. The
@@ -1479,26 +1614,64 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
     data : 1D Numpy array, default None
         If not None, ECDF of measured data, overlaid with predictive
         ECDF. 
-    color : str
+    percentiles : list, default [80, 60, 40, 20]
+        Percentiles for making colored envelopes for confidence
+        intervals for the predictive ECDFs. Maximally four can be 
+        specified.
+    x_axis_label : str, default None
+        Label for the x-axis. If None, the value of `name` is used.
+    y_axis_label : str, default None
+        Label for the y-axis. If None, 'ECDF' is used if `diff` is 
+        False and 'ECDF difference' is used if `diff` is True. Ignored 
+        if `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored if `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored if `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored if `p` is not None.
+    color : str, default 'blue'
         One of ['green', 'blue', 'red', 'gray', 'purple', 'orange'].
         There are used to make the color scheme of shading of
         percentiles.
+    data_color : str, default 'orange'
+        String representing the color of the data to be plotted over the
+        confidence interval envelopes.
+    data_line : bool, default True
+        If True, plot the ECDF of the data "formally," as a line. 
+        Otherwise plot it as dots.
+    data_size : int, default 2
+        Size of marker (if `data_line` if False) or thickness of line
+        (if `data_line` is True) of plot of data.
     x : Numpy array, default None
         Points at which to evaluate the ECDF. If None, points are 
         automatically generated based on the data range.
-    discrete : bool, default False TO BE IMPLEMENTED, CURRENTLY IGNORED
-        If True, the samples take on discrete values.
+    discrete : bool, default False, TO BE IMPLEMENTED.
+        If True, the samples take on discrete values. When this is the
+        case, `x` may be determined unambiguously. This is not yet 
+        implemented, so `x` must be provided.
 
     Returns
     -------
     output : Bokeh figure
         Figure populated with glyphs describing range of values for the
         ECDF of the samples. The shading goes according to percentiles
-        of samples of the ECDF, from outermost to innermost, (10, 90),
-        (20, 80), (30, 70), and (40, 60), with the median ECDF plotted
-        as line in the middle.
+        of samples of the ECDF, with the median ECDF plotted as line in 
+        the middle. The median PPC ECDF is plotted on top.
     """
+    if discrete:
+        raise NotImplementedError('`discrete` must be False.')
+
     df = stan._fit_to_df(samples, diagnostics=False)
+
+    if len(percentiles) > 4:
+        raise RuntimeError('Can specify maximally four percentiles.')
+
+    # Build ptiles
+    ptiles = [pt for pt in percentiles if pt > 0]
+    ptiles = ([50 - pt/2 for pt in percentiles] + [50] 
+                + [50 + pt/2 for pt in percentiles[::-1]])
+    ptiles_str = [str(pt) for pt in ptiles]
 
     if color not in ['green', 'blue', 'red', 'gray', 
                      'purple', 'orange', 'betancourt']:
@@ -1506,7 +1679,12 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
 
     if x_axis_label is None:
         x_axis_label=str(name)
-
+    if y_axis_label is None:
+        if diff:
+            y_axis_label = 'ECDF difference'
+        else:
+            y_axis_label = 'ECDF'
+            
     sub_df = stan.extract_array(df, name)
 
     if 'index_j' in sub_df:
@@ -1530,9 +1708,9 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
     df_ecdf =  _ecdf_from_samples(sub_df, name, ptiles, x)
 
     if diff:
-        for ptile in filter(lambda item: item!=50, ptiles):
-            df_ecdf[ptile] -= df_ecdf[50]
-        df_ecdf[50] = 0.0
+        for ptile in filter(lambda item: item != '50', ptiles_str):
+            df_ecdf[ptile] -= df_ecdf['50']
+        df_ecdf['50'] = 0.0
 
     if data is not None and diff:
         df_ecdf_data_median = _ecdf_from_samples(sub_df, 
@@ -1546,18 +1724,19 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
     p = bokeh.plotting.figure(plot_width=plot_width, 
                               plot_height=plot_height,
                               x_axis_label=x_axis_label, 
-                              y_axis_label=y_axis_label)
+                              y_axis_label=y_axis_label,
+                              title=title)
 
-    for i, ptile in enumerate([10, 20, 30, 40]):
+    for i, ptile in enumerate(ptiles_str[:len(ptiles_str)//2]):
         fill_between(df_ecdf['x'], df_ecdf[ptile],
-                         df_ecdf['x'], df_ecdf[100-ptile],
+                         df_ecdf['x'], df_ecdf[ptiles_str[-i-1]],
                          p=p,
                          show_line=False,
                          fill_color=colors[color][i])
 
     # The median as a solid line
     p.line(df_ecdf['x'],
-           df_ecdf[50], 
+           df_ecdf['50'], 
            line_width=2, 
            color=colors[color][-1])
 
@@ -1565,7 +1744,7 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
     if data is not None:
         x_data, y_data = _ecdf_vals(data, formal=False)
         if diff:
-            y_data -= df_ecdf_data_median[50]
+            y_data -= df_ecdf_data_median['50']
         if data_line:
             x_data, y_data = _to_formal(x_data, y_data)
             p.line(x_data, y_data, color=data_color, line_width=data_size)
@@ -1575,16 +1754,108 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
     return p
 
 
-def sbc_rank_ecdf(sbc_output, params, diff=True, formal=False, ptile=99,
-        bootstrap_envelope=False, n_bs_reps=None, show_envelope=True, p=None,
-        plot_height=300, plot_width=450, x_axis_label=None, y_axis_label=None,
-        color=None, alpha=1, color_by_warning_code=False, palette=None, 
-        fill_color='gray', fill_alpha=0.5, show_line=True, line_color='gray', 
-        show_legend=False, **kwargs):
-    """Make a rank ECDF plot from SBC.
+def sbc_rank_ecdf(sbc_output=None, parameters=None, diff=True, formal=False,
+        ptile=99.0, bootstrap_envelope=False, n_bs_reps=None, 
+        show_envelope=True, p=None, x_axis_label=None, y_axis_label=None,
+        title=None, plot_height=300, plot_width=450, color=None, palette=None,
+        alpha=1, color_by_warning_code=False, fill_color='gray', 
+        fill_alpha=0.5, show_line=True, line_color='gray', show_legend=False,
+        **kwargs):
+    """Make a rank ECDF plot from simulation-based calibration.
 
-    color input can only be a solid color. Otherwise, if `color_by_warning_code` is false, it colors by parameter.
+    Parameters
+    ----------
+    sbc_output : DataFrame
+        Output of bebi103.stan.sbc() containing results from an SBC
+        calculation.
+    parameters : list, default None
+        List of parameters to include in the SBC rank ECDF plot. If 
+        None, use all parameters.
+    diff : bool, default True
+        If True, plot the ECDF minus the ECDF of a Uniform distribution.
+        Otherwise, plot the ECDF of the rank statistic from SBC.
+    formal : bool, default False
+        If True, plot the ECDF "formally," that is connected by lines.
+        Otherwise, plot with dots.
+    ptile : float, default 99.9
+        Which precentile to use as the envelope in the plot.
+    bootstrap_envelope : bool, default False
+        If True, use bootstrapping on the appropriate Uniform 
+        distribution to compute the envelope. Otherwise, use the
+        Gaussian approximation for the envelope.
+    n_bs_reps : bool, default None
+        Number of bootstrap replicates to use when computing the 
+        envelope. If None, n_bs_reps is determined from the formula 
+        int(max(n, max(L+1, 100/(100-ptile))) * 100), where n is the
+        number of simulations used in the SBC calculation.
+    show_envelope : bool, default True
+        If true, display the envelope encompassing the ptile percent
+        confidence interval for the SBC ECDF.
+    p : bokeh.plotting.Figure instance, defaul None
+        Plot to which to add the SBC rank ECDF plot. If None, create a
+        new figure.
+    x_axis_label : str, default None
+        Label for the x-axis. If None, 'rank statistic' is used. Ignored
+        if `p` is not None.
+    y_axis_label : str, default None
+        Label for the y-axis. If None, 'ECDF' is used if `diff` is 
+        False and 'ECDF difference' is used if `diff` is True. Ignored 
+        if `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored if `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored if `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored if `p` is not None.
+    color : str, default None
+        Specification of the color of the ECDF plot. All ECDFs are 
+        plotted with this color. If None, the ECDFs are colored by
+        parameter or by diagnostics warning code if 
+        `color_by_warning_code` is True.
+    palette : list of strings of hex colors, or single hex string
+        If a list, color palette to use if `color` is None. If a single 
+        string representing a hex color, all glyphs are colored with 
+        that color. Otherwise, a default is chosen based on the number
+        of colors needed.
+    alpha : float, default 1
+        Opacity of the glyphs of the ECDFs.
+    color_by_warning_code : bool, default False
+        If True, color glyphs by diagnostics warning code instead of 
+        coloring the glyphs by parameter
+    fill_color : str, default 'gray'
+        Color of envelope as a hex string or named CSS color.
+    fill_alpha : float, default 1.0
+        Opacity of the envelope.
+    show_line : bool, default True
+        If True, show the lines on the edges of the envelope.
+    line_color : str, default 'gray'
+        Color of envelope line as a hex string or named CSS color.    
+    show_legend : bool, default False
+        If True, show legend.
+    kwargs : dict
+        And kwargs to pass to the call to p.circle or p.line when making
+        the ECDF plot.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        A plot containing the SBC plot.
+
+    Notes
+    -----
+    .. You can see example SBC ECDF plots in Fig. 14 b and c in this
+       paper: https://arxiv.org/abs/1804.06788
     """
+    if sbc_output is None:
+        raise RuntimeError('Argument `sbc_output` must be specified.')
+
+    if x_axis_label is None:
+        x_axis_label = 'rank statistic'
+    if y_axis_label is None:
+        if diff:
+            y_axis_label = 'ECDF difference'
+        else:
+            y_axis_label = 'ECDF'
 
     if formal and color_by_warning_code:
         raise RuntimeError('Cannot color by warning code for formal ECDFs.')
@@ -1592,11 +1863,13 @@ def sbc_rank_ecdf(sbc_output, params, diff=True, formal=False, ptile=99,
         raise RuntimeError(
             '`color` must be `None` if `color_by_warning_code` is True.')
 
-    if type(params) not in [list, tuple]:
-        params = [params]
+    if parameters is None:
+        parameters = list(sbc_output['parameter'].unique())
+    elif type(parameters) not in [list, tuple]:
+        parameters = [parameters]
 
     L = sbc_output['L'].iloc[0]
-    df = sbc_output.loc[sbc_output['parameter'].isin(params), 
+    df = sbc_output.loc[sbc_output['parameter'].isin(parameters), 
                         ['parameter', 'rank_statistic', 'warning_code']]
     n = (df['parameter'] == df['parameter'].unique()[0]).sum()
 
@@ -1615,7 +1888,7 @@ def sbc_rank_ecdf(sbc_output, params, diff=True, formal=False, ptile=99,
 
     if formal:
         dfs = []
-        for param in params:
+        for param in parameters:
             if diff:
                 x_data, y_data = _ecdf_diff(
                     df.loc[df['parameter']==param, 'rank_statistic'], 
@@ -1637,7 +1910,7 @@ def sbc_rank_ecdf(sbc_output, params, diff=True, formal=False, ptile=99,
 
 
     cat = 'warning_code' if color_by_warning_code else 'parameter'
-    source = _cat_source(df, cat, ['__ECDF', 'rank_statistic'])
+    source = _cat_source(df, cat, ['__ECDF', 'rank_statistic'], None)
 
     _, _, color_factors = _get_cat_range(df, 
                              df.groupby(cat), 
@@ -1654,12 +1927,14 @@ def sbc_rank_ecdf(sbc_output, params, diff=True, formal=False, ptile=99,
             palette = bokeh.palettes.d3.Category20
         else:
             palette = bokeh.palettes.Viridis256[::8]
+    elif palette not in [list, tuple]:
+        palette = [palette]
 
     if formal:
         if color is None:
             color = palette
         else:
-            color = [color]*len(params)
+            color = [color]*len(parameters)
     elif color is None:
         color = bokeh.transform.factor_cmap('cat', 
                                             palette=palette, 
@@ -2122,7 +2397,7 @@ def ds_line_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
     y_axis_label : str, default None
         Label for the y-axis.
     title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     margin : float, default 0.02
         Margin, in units of `plot_width` or `plot_height`, to leave
         around the plotted line.
@@ -2189,7 +2464,7 @@ def ds_point_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
     y_axis_label : str, default None
         Label for the y-axis.
     title : str, default None
-        Title of the plot. Ignored is `p` is not None.
+        Title of the plot. Ignored if `p` is not None.
     margin : float, default 0.02
         Margin, in units of `plot_width` or `plot_height`, to leave
         around the plotted line.
@@ -2550,7 +2825,7 @@ def _ecdf_from_samples(df, name, ptiles, x):
         df_ecdf_vals[i] = _ecdf_arbitrary_points(g[name].values, x)
         
     for ptile in ptiles:
-        df_ecdf[ptile] = df_ecdf_vals.quantile(
+        df_ecdf[str(ptile)] = df_ecdf_vals.quantile(
                             ptile/100, axis=1, interpolation='higher')
     df_ecdf['x'] = x
 
@@ -2639,9 +2914,16 @@ def _ecdf_diff(data, formal=False):
 
 def _get_cat_range(df, grouped, order, color_column, horizontal):
     if order is None:
-        factors = tuple(grouped.groups.keys())
+        if isinstance(list(grouped.groups.keys())[0], tuple):
+            factors = tuple([tuple([str(k) for k in key]) 
+                                for key in grouped.groups.keys()])
+        else:
+            factors = tuple([str(key) for key in grouped.groups.keys()])
     else:
-        factors = tuple(order)
+        if type(order[0]) in [list, tuple]:
+            factors = tuple([tuple([str(k) for k in key]) for key in order])
+        else:
+            factors = tuple([str(entry) for entry in order])
         
     if horizontal:
         cat_range = bokeh.models.FactorRange(*(factors[::-1]))
@@ -2651,7 +2933,8 @@ def _get_cat_range(df, grouped, order, color_column, horizontal):
     if color_column is None:
         color_factors = factors
     else:
-        color_factors = list(df[color_column].unique())
+        color_factors = tuple(sorted(list(
+                                df[color_column].unique().astype(str))))
 
     return cat_range, factors, color_factors
 
@@ -2682,12 +2965,12 @@ def _cat_figure(df, grouped, plot_height, plot_width, x_axis_label,
     return bokeh.plotting.figure(**fig_kwargs), factors, color_factors
         
     
-def _cat_source(df, cats, cols):
+def _cat_source(df, cats, cols, color_column):
     if type(cats) in [list, tuple]:
-        cat_source = list(zip(*tuple([df[cat] for cat in cats])))
+        cat_source = list(zip(*tuple([df[cat].astype(str) for cat in cats])))
         labels = [', '.join(cat) for cat in cat_source]
     else:
-        cat_source = list(df[cats].values)
+        cat_source = list(df[cats].astype(str).values)
         labels = cat_source
 
     if type(cols) in [list, tuple]:
@@ -2696,8 +2979,12 @@ def _cat_source(df, cats, cols):
         source_dict = {cols: list(df[cols].values)}
 
     source_dict['cat'] = cat_source
-    source_dict['__label'] = labels
-    
+    if color_column in [None, 'cat']:
+        source_dict['__label'] = labels
+    else:
+        source_dict['__label'] = list(df[color_column].astype(str).values)
+        source_dict[color_column] = list(df[color_column].astype(str).values)
+
     return bokeh.models.ColumnDataSource(source_dict)    
     
 
@@ -2760,22 +3047,22 @@ def _check_cat_input(df, cats, val, color_column, tooltips, palette, kwargs):
             if cat not in df.columns:
                 raise RuntimeError(
                         f'{cat} is not a column in the inputted data frame')
-            if df[cat].dtype not in [str, object]:
-                raise RuntimeError(f'Column {cat} does not have dtype str. '
-                                    + 'All cat columns must have dtype str.')
-            if df[cat].dtype == object:
-                for entry in df[cat]:
-                    if type(entry) != str:
-                        raise RuntimeError(
-                            'All entries in a cat column must have type str. '
-                            + f'Column {cat} has non-string entries.')
+            # if df[cat].dtype not in [str, object]:
+            #     raise RuntimeError(f'Column {cat} does not have dtype str. '
+            #                         + 'All cat columns must have dtype str.')
+            # if df[cat].dtype == object:
+            #     for entry in df[cat]:
+            #         if type(entry) != str:
+            #             raise RuntimeError(
+            #                 'All entries in a cat column must have type str. '
+            #                 + f'Column {cat} has non-string entries.')
     else:
         if cats not in df.columns:
             raise RuntimeError(
                         f'{cats} is not a column in the inputted data frame')
-        if df[cats].dtype not in [str, object]:
-            raise RuntimeError(f'Column {cats} does not have dtype str. '
-                                + 'All cat columns must have dtype str.')
+        # if df[cats].dtype not in [str, object]:
+        #     raise RuntimeError(f'Column {cats} does not have dtype str. '
+        #                         + 'All cat columns must have dtype str.')
 
     if color_column is not None and color_column not in df.columns:
         raise RuntimeError(
@@ -2829,27 +3116,31 @@ def _box_and_whisker(data):
 def _box_source(df, cats, val, cols):
     """Construct a data frame for making box plot."""
     
+    # Need to reset index for use in slicing outliers
+    df_source = df.reset_index(drop=True)
+
     if type(cats) in [list, tuple]:
         level = list(range(len(cats)))
     else:
         level = 0
         
     if cats is None:
-        grouped = df
+        grouped = df_source
     else:
-        grouped = df.groupby(cats)
+        grouped = df_source.groupby(cats)
 
     # Data frame for boxes and whiskers
     df_box = grouped[val].apply(_box_and_whisker).unstack().reset_index()
     source_box = _cat_source(df_box,
                              cats, 
                              ['middle', 'bottom', 'top',
-                              'top_whisker', 'bottom_whisker'])
+                              'top_whisker', 'bottom_whisker'],
+                             None)
 
     # Data frame for outliers
     df_outliers = grouped[val].apply(_outliers).reset_index(level=level)
-    df_outliers[cols] = df.loc[df_outliers.index, cols]
-    source_outliers = _cat_source(df_outliers, cats, cols)
+    df_outliers[cols] = df_source.loc[df_outliers.index, cols]
+    source_outliers = _cat_source(df_outliers, cats, cols, None)
     
     return source_box, source_outliers
     
@@ -2897,11 +3188,11 @@ def _point_ecdf_source(data, val, cats, cols, complementary, colored):
 
     cols += [col]
 
-    return _cat_source(df, cats, cols)
+    return _cat_source(df, cats, cols, None)
 
 
 def _ecdf_collection_dots(df, val, cats, cols, complementary, order, palette,
-                          show_legend, p, **kwargs):
+                          show_legend, y, p, **kwargs):
     _, _, color_factors = _get_cat_range(df, 
                                          df.groupby(cats), 
                                          order, 
