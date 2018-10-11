@@ -1193,24 +1193,24 @@ def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
     points_source = bokeh.models.ColumnDataSource({'x': [], 'y': []})
 
     def modify_doc(doc):
-        p = bebi103.viz.imshow(im, 
-                               color_mapper=color_mapper, 
-                               plot_height=plot_height, 
-                               plot_width=plot_width, 
-                               length_units=length_units, 
-                               interpixel_distance=interpixel_distance,
-                               x_range=x_range, 
-                               y_range=y_range, 
-                               colorbar=color_bar,
-                               no_ticks=no_ticks, 
-                               x_axis_label=x_axis_label, 
-                               y_axis_label=y_axis_label, 
-                               title=title, 
-                               flip=flip, 
-                               return_im=False,
-                               saturate_channels=saturate_channels,
-                               min_intensity=min_intensity,
-                               max_intensity=max_intensity)
+        p = imshow(im, 
+                   color_mapper=color_mapper, 
+                   plot_height=plot_height, 
+                   plot_width=plot_width, 
+                   length_units=length_units, 
+                   interpixel_distance=interpixel_distance,
+                   x_range=x_range, 
+                   y_range=y_range, 
+                   colorbar=color_bar,
+                   no_ticks=no_ticks, 
+                   x_axis_label=x_axis_label, 
+                   y_axis_label=y_axis_label, 
+                   title=title, 
+                   flip=flip, 
+                   return_im=False,
+                   saturate_channels=saturate_channels,
+                   min_intensity=min_intensity,
+                   max_intensity=max_intensity)
 
         view = bokeh.models.CDSView(source=points_source)
 
@@ -1327,24 +1327,24 @@ def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
     poly_source = bokeh.models.ColumnDataSource({'xs': [], 'ys': []})
 
     def modify_doc(doc):
-        p = bebi103.viz.imshow(im, 
-                               color_mapper=color_mapper, 
-                               plot_height=plot_height, 
-                               plot_width=plot_width, 
-                               length_units=length_units, 
-                               interpixel_distance=interpixel_distance,
-                               x_range=x_range, 
-                               y_range=y_range, 
-                               colorbar=color_bar,
-                               no_ticks=no_ticks, 
-                               x_axis_label=x_axis_label, 
-                               y_axis_label=y_axis_label, 
-                               title=title, 
-                               flip=flip, 
-                               return_im=False,
-                               saturate_channels=saturate_channels,
-                               min_intensity=min_intensity,
-                               max_intensity=max_intensity)
+        p = imshow(im, 
+                   color_mapper=color_mapper, 
+                   plot_height=plot_height, 
+                   plot_width=plot_width, 
+                   length_units=length_units, 
+                   interpixel_distance=interpixel_distance,
+                   x_range=x_range, 
+                   y_range=y_range, 
+                   colorbar=color_bar,
+                   no_ticks=no_ticks, 
+                   x_axis_label=x_axis_label, 
+                   y_axis_label=y_axis_label, 
+                   title=title, 
+                   flip=flip, 
+                   return_im=False,
+                   saturate_channels=saturate_channels,
+                   min_intensity=min_intensity,
+                   max_intensity=max_intensity)
 
         view = bokeh.models.CDSView(source=poly_source)
         renderer = p.patches(xs='xs', ys='ys', source=poly_source, view=view,
@@ -1684,7 +1684,7 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
             y_axis_label = 'ECDF difference'
         else:
             y_axis_label = 'ECDF'
-            
+
     sub_df = stan.extract_array(df, name)
 
     if 'index_j' in sub_df:
