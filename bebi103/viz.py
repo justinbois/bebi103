@@ -1123,7 +1123,7 @@ def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
             point_color='white', color_mapper=None, plot_height=400, 
             plot_width=None, length_units='pixels', interpixel_distance=1.0,
             x_range=None, y_range=None, colorbar=False, no_ticks=False, 
-            x_axis_label=None, y_axis_label=None, title=None, flip=True, 
+            x_axis_label=None, y_axis_label=None, title=None, flip=False, 
             saturate_channels=True, min_intensity=None, max_intensity=None):
     """Display and record mouse clicks on a Bokeh plot of an image.
 
@@ -1169,10 +1169,12 @@ def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
         Label for the y-axis. If None, labeled with `length_units`.
     title : str, default None
         The title of the plot.
-    flip : bool, default True
+    flip : bool, default False
         If True, flip image so it displays right-side up. This is
         necessary because traditionally images have their 0,0 pixel
         index in the top left corner, and not the bottom left corner.
+        If you are going to use the clicks you record in further image
+        processing applicaitons, you should have `flip` set to False.
     saturate_channels : bool, default True
         If True, each of the channels have their displayed pixel values
         extended to range from 0 to 255 to show the full dynamic range.
@@ -1242,7 +1244,7 @@ def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
             vertex_size=10, color_mapper=None, plot_height=400, 
             plot_width=None, length_units='pixels', interpixel_distance=1.0,
             x_range=None, y_range=None, colorbar=False, no_ticks=False, 
-            x_axis_label=None, y_axis_label=None, title=None, flip=True, 
+            x_axis_label=None, y_axis_label=None, title=None, flip=False, 
             saturate_channels=True, min_intensity=None, max_intensity=None):
     """Draw and record polygonal regions of interest on a plot of a 
     Bokeh image.
@@ -1295,10 +1297,12 @@ def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
         Label for the y-axis. If None, labeled with `length_units`.
     title : str, default None
         The title of the plot.
-    flip : bool, default True
+    flip : bool, default False
         If True, flip image so it displays right-side up. This is
         necessary because traditionally images have their 0,0 pixel
         index in the top left corner, and not the bottom left corner.
+        If you are going to use the clicks you record in further image
+        processing applicaitons, you should have `flip` set to False.
     saturate_channels : bool, default True
         If True, each of the channels have their displayed pixel values
         extended to range from 0 to 255 to show the full dynamic range.

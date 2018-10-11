@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-__version__ = '0.0.27'
+__version__ = '0.0.28'
 
 here = path.abspath(path.dirname(__file__))
 
@@ -20,7 +20,7 @@ dependency_links = [x.strip().replace('git+', '') for x in all_reqs if x.startsw
 setup(
     name='bebi103',
     version=__version__,
-    description='Python utilities foor the Caltech course BE/Bi 103: Data Analysis in the Biological Sciences.',
+    description='Python utilities for the Caltech course BE/Bi 103: Data Analysis in the Biological Sciences.',
     long_description=long_description,
     url='https://github.com/justinbois/bebi103',
     download_url='https://github.com/justinbois/bebi103/tarball/' + __version__,
