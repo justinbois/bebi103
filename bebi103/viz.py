@@ -899,7 +899,7 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
            no_ticks=False, x_axis_label=None, y_axis_label=None, 
            title=None, flip=True, return_im=False,
            saturate_channels=True, min_intensity=None,
-           max_intensity=None, record_clicks=False):
+           max_intensity=None, display_clicks=False, record_clicks=False):
     """
     Display an image in a Bokeh figure.
     
@@ -955,9 +955,13 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     max_intensity : int or float, default None
         Maximum possible intensity of a pixel in the image. If None,
         the image is scaled based on the dynamic range in the image.
+    display_clicks : bool, default False
+        If True, display clicks to the right of the plot using 
+        JavaScript. The clicks are not recorded nor stored, just 
+        printed. If you want to store the clicks, use the 
+        `record_clicks()` or `draw_rois()` functions.
     record_clicks : bool, default False
-        If True, enables recording of clicks on the image. The clicks are
-        displayed in copy-able text next to the displayed figure. 
+        Deprecated. Use `display_clicks`. 
         
     Returns
     -------
@@ -977,7 +981,7 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     """
     if record_clicks:
         warnings.warn(
-            '`record_clicks` is deprecated. Use `record_clicks()` instead.', 
+            '`record_clicks` is deprecated. Use the `bebi103.viz.record_clicks()` function to store clicks. Otherwise use the `display_clicks` kwarg to print the clicks to the right of the displayed image.', 
             DeprecationWarning)
 
     # If a single channel in 3D image, flatten and check shape
@@ -1104,7 +1108,7 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
                                               location=(0,0))
             p.add_layout(color_bar, 'right')
 
-    if record_clicks:
+    if record_clicks or display_clicks:
         div = bokeh.models.Div(width=200)
         layout = bokeh.layouts.row(p, div)
         p.js_on_event(bokeh.events.Tap,
