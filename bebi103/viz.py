@@ -1123,7 +1123,8 @@ def imshow(im, color_mapper=None, plot_height=400, plot_width=None,
     return p
 
 
-def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
+def record_clicks(im, notebook_url='localhost:8888', point_size=3,
+            table_height=200, crosshair_alpha=0.5,
             point_color='white', color_mapper=None, plot_height=400, 
             plot_width=None, length_units='pixels', interpixel_distance=1.0,
             x_range=None, y_range=None, colorbar=False, no_ticks=False, 
@@ -1135,6 +1136,8 @@ def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
     ----------
     im : 2D Numpy array
         Image to display while clicking.
+    notebook_url : str, default 'localhost:8888'
+        URL of notebook for display.
     point_size : int, default 3
         Size of points to display when clicking.
     table_height : int, default 200
@@ -1238,12 +1241,13 @@ def record_clicks(im, point_size=3, table_height=200, crosshair_alpha=0.5,
 
         doc.add_root(bokeh.layouts.column(p, table))
 
-    bokeh.io.show(modify_doc)
+    bokeh.io.show(modify_doc, notebook_url=notebook_url)
 
     return points_source
 
 
-def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
+def draw_rois(im, notebook_url='localhost:8888', table_height=100,
+            crosshair_tool_alpha=0.5,
             color='white', fill_alpha=0.1, vertex_color='red', 
             vertex_size=10, color_mapper=None, plot_height=400, 
             plot_width=None, length_units='pixels', interpixel_distance=1.0,
@@ -1257,6 +1261,8 @@ def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
     ----------
     im : 2D Numpy array
         Image to display while clicking.
+    notebook_url : str, default 'localhost:8888'
+        URL of notebook for display.
     table_height : int, default 200
         Height, in pixels, of table displaying polygon vertex locations.    
     crosshair_alpha : float, default 0.5
@@ -1376,7 +1382,7 @@ def draw_rois(im, table_height=100, crosshair_tool_alpha=0.5,
    
         doc.add_root(bokeh.layouts.column(p, table))
 
-    bokeh.io.show(modify_doc)
+    bokeh.io.show(modify_doc, notebook_url=notebook_url)
 
     return poly_source
 
