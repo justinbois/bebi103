@@ -315,6 +315,211 @@ def extract_array(samples, name):
     return pd.concat([ind_df, df_out], axis=1)
 
 
+def df_to_datadict_hier(df=None, level_cols=None, data_cols=None, 
+                        cowardly=True):
+    """Convert a tidy data frame to a data dictionary for a hierarchical
+    Stan model.
+   
+    Parameters
+    ----------
+    df : DataFrame
+        A tidy Pandas data frame.
+    level_cols : list
+        A list of column names containing variables that specify the
+        level of the hierarchical model. These must be given in order
+        of the hierarchy of levels, with the first entry being the 
+        farthest from the data.
+    data_cols : list
+        A list of column names containing the data.
+    cowardly : bool, default True
+        If True, refuse to generate new columns if they already exist
+        in the data frame. If you run this function using a data frame
+        that was outputted previously by this function, you will get an
+        error if `cowardly` is True. Otherwise, the columns may be 
+        overwritten.
+
+    Returns
+    -------
+    data : dict
+        A dictionary that can be passed to into a Stan program. The
+        dictionary contains keys/entries:
+          'N': Total number of data points
+          'J_1': Number of hyper parameters for hierarchical level 1.
+          'J_2': Number of hyper parameters for hierarchical level 2.
+            ... and so on with 'J_3', 'J_4', ...
+          'index_1': Set of `J_2` indices defining which level 1 
+            parameters condition the level 2 parameters.
+          'index_2': Set of `J_3` indices defining which level 2 
+            parameters condition the level 3 parameters.
+            ...and so on for 'index_3', etc. 
+          'index_k': Set of `N` indices defining which of the level k
+            parameters condition the data, for a k-level hierarchical
+            model.
+          `data_col[0]` : Data from first data_col
+          `data_col[1]` : Data from second data_col ...and so on.
+    df : DataFrame
+        Updated input data frame with added columnes with names given by
+        `level_col[0] + '_stan'`, `level_col[1] + '_stan'`, etc. These
+        contain the integer indices that correspond to the possibly
+        non-integer values in the `level_col`s of the original data 
+        frame. This enables interpretation of Stan results, which have
+        everything integer indexed.
+
+    Notes
+    -----
+    .. Assumes no missing data.
+    .. The ordering of data sets is not guaranteed. So, e.g., if you 
+       have time series data, you should use caution.
+
+    Example
+    -------
+    >>> import io
+    >>> import pandas as pd
+    >>> import bebi103
+    >>> df = pd.read_csv(io.StringIO('''
+        day,batch,colony,x
+        monday,1,1,9.31
+        monday,1,1,8.35
+        monday,1,1,10.48
+        monday,1,1,9.91
+        monday,1,1,10.43
+        monday,1,2,9.98
+        monday,1,2,9.76
+        monday,1,3,9.30
+        monday,2,1,10.56
+        monday,2,1,11.40
+        monday,2,2,10.36
+        monday,2,2,12.04
+        monday,2,2,9.92
+        monday,2,2,10.10
+        monday,2,2,8.72
+        monday,2,2,10.36
+        monday,2,2,11.56
+        monday,2,2,10.87
+        monday,2,2,10.43
+        monday,2,2,10.67
+        monday,2,2,9.05
+        monday,3,1,10.32
+        monday,3,1,9.07
+        monday,4,1,9.86
+        monday,4,1,9.21
+        monday,4,1,11.36
+        monday,4,2,8.60
+        monday,4,2,10.54
+        monday,4,2,8.93
+        monday,4,2,9.43
+        monday,4,2,9.23
+        monday,4,2,9.66
+        monday,4,2,11.26
+        monday,4,2,9.61
+        monday,4,2,11.99
+        monday,4,2,10.27
+        monday,4,2,9.97
+        monday,4,2,9.37
+        monday,4,2,10.10
+        monday,4,3,10.39
+        monday,4,3,8.79
+        wednesday,1,1,10.76
+        wednesday,1,2,10.72
+        wednesday,1,2,8.97
+        wednesday,1,2,9.14
+        wednesday,1,2,11.31
+        wednesday,1,2,9.49
+        wednesday,1,2,10.21
+        wednesday,1,2,10.04
+        wednesday,2,1,13.16
+        wednesday,2,1,7.07
+        wednesday,2,1,12.74
+        wednesday,3,1,9.45
+        wednesday,3,1,9.62
+        wednesday,3,1,10.46
+        wednesday,3,1,11.11
+        wednesday,3,1,10.56
+        wednesday,3,1,9.93
+        thursday,1,1,8.60
+        thursday,1,2,11.24
+        thursday,1,2,9.10
+        thursday,1,2,9.10
+        thursday,1,2,11.30
+        thursday,1,2,10.65
+        thursday,1,2,9.98
+        thursday,1,2,9.85
+        thursday,1,2,12.41
+        thursday,1,3,10.03
+        thursday,1,3,10.53
+        thursday,1,4,10.85
+        '''), skipinitialspace=True)
+    >>> data, df = bebi103.stan.df_to_datadict_hier(df, 
+                                level_cols=['day', 'batch', 'colony'], 
+                                data_cols=['x'])
+    >>> data
+    {'N': 70,
+     'J_1': 3,
+     'J_2': 8,
+     'J_3': 17,
+     'index_1': array([1, 1, 1, 1, 2, 3, 3, 3]),
+     'index_2': array([1, 1, 1, 2, 2, 3, 4, 4, 4, 5, 5, 5, 5, 6, 6, 7, 8]),
+     'index_3': array([ 1,  1,  1,  1,  1,  2,  2,  3,  4,  4,  5,  5,  5,  5,  5,  5,  5,
+             5,  5,  5,  5,  6,  6,  7,  7,  7,  8,  8,  8,  8,  8,  8,  8,  8,
+             8,  8,  8,  8,  8,  9,  9, 10, 11, 11, 11, 11, 11, 11, 11, 11, 12,
+            12, 13, 14, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 17, 17, 17, 17,
+            17, 17]),
+     'x': array([ 9.31,  8.35, 10.48,  9.91, 10.43,  9.98,  9.76,  9.3 , 10.56,
+            11.4 , 10.36, 12.04,  9.92, 10.1 ,  8.72, 10.36, 11.56, 10.87,
+            10.43, 10.67,  9.05, 10.32,  9.07,  9.86,  9.21, 11.36,  8.6 ,
+            10.54,  8.93,  9.43,  9.23,  9.66, 11.26,  9.61, 11.99, 10.27,
+             9.97,  9.37, 10.1 , 10.39,  8.79,  8.6 , 11.24,  9.1 ,  9.1 ,
+            11.3 , 10.65,  9.98,  9.85, 12.41, 10.03, 10.53, 10.85, 10.76,
+            10.72,  8.97,  9.14, 11.31,  9.49, 10.21, 10.04, 13.16,  7.07,
+            12.74,  9.45,  9.62, 10.46, 11.11, 10.56,  9.93])}
+
+    >>> df.head(10)
+          day  batch  colony      x  day_stan  batch_stan  colony_stan
+    0  monday      1       1   9.31         1           1            1
+    1  monday      1       1   8.35         1           1            1
+    2  monday      1       1  10.48         1           1            1
+    3  monday      1       1   9.91         1           1            1
+    4  monday      1       1  10.43         1           1            1
+    5  monday      1       2   9.98         1           1            2
+    6  monday      1       2   9.76         1           1            2
+    7  monday      1       3   9.30         1           1            3
+    8  monday      2       1  10.56         1           2            4
+    9  monday      2       1  11.40         1           2            4
+    """    
+    if df is None or level_cols is None or data_cols is None:
+        raise RuntimeError('`df`, `level_cols`, and `data_cols` must all be specified.')
+        
+    if type(level_cols) not in [list, tuple]:
+        level_cols = [level_cols]
+        
+    if type(data_cols) not in [list, tuple]:
+        data_cols = [data_cols]
+
+    level_cols_stan = [col + '_stan' for col in level_cols]
+    
+    if cowardly:
+        for col in level_cols_stan:
+            if col in df:
+                raise RuntimeError('column ' + col + ' already in data frame. Cowardly deciding not to overwrite.')
+    
+    for col_ind, col in enumerate(level_cols):
+        df[str(col)+'_stan'] = df.groupby(level_cols[:col_ind+1]).ngroup() + 1
+    
+    new_df = df.sort_values(by=level_cols_stan)
+    
+    data = dict()
+    data['N'] = len(new_df)
+    for i, col in enumerate(level_cols_stan):
+        data['J_'+ str(i+1)] = len(new_df[col].unique())    
+    for i, _ in enumerate(level_cols_stan[1:]):
+        data['index_' + str(i+1)] = np.array([key[i] for key in new_df.groupby(level_cols_stan[:i+2]).groups]).astype(int)
+    data['index_' + str(len(level_cols_stan))] = new_df[level_cols_stan[-1]].values.astype(int)
+    for col in data_cols:
+        data[str(col)] = new_df[col].values
+        
+    return data, df
+
+
 def check_divergences(fit, quiet=False, return_diagnostics=False):
     """Check transitions that ended with a divergence.
 
