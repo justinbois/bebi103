@@ -2242,8 +2242,8 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
         for j in range(1, i+1):
             plots[i][j].yaxis.major_label_text_font_size = '0pt'
     
-    grid = bokeh.layouts.gridplot(plots, toolbar_location='left',
-                                  toolbar_sticky=False)
+    grid = bokeh.layouts.gridplot(plots, toolbar_location='left')
+
     return grid
 
 
