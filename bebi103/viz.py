@@ -1906,6 +1906,7 @@ def sbc_rank_ecdf(sbc_output=None, parameters=None, diff=True, formal=False,
             if diff:
                 x_data, y_data = _ecdf_diff(
                     df.loc[df['parameter']==param, 'rank_statistic'], 
+                    L,
                     formal=True)
             else:
                 x_data, y_data = _ecdf_vals(
@@ -1920,7 +1921,7 @@ def sbc_rank_ecdf(sbc_output=None, parameters=None, diff=True, formal=False,
                                                                 _ecdf_y)
         df['warning_code'] = df['warning_code'].astype(str)
         if diff:
-            df['__ECDF'] -= (df['rank_statistic'] + 1) / n
+            df['__ECDF'] -= (df['rank_statistic'] + 1) / L
 
 
     cat = 'warning_code' if color_by_warning_code else 'parameter'
@@ -1953,16 +1954,6 @@ def sbc_rank_ecdf(sbc_output=None, parameters=None, diff=True, formal=False,
         color = bokeh.transform.factor_cmap('cat', 
                                             palette=palette, 
                                             factors=color_factors)
-
-    if y_axis_label is None:
-        if diff:
-            y_axis_label = 'diff from Uniform CDF'
-        else:
-            y_axis_label = 'ECDF'
-
-    if x_axis_label is None:
-        x_axis_label = 'rank statistic'
-
 
     if formal:
         for i, (param, g) in enumerate(df.groupby('parameter')):
@@ -2915,9 +2906,9 @@ def _sbc_rank_envelope(L, n, ptile=95, diff=True, bootstrap=False,
     return x_formal, y_low, y_high
 
 
-def _ecdf_diff(data, formal=False):
+def _ecdf_diff(data, L, formal=False):
     x, y = _ecdf_vals(data)
-    y_uniform = (x + 1)/len(x)
+    y_uniform = (x + 1)/L
     if formal:
         x, y = _to_formal(x, y)
         _, y_uniform = _to_formal(np.arange(len(data)), y_uniform)
