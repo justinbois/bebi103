@@ -283,7 +283,7 @@ def extract_array(samples, name):
         For a 2D array, there is an additional column named 'index_2'. A
         3D array has a column 'index_3' and so on.
     """
-    df = _fit_to_df(samples)
+    df = _fit_to_df(samples, diagnostics=False)
 
     regex_name = name
     for char in '[\^$.|?*+(){}':
