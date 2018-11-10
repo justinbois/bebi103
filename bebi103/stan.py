@@ -164,7 +164,7 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
     # Build parameters if not supplied
     if pars is None:
         pars = tuple(fit.model_pars + ['lp__'])
-    if isinstance(pars, str):
+    elif isinstance(pars, str):
         pars = tuple([pars, 'lp__'])
 
     # Build dtypes if not supplied
@@ -183,7 +183,6 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
                           permuted=permuted, 
                           dtypes=dtypes, 
                           inc_warmup=inc_warmup)
-
     n_chains = len(fit.stan_args)
     thin = fit.stan_args[0]['thin']
     n_iters = fit.stan_args[0]['iter'] // thin
@@ -231,7 +230,7 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
                 df[diag] = df[diag].astype(int)
 
     if isinstance(samples, np.ndarray):
-        for k, par in enumerate(fit.flatnames):
+        for k, par in enumerate(pars):
             try:
                 indices = re.search('\[(\d+)(,\d+)*\]', par).group()
                 base_name = re.split('\[(\d+)(,\d+)*\]', par, maxsplit=1)[0]

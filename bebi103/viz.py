@@ -1966,12 +1966,248 @@ def sbc_rank_ecdf(sbc_output=None, parameters=None, diff=True, formal=False,
     return p
 
 
-def corner(samples=None, vars=None, labels=None, datashade=False, 
+def diagnostic_plot(samples=None, pars=None, plot_width=600, 
+            plot_height=175, x_axis_label=None, y_axis_label='scaled value',
+            inc_warmup=False, color_by_chain=False, color='black',
+            palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                       '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
+              alpha=0.02, line_width=0.5, line_join='bevel',
+              divergence_color='orange',  divergence_line_width=2, **kwargs):
+    """
+    Make a diagnostic plot of MCMC samples. The x-axis is the parameter
+    name and the y-axis is the value of the parameter centered by its
+    median and scaled by its 95 percentile range.
+
+    Parameters
+    ----------
+    samples : StanFit4Model instance or Pandas DataFrame
+        Result of MCMC sampling.
+    pars : list
+        List of variables as strings included in `samples` to construct
+        the plot.
+    plot_width : int, default 600
+        Width of the trace plot for each variable in pixels.
+    plot_height : int, default 175
+        Height of the trace plot for each variable in pixels.
+    x_axis_label : str or None, default None
+        Label for x-axis in the plot.
+    y_axis_label : str, default 'scaled value'
+        Label for x-axis in the plot.
+    inc_warmup : bool, default False
+        If True, include warmup samples in the trace.
+    color_by_chain : bool, default False
+        If True, color the lines by chain.
+    palette : list of strings of hex colors, or single hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by Altair.
+    alpha : float, default 0.1
+        Opacity of the traces.
+    line_width : float, default 0.5
+        Width of the lines in the trace plot.
+    line_join : str, default 'bevel'
+        Specification for `line_join` for lines in the plot.
+    divergence_color : str, default 'orange'
+        Color of samples that are divergent.
+    divergence_line_width : float, default 1
+        Width of lines for divergent samples.
+    kwargs
+        Any kwargs to be passed to the `line()` function while making
+        the plot.
+
+    Returns
+    -------
+    output : Bokeh plot
+        Diagnostic plot.
+        
+    """
+    if type(samples) == pd.core.frame.DataFrame:
+        df = samples
+        if inc_warmup and 'warmup' in df.columns:
+            df = df.loc[df['warmup']==0, :]        
+    elif 'pymc3' in str(type(samples)):
+        raise NotImplementedError('Plots of PyMC3 traces not implemented.')
+    elif 'StanFit4Model' in str(type(samples)):
+        df = stan.to_dataframe(samples, diagnostics=True, 
+                               inc_warmup=inc_warmup)
+
+    if pars is None:
+        exclude = ['chain', 'chain_idx', 'warmup', 'divergent__', 'energy__',
+                   'treedepth__', 'accept_stat__', 'stepsize__', 
+                   'n_leapfrog__']
+        pars = [col for col in df.columns if col not in exclude]
+
+    if type(pars) not in (list, tuple):
+        raise RuntimeError('`pars` must be a list or tuple.')
+
+    if not color_by_chain:
+        palette = [color] * len(palette)
+
+    for col in pars:
+        if col not in df.columns:
+            raise RuntimeError(
+                        'Column ' + col + ' not in the columns of DataFrame.')
+
+    cols = pars + ['divergent__', 'chain', 'chain_idx']
+    df = df[cols].copy()
+    df = df.melt(id_vars=['divergent__', 'chain', 'chain_idx'])
+
+    p = bokeh.plotting.figure(plot_height=plot_height, 
+            plot_width=plot_width, 
+            x_axis_label=x_axis_label, 
+            y_axis_label=y_axis_label,
+            x_range=bokeh.models.FactorRange(*list(df['variable'].unique())),
+            toolbar_location='above')
+
+    for i, chain in enumerate(df['chain'].unique()):
+        group = df.loc[(df['chain']==chain) 
+                        & (df['divergent__']==0), :].groupby('chain_idx')
+        ys = np.array([group['value'].values 
+                for _, group in df.groupby(['chain', 'chain_idx'])])
+        if len(ys) > 0:
+            ys -= np.median(ys, axis=0)
+            for j in range(ys.shape[1]):
+                ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
+                                    - np.percentile(ys[:,j], 2.5))
+            ys = [y for y in ys]
+            xs = [list(df['variable'].unique())]*len(ys)
+
+            p.multi_line(xs, ys, 
+                         line_width=line_width, 
+                         alpha=alpha, 
+                         line_join=line_join,
+                         color=palette[i % len(palette)])
+
+    for i, chain in enumerate(df['chain'].unique()):
+        group = df.loc[(df['chain']==chain) 
+                        & (df['divergent__']==1), :].groupby('chain_idx')
+        ys = np.array([group['value'].values 
+                for _, group in df.groupby(['chain', 'chain_idx'])])
+        if len(ys) > 0:
+            ys -= np.median(ys, axis=0)
+            for j in range(ys.shape[1]):
+                ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
+                                    - np.percentile(ys[:,j], 2.5))
+            ys = [y for y in ys]
+            xs = [list(df['variable'].unique())]*len(ys)
+
+            p.multi_line(xs, ys, 
+                         line_width=line_width, 
+                         alpha=alpha, 
+                         line_join=line_join,
+                         color=divergence_color,
+                         line_width=divergence_line_width)
+
+    return p
+
+
+
+def trace_plot(samples=None, pars=None, labels=None, plot_width=600, 
+               plot_height=150, x_axis_label='step', inc_warmup=False,
+               palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                       '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
+               alpha=0.02, line_width=0.5, line_join='bevel', **kwargs):
+    """
+    Make a trace plot of MCMC samples.
+
+    Parameters
+    ----------
+    samples : StanFit4Model instance or Pandas DataFrame
+        Result of MCMC sampling.
+    pars : list
+        List of variables as strings included in `samples` to construct
+        the plot.
+    labels : list, default None
+        List of labels for the respective variables given in `pars`. If
+        None, the variable names from `pars` are used.
+    plot_width : int, default 600
+        Width of the trace plot for each variable in pixels.
+    plot_height : int, default 150
+        Height of the trace plot for each variable in pixels.
+    x_axis_label : str, default 'step'
+        Label for x-axis in the trace plots.
+    inc_warmup : bool, default False
+        If True, include warmup samples in the trace.
+    palette : list of strings of hex colors, or single hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by Altair.
+    alpha : float, default 0.1
+        Opacity of the traces.
+    line_width : float, default 0.5
+        Width of the lines in the trace plot.
+    line_join : str, default 'bevel'
+        Specification for `line_join` for lines in the plot.
+    kwargs
+        Any kwargs to be passed to the `line()` function while making
+        the plot.
+
+    Returns
+    -------
+    output : Bokeh gridplot
+        Set of chain traces as a Bokeh gridplot.
+    """
+    if type(samples) == pd.core.frame.DataFrame:
+        df = samples
+        if inc_warmup and 'warmup' in df.columns:
+            df = df.loc[df['warmup']==0, :]
+    elif 'pymc3' in str(type(samples)):
+        raise NotImplementedError('Plots of PyMC3 traces not implemented.')
+    elif 'StanFit4Model' in str(type(samples)):
+        df = stan.to_dataframe(samples, inc_warmup=inc_warmup)
+
+    if pars is None:
+        raise RuntimeError('Must specify pars.')
+
+    if type(pars) not in (list, tuple):
+        raise RuntimeError('`pars` must be a list or tuple.')
+
+    for col in pars:
+        if col not in df.columns:
+            raise RuntimeError(
+                        'Column ' + col + ' not in the columns of DataFrame.')
+            
+    if labels is None:
+        labels = pars
+    elif len(labels) != len(pars):
+        raise RuntimeError('len(pars) must equal len(labels)')
+
+    plots = []
+    grouped = df.groupby('chain')
+    for i,  (par, label) in enumerate(zip(pars, labels)):
+        p = bokeh.plotting.figure(plot_width=plot_width, 
+                                  plot_height=plot_height, 
+                                  x_axis_label=x_axis_label, 
+                                  y_axis_label=label)
+        for chain, group in grouped:
+            p.line(group['chain_idx'], 
+                   group[par], 
+                   line_width=line_width, 
+                   line_join=line_join, 
+                   color=palette[int(chain)-1])
+
+        plots.append(p)
+
+    if len(plots) == 1:
+        return plots[0]
+
+    # Link ranges
+    for i, p in enumerate(plots[:-1]):
+        plots[i].x_range = plots[-1].x_range
+
+    return bokeh.layouts.gridplot(plots, ncols=1)
+    
+
+def corner(samples=None, pars=None, labels=None, datashade=False, 
            plot_width=150, plot_ecdf=False, cmap='black', 
-           divergence_color='orange', alpha=1, single_param_color='black', 
+           color_by_chain=False,
+           palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                    '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
+           divergence_color='orange', alpha=0.02, single_param_color='black', 
            bins=20, show_contours=False, contour_color='black', bins_2d=50, 
            levels=None, weights=None, smooth=1, extend_contour_domain=False,
-           plot_width_correction=50, plot_height_correction=40):
+           plot_width_correction=50, plot_height_correction=40, 
+           xtick_label_orientation='horizontal'):
     """
     Make a corner plot of MCMC results. Heavily influenced by the corner
     package by Dan Foreman-Mackey.
@@ -1980,12 +2216,12 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
     ----------
     samples : StanFit4Model instance or Pandas DataFrame
         Result of MCMC sampling.
-    vars : list
+    pars : list
         List of variables as strings included in `samples` to construct
         corner plot.
     labels : list, default None
-        List of labels for the respective variables given in `vars`. If
-        None, the variable names from `vars` are used.
+        List of labels for the respective variables given in `pars`. If
+        None, the variable names from `pars` are used.
     datashade : bool, default False
         Whether or not to convert sampled points to a raster image using
         Datashader.
@@ -1998,6 +2234,13 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
     cmap : str, default 'black'
         Valid colormap string for DataShader or for coloring Bokeh
         glyphs.
+    color_by_chain : bool, default False
+        If True, color the glyphs by chain index.
+    palette : list of strings of hex colors, or single hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by Altair. Ignored is 
+        `color_by_chain` is False.        
     divergence_color : str, default 'orange'
         Color to use for showing points where the sampler experienced a
         divergence.
@@ -2036,6 +2279,9 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
     plot_height_correction : int, default 40
         Correction for height of plot taking into account tick and axis
         labels.
+    xtick_label_orientation : str or float, default 'horizontal'
+        Orientation of x tick labels. In some plots, horizontally 
+        labeled ticks will have label clashes, and this can fix that.
 
     Returns
     -------
@@ -2043,11 +2289,18 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
         Corner plot as a Bokeh gridplot.
     """
 
-    if vars is None:
-        raise RuntimeError('Must specify vars.')
+    if pars is None:
+        raise RuntimeError('Must specify pars.')
 
-    if type(vars) not in (list, tuple):
-        raise RuntimeError('`vars` must be a list or tuple.')
+    if type(pars) not in (list, tuple):
+        raise RuntimeError('`pars` must be a list or tuple.')
+
+    if color_by_chain:
+        if datashade:
+            raise NotImplementedError(
+                    'Can only color by chain if `datashade` is False.')
+        if cmap not in ['black', None]:
+            warnings.warn('Ignoring cmap values to color by chain.')
 
     if divergence_color is None:
         divergence_color = cmap
@@ -2064,26 +2317,35 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
     elif 'StanFit4Model' in str(type(samples)):
         df = stan.to_dataframe(samples, diagnostics=True)
 
+    if color_by_chain:
+        # Have to convert datatype to string to play nice with Bokeh
+        df['chain'] = df['chain'].astype(str)
+
+        factors = tuple(df['chain'].unique())
+        cmap = bokeh.transform.factor_cmap('chain', 
+                                           palette=palette, 
+                                           factors=factors)
+
     if 'divergent__' not in df.columns and divergence_color is not None:
             raise RuntimeError('No divergence information available. '
                 + 'You may want to use the `divergence_color=None` kwarg.')
 
-    if len(vars) > 6:
+    if len(pars) > 6:
         raise RuntimeError(
                     'For space purposes, can show only six variables.')
         
-    for col in vars:
+    for col in pars:
         if col not in df.columns:
             raise RuntimeError(
                         'Column ' + col + ' not in the columns of DataFrame.')
             
     if labels is None:
-        labels = vars
-    elif len(labels) != len(vars):
-        raise RuntimeError('len(vars) must equal len(labels)')
+        labels = pars
+    elif len(labels) != len(pars):
+        raise RuntimeError('len(pars) must equal len(labels)')
 
-    if len(vars) == 1:
-        x = vars[0]
+    if len(pars) == 1:
+        x = pars[0]
         if plot_ecdf:
             if datashade:
                 if plot_width == 150:
@@ -2092,25 +2354,27 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
                 else:
                     plot_width = 200
                     plot_height=200
-                x_range, _ = _data_range(df, vars[0], vars[0])
+                x_range, _ = _data_range(df, pars[0], pars[0])
                 p = bokeh.plotting.figure(
                         x_range=x_range, y_range=[-0.02, 1.02], 
                         plot_width=plot_width, plot_height=plot_height)
-                x_ecdf, y_ecdf = _ecdf_vals(df[vars[0]], formal=True)
-                df_ecdf = pd.DataFrame(data={vars[0]: x_ecdf, 'ECDF': y_ecdf})
+                x_ecdf, y_ecdf = _ecdf_vals(df[pars[0]], formal=True)
+                df_ecdf = pd.DataFrame(data={pars[0]: x_ecdf, 'ECDF': y_ecdf})
                 _ = datashader.bokeh_ext.InteractiveImage(
                         p, _create_line_image, df=df_ecdf, 
                         x=x, y='ECDF', cmap=single_param_color)
             else:
-                return ecdf(df[vars[0]], formal=True,
-                            line_width=2, line_color=single_param_color)
+                p = ecdf(df[pars[0]], formal=True,
+                         line_width=2, line_color=single_param_color)
         else:
-            return histogram(df[vars[0]],
-                             bins=bins,
-                             density=True, 
-                             line_width=2,
-                             color=single_param_color,
-                             x_axis_label=vars[0])
+            p = histogram(df[pars[0]],
+                          bins=bins,
+                          density=True, 
+                          line_width=2,
+                          color=single_param_color,
+                          x_axis_label=pars[0])
+        p.xaxis.major_label_orientation = xtick_label_orientation
+        return p
         
     if not datashade:
         if len(df) > 10000:
@@ -2120,19 +2384,19 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
             warnings.warn(
                 'Rendering so many points without DataShader is ill-advised.')
 
-    plots = [[None for _ in range(len(vars))] for _ in range(len(vars))]
+    plots = [[None for _ in range(len(pars))] for _ in range(len(pars))]
     
-    for i, j in zip(*np.tril_indices(len(vars))):
+    for i, j in zip(*np.tril_indices(len(pars))):
         pw = plot_width
         ph = plot_width
         if j == 0:
             pw += plot_width_correction
-        if i == len(vars) - 1:
+        if i == len(pars) - 1:
             ph += plot_height_correction
             
-        x = vars[j]
+        x = pars[j]
         if i != j:
-            y = vars[i]
+            y = pars[i]
             x_range, y_range = _data_range(df, x, y)
             plots[i][j] = bokeh.plotting.figure(
                     x_range=x_range, y_range=y_range,
@@ -2150,11 +2414,13 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
                     plots[i][j].circle(df[x], df[y], size=2, 
                                        alpha=alpha, color=cmap)
                 else:
-                    plots[i][j].circle(df.loc[df['divergent__']==0, x], 
-                                       df.loc[df['divergent__']==0, y], 
-                                       size=2, 
-                                       alpha=alpha, 
-                                       color=cmap)
+                    plots[i][j].circle(
+                        source=df.loc[df['divergent__']==0, [x, y, 'chain']], 
+                        x=x,
+                        y=y, 
+                        size=2, 
+                        alpha=alpha, 
+                        color=cmap)
                     plots[i][j].circle(df.loc[df['divergent__']==1, x], 
                                        df.loc[df['divergent__']==1, y], 
                                        size=2, 
@@ -2204,9 +2470,10 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
                 
                 plots[i][i].line(e0, f0, line_width=2, 
                                  color=single_param_color)
+        plots[i][j].xaxis.major_label_orientation = xtick_label_orientation
 
     # Link axis ranges
-    for i in range(1,len(vars)):
+    for i in range(1,len(pars)):
         for j in range(i):
             plots[i][j].x_range = plots[j][j].x_range
             plots[i][j].y_range = plots[i][i].x_range
@@ -2222,14 +2489,14 @@ def corner(samples=None, vars=None, labels=None, datashade=False,
         plots[0][0].yaxis.axis_label = 'ECDF'
         
     # Take off tick labels
-    for i in range(len(vars)-1):
+    for i in range(len(pars)-1):
         for j in range(i+1):
             plots[i][j].xaxis.major_label_text_font_size = '0pt'
 
     if not plot_ecdf:
         plots[0][0].yaxis.major_label_text_font_size = '0pt'
 
-    for i in range(1, len(vars)):
+    for i in range(1, len(pars)):
         for j in range(1, i+1):
             plots[i][j].yaxis.major_label_text_font_size = '0pt'
     
@@ -2382,8 +2649,8 @@ def ds_line_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
     """
     Make a datashaded line plot.
 
-    Params
-    ------
+    Parameters
+    ----------
     df : pandas DataFrame
         DataFrame containing the data
     x : Valid column name of Pandas DataFrame
@@ -2449,8 +2716,8 @@ def ds_point_plot(df, x, y, cmap='#1f77b4', plot_height=300, plot_width=500,
     """
     Make a datashaded point plot.
 
-    Params
-    ------
+    Parameters
+    ----------
     df : pandas DataFrame
         DataFrame containing the data
     x : Valid column name of Pandas DataFrame
