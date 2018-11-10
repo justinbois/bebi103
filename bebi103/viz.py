@@ -2091,8 +2091,7 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
             ys = [y for y in ys]
             xs = [list(df['variable'].unique())]*len(ys)
 
-            p.multi_line(xs, ys, 
-                         line_width=line_width, 
+            p.multi_line(xs, ys,
                          alpha=alpha, 
                          line_join=line_join,
                          color=divergence_color,
