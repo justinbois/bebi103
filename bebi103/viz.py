@@ -126,10 +126,11 @@ def fill_between(x1=None, y1=None, x2=None, y2=None,
     return p
 
 
-def ecdf(data=None, p=None, x_axis_label=None, y_axis_label='ECDF', 
-         title=None, plot_height=300, plot_width=450, formal=False, 
-         complementary=False, x_axis_type='linear', y_axis_type='linear', 
-         **kwargs):
+def ecdf(data=None, conf_int=False, ptiles=[2.5, 97.5], n_bs_reps=1000,
+         fill_color='lightgray', fill_alpha=1, p=None, x_axis_label=None,
+         y_axis_label='ECDF', title=None, plot_height=300, plot_width=450,
+         formal=False, complementary=False, x_axis_type='linear', 
+         y_axis_type='linear', **kwargs):
     """
     Create a plot of an ECDF.
 
@@ -137,6 +138,19 @@ def ecdf(data=None, p=None, x_axis_label=None, y_axis_label='ECDF',
     ----------
     data : array_like
         One-dimensional array of data. Nan's are ignored.
+    conf_int : bool, default False
+        If True, display a confidence interval on the ECDF.
+    ptiles : list, default [2.5, 97.5]
+        The percentiles to use for the confidence interval. Ignored it
+        `conf_int` is False.
+    n_bs_reps : int, default 1000
+        Number of bootstrap replicates to do to compute confidence
+        interval. Ignored if `conf_int` is False.
+    fill_color : str, default 'lightgray'
+        Color of the confidence interbal. Ignored if `conf_int` is 
+        False.
+    fill_alpha : float, default 1
+        Opacity of confidence interval. Ignored if `conf_int` is False.
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
@@ -181,6 +195,23 @@ def ecdf(data=None, p=None, x_axis_label=None, y_axis_label='ECDF',
             plot_height=plot_height, plot_width=plot_width, 
             x_axis_label=x_axis_label, y_axis_label=y_axis_label,
             x_axis_type=x_axis_type, y_axis_type=y_axis_type, title=title)
+
+    # Do bootstrap replicates
+    if conf_int:
+        x_plot = np.sort(np.unique(x))
+        bs_reps = np.array([_ecdf_arbitrary_points(
+                            np.random.choice(data, size=len(data)), x_plot)
+                                for _ in range(n_bs_reps)])
+
+        # Compute the confidence intervals
+        ecdf_low, ecdf_high = np.percentile(np.array(bs_reps), ptiles, axis=0)
+
+        # Make them formal
+        _, ecdf_low = _to_formal(x=x_plot, y=ecdf_low)
+        x_plot, ecdf_high = _to_formal(x=x_plot, y=ecdf_high)
+
+        p = fill_between(x1=x_plot, y1=ecdf_low, x2=x_plot, y2=ecdf_high,
+                         fill_color=fill_color, show_line=False, p=p)
 
     if formal:
         # Line of steps
@@ -2001,7 +2032,7 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         the default color cycle employed by Altair.
-    alpha : float, default 0.1
+    alpha : float, default 0.02
         Opacity of the traces.
     line_width : float, default 0.5
         Width of the lines in the trace plot.
@@ -2059,43 +2090,41 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
             x_range=bokeh.models.FactorRange(*list(df['variable'].unique())),
             toolbar_location='above')
 
-    for i, chain in enumerate(df['chain'].unique()):
-        group = df.loc[(df['chain']==chain) 
-                        & (df['divergent__']==0), :].groupby('chain_idx')
-        ys = np.array([group['value'].values 
-                for _, group in df.groupby(['chain', 'chain_idx'])])
-        if len(ys) > 0:
-            ys -= np.median(ys, axis=0)
-            for j in range(ys.shape[1]):
-                ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
-                                    - np.percentile(ys[:,j], 2.5))
-            ys = [y for y in ys]
-            xs = [list(df['variable'].unique())]*len(ys)
+    # Plots for samples that were not divergent
+    ys = np.array([group['value'].values 
+                    for _, group in df.loc[df['divergent__']==0].groupby(
+                                ['chain', 'chain_idx'])])
+    if len(ys) > 0:
+        ys -= np.median(ys, axis=0)
+        for j in range(ys.shape[1]):
+            ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
+                                - np.percentile(ys[:,j], 2.5))
+        ys = [y for y in ys]
+        xs = [list(df['variable'].unique())]*len(ys)
 
-            p.multi_line(xs, ys, 
-                         line_width=line_width, 
-                         alpha=alpha, 
-                         line_join=line_join,
-                         color=palette[i % len(palette)])
+        p.multi_line(xs, ys, 
+                     line_width=line_width, 
+                     alpha=alpha, 
+                     line_join=line_join,
+                    color=[palette[i % len(palette)] for i in range(len(ys))])
 
-    for i, chain in enumerate(df['chain'].unique()):
-        group = df.loc[(df['chain']==chain) 
-                        & (df['divergent__']==1), :].groupby('chain_idx')
-        ys = np.array([group['value'].values 
-                for _, group in df.groupby(['chain', 'chain_idx'])])
-        if len(ys) > 0:
-            ys -= np.median(ys, axis=0)
-            for j in range(ys.shape[1]):
-                ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
-                                    - np.percentile(ys[:,j], 2.5))
-            ys = [y for y in ys]
-            xs = [list(df['variable'].unique())]*len(ys)
+    # Plots for samples that were divergent
+    ys = np.array([group['value'].values 
+                    for _, group in df.loc[df['divergent__']==1].groupby(
+                                ['chain', 'chain_idx'])])
+    if len(ys) > 0:
+        ys -= np.median(ys, axis=0)
+        for j in range(ys.shape[1]):
+            ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
+                                - np.percentile(ys[:,j], 2.5))
+        ys = [y for y in ys]
+        xs = [list(df['variable'].unique())]*len(ys)
 
-            p.multi_line(xs, ys,
-                         alpha=alpha, 
-                         line_join=line_join,
-                         color=divergence_color,
-                         line_width=divergence_line_width)
+        p.multi_line(xs, ys,
+                     alpha=alpha, 
+                     line_join=line_join,
+                     color=divergence_color,
+                     line_width=divergence_line_width)
 
     return p
 
