@@ -163,7 +163,7 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
         
     # Build parameters if not supplied
     if pars is None:
-        pars = tuple(fit.model_pars + ['lp__'])
+        pars = tuple(fit.flatnames + ['lp__'])
     elif isinstance(pars, str):
         pars = tuple([pars, 'lp__'])
 
