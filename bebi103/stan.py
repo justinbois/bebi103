@@ -487,6 +487,9 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
     """    
     if df is None or level_cols is None or data_cols is None:
         raise RuntimeError('`df`, `level_cols`, and `data_cols` must all be specified.')
+
+    # Get a copy so we don't overwrite
+    new_df = df.copy(deep=True)
         
     if type(level_cols) not in [list, tuple]:
         level_cols = [level_cols]
@@ -502,9 +505,10 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
                 raise RuntimeError('column ' + col + ' already in data frame. Cowardly deciding not to overwrite.')
     
     for col_ind, col in enumerate(level_cols):
-        df[str(col)+'_stan'] = df.groupby(level_cols[:col_ind+1]).ngroup() + 1
+        new_df[str(col)+'_stan'] = df.groupby(
+                                        level_cols[:col_ind+1]).ngroup() + 1
     
-    new_df = df.sort_values(by=level_cols_stan)
+    new_df = new_df.sort_values(by=level_cols_stan)
     
     data = dict()
     data['N'] = len(new_df)
@@ -516,7 +520,7 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
     for col in data_cols:
         data[str(col)] = new_df[col].values
         
-    return data, df
+    return data, new_df
 
 
 def check_divergences(fit, quiet=False, return_diagnostics=False):

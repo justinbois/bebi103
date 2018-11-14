@@ -2003,7 +2003,9 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
             palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
                        '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
               alpha=0.02, line_width=0.5, line_join='bevel',
-              divergence_color='orange',  divergence_line_width=2, **kwargs):
+              divergence_color='orange',  divergence_alpha=1,
+              divergence_line_width=1, xtick_label_orientation='horizontal', 
+              **kwargs):
     """
     Make a diagnostic plot of MCMC samples. The x-axis is the parameter
     name and the y-axis is the value of the parameter centered by its
@@ -2040,8 +2042,13 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
         Specification for `line_join` for lines in the plot.
     divergence_color : str, default 'orange'
         Color of samples that are divergent.
+    divergence_alpha : float, default 1.0
+        Opactive for samples that are divergent
     divergence_line_width : float, default 1
         Width of lines for divergent samples.
+    xtick_label_orientation : str or float, default 'horizontal'
+        Orientation of x tick labels. In some plots, horizontally 
+        labeled ticks will have label clashes, and this can fix that.
     kwargs
         Any kwargs to be passed to the `line()` function while making
         the plot.
@@ -2121,10 +2128,12 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
         xs = [list(df['variable'].unique())]*len(ys)
 
         p.multi_line(xs, ys,
-                     alpha=alpha, 
+                     alpha=divergence_alpha,
                      line_join=line_join,
                      color=divergence_color,
                      line_width=divergence_line_width)
+
+    p.xaxis.major_label_orientation = xtick_label_orientation
 
     return p
 
