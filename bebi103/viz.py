@@ -2049,12 +2049,12 @@ def parcoord_plot(samples=None, pars=None, plot_width=600,
     xtick_label_orientation : str or float, default 'horizontal'
         Orientation of x tick labels. In some plots, horizontally 
         labeled ticks will have label clashes, and this can fix that.
-    transformation : function or str default None
+    transformation : function or list of functions, default None
         A transformation to apply to each set of samples. The function
         must take a single array as input and return an array as the 
-        same size. If None, nor transformation is done. If 
-        'center_and_scale', the data are centered at the median and 
-        divided by the width of the middle two quartiles.
+        same size. If None, nor transformation is done. If a list of 
+        functions, the transformations are applied to the respective
+        variables in `pars`.
     kwargs
         Any kwargs to be passed to the `line()` function while making
         the plot.
@@ -2084,14 +2084,11 @@ def parcoord_plot(samples=None, pars=None, plot_width=600,
     if type(pars) not in (list, tuple):
         raise RuntimeError('`pars` must be a list or tuple.')
 
-    if transformation is None:
-        transformation = lambda x: x
-    elif transformation == 'center_and_scale':
-        def _center_and_scale(x):
-            x -= np.median(x)
-            x /= (np.percentile(x, 75) - np.percentile(x, 25))
-            return x
-        tranformation = _center_and_scale
+    if type(transformation) not in (list, tuple):
+        transformation = [transformation] * len(pars)
+    for i, trans in enumerate(transformation):
+        if trans is None:
+            transformation[i] = lambda x: x
 
     if not color_by_chain:
         palette = [color] * len(palette)
@@ -2118,7 +2115,7 @@ def parcoord_plot(samples=None, pars=None, plot_width=600,
                                 ['chain', 'chain_idx'])])
     if len(ys) > 0:
         for j in range(ys.shape[1]):
-            ys[:,j] = transformation(ys[:,j])
+            ys[:,j] = transformation[j](ys[:,j])
         ys = [y for y in ys]
         xs = [list(df['variable'].unique())]*len(ys)
 
@@ -2134,7 +2131,7 @@ def parcoord_plot(samples=None, pars=None, plot_width=600,
                                 ['chain', 'chain_idx'])])
     if len(ys) > 0:
         for j in range(ys.shape[1]):
-            ys[:,j] = transformation(ys[:,j])
+            ys[:,j] = transformation[j](ys[:,j])
         ys = [y for y in ys]
         xs = [list(df['variable'].unique())]*len(ys)
 
