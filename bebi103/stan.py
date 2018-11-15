@@ -767,7 +767,7 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
             print('  Rhat above 1.1 indicates that the chains very likely'
                   + ' have not mixed')
         else:
-            print('Rhat looks reasonable for all parameters')
+            print('Rhat looks reasonable for all parameters.')
 
     if return_diagnostics:
         return pass_check, pd.DataFrame(data={'parameter': names, 
