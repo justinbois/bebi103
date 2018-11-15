@@ -2062,7 +2062,7 @@ def parcoord_plot(samples=None, pars=None, plot_width=600,
     Returns
     -------
     output : Bokeh plot
-        Diagnostic plot.
+        Parallel coordinates plot.
         
     """
     if type(samples) == pd.core.frame.DataFrame:
