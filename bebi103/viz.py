@@ -1998,7 +1998,7 @@ def sbc_rank_ecdf(sbc_output=None, parameters=None, diff=True, formal=False,
 
 
 def parcoord_plot(samples=None, pars=None, plot_width=600, 
-            plot_height=175, x_axis_label=None, y_axis_label='scaled value',
+            plot_height=175, x_axis_label=None, y_axis_label=None,
             inc_warmup=False, color_by_chain=False, color='black',
             palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
                        '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'],
@@ -2119,11 +2119,6 @@ def parcoord_plot(samples=None, pars=None, plot_width=600,
     if len(ys) > 0:
         for j in range(ys.shape[1]):
             ys[:,j] = transformation(ys[:,j])
-
-        ys -= np.median(ys, axis=0)
-        for j in range(ys.shape[1]):
-            ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
-                                - np.percentile(ys[:,j], 2.5))
         ys = [y for y in ys]
         xs = [list(df['variable'].unique())]*len(ys)
 
@@ -2138,10 +2133,8 @@ def parcoord_plot(samples=None, pars=None, plot_width=600,
                     for _, group in df.loc[df['divergent__']==1].groupby(
                                 ['chain', 'chain_idx'])])
     if len(ys) > 0:
-        ys -= np.median(ys, axis=0)
         for j in range(ys.shape[1]):
-            ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
-                                - np.percentile(ys[:,j], 2.5))
+            ys[:,j] = transformation(ys[:,j])
         ys = [y for y in ys]
         xs = [list(df['variable'].unique())]*len(ys)
 
