@@ -2007,9 +2007,9 @@ def parcoord_plot(samples=None, pars=None, plot_width=600,
               divergence_line_width=1, xtick_label_orientation='horizontal', 
               transformation=None, **kwargs):
     """
-    Make a diagnostic plot of MCMC samples. The x-axis is the parameter
-    name and the y-axis is the value of the parameter centered by its
-    median and scaled by its 95 percentile range.
+    Make a parallel coordinate plot of MCMC samples. The x-axis is the 
+    parameter name and the y-axis is the value of the parameter centered 
+    by its median and scaled by its 95 percentile range.
 
     Parameters
     ----------
