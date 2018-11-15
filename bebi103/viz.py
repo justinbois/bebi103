@@ -1997,7 +1997,7 @@ def sbc_rank_ecdf(sbc_output=None, parameters=None, diff=True, formal=False,
     return p
 
 
-def diagnostic_plot(samples=None, pars=None, plot_width=600, 
+def parcoord_plot(samples=None, pars=None, plot_width=600, 
             plot_height=175, x_axis_label=None, y_axis_label='scaled value',
             inc_warmup=False, color_by_chain=False, color='black',
             palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
@@ -2005,7 +2005,7 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
               alpha=0.02, line_width=0.5, line_join='bevel',
               divergence_color='orange',  divergence_alpha=1,
               divergence_line_width=1, xtick_label_orientation='horizontal', 
-              **kwargs):
+              transformation=None, **kwargs):
     """
     Make a diagnostic plot of MCMC samples. The x-axis is the parameter
     name and the y-axis is the value of the parameter centered by its
@@ -2049,6 +2049,12 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
     xtick_label_orientation : str or float, default 'horizontal'
         Orientation of x tick labels. In some plots, horizontally 
         labeled ticks will have label clashes, and this can fix that.
+    transformation : function or str default None
+        A transformation to apply to each set of samples. The function
+        must take a single array as input and return an array as the 
+        same size. If None, nor transformation is done. If 
+        'center_and_scale', the data are centered at the median and 
+        divided by the width of the middle two quartiles.
     kwargs
         Any kwargs to be passed to the `line()` function while making
         the plot.
@@ -2078,6 +2084,15 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
     if type(pars) not in (list, tuple):
         raise RuntimeError('`pars` must be a list or tuple.')
 
+    if transformation is None:
+        transformation = lambda x: x
+    elif transformation == 'center_and_scale':
+        def _center_and_scale(x):
+            x -= np.median(x)
+            x /= (np.percentile(x, 75) - np.percentile(x, 25))
+            return x
+        tranformation = _center_and_scale
+
     if not color_by_chain:
         palette = [color] * len(palette)
 
@@ -2102,6 +2117,9 @@ def diagnostic_plot(samples=None, pars=None, plot_width=600,
                     for _, group in df.loc[df['divergent__']==0].groupby(
                                 ['chain', 'chain_idx'])])
     if len(ys) > 0:
+        for j in range(ys.shape[1]):
+            ys[:,j] = transformation(ys[:,j])
+
         ys -= np.median(ys, axis=0)
         for j in range(ys.shape[1]):
             ys[:,j] /= (np.percentile(ys[:,j], 97.5) 
