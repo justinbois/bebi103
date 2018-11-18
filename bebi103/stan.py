@@ -5,6 +5,7 @@ import pickle
 import hashlib
 import logging
 import multiprocessing
+import warnings
 
 import tqdm
 
@@ -162,10 +163,10 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
              'stepsize__', 'n_leapfrog__']
         
     # Build parameters if not supplied
-    if pars is None:
-        pars = tuple(fit.flatnames + ['lp__'])
-    elif isinstance(pars, str):
-        pars = tuple([pars, 'lp__'])
+    if pars is not None:
+        warnings.warn(
+            'For PyStan < 2.18, `pars` is ignored; all parameters are used.')
+    pars = tuple(fit.flatnames + ['lp__'])
 
     # Build dtypes if not supplied
     if dtypes is None:
@@ -312,6 +313,61 @@ def extract_array(samples, name):
                           data=indices)
     
     return pd.concat([ind_df, df_out], axis=1)
+
+
+def extract_par(fit, par, permuted=False, inc_warmup=False):
+    """Extract samples of a parameter out of a StanFit4Model.
+
+    Parameters
+    ----------
+    samples : StanFit4Model instance
+        Samples from a Stan calculation.
+    par : str
+        The name of the variable to extract. For example, if `name` is 
+        'my_array', and the array is one-dimensional, entries with
+        variable names 'my_array[1]', 'my_array[2]', ... are extracted.
+    permuted : bool, default False
+        If True, the chains are combined and the samples are permuted.
+    inc_warmup : bool, default False
+        If True, include warmup samples.
+
+    Returns
+    -------
+    output : Numpy array
+        Numpy array with the samples. The first dimension of
+        the array is for the iterations; the second for the number of chains;
+        the third for the parameters. Vectors and arrays are expanded to one
+        parameter (a scalar) per cell, with names indicating the third dimension.
+
+    Notes
+    -----
+    .. PyStan 2.17.10 has a bug where the `extract()` functionality of
+       a StanFit4Model instance does not work as advertised. This
+       accommodates that functionality.
+    """
+    if permuted:
+        fit.extract(pars=par, permuted=True, inc_warmup=inc_warmup)[par]
+
+    if pystan.__version__ >= '2.18':
+        return fit.extract(pars=par, permuted=False, inc_warmup=inc_warmup)
+
+    data = fit.extract(pars=par, permuted=False, inc_warmup=inc_warmup)
+
+    inds = []
+    for k, par_name in enumerate(fit.flatnames):
+        try:
+            indices = re.search('\[(\d+)(,\d+)*\]', par_name).group()
+            base_name = re.split('\[(\d+)(,\d+)*\]', par_name, maxsplit=1)[0]
+            if base_name == par:
+                inds.append(k)
+        except AttributeError:
+            if par_name == par:
+                inds.append(k)
+
+    if len(inds) == 1:
+        return data[:,:,inds[0]]
+
+    return data[:,:,inds]
 
 
 def df_to_datadict_hier(df=None, level_cols=None, data_cols=None, 
