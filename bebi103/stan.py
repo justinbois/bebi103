@@ -406,9 +406,9 @@ def to_arviz(fit, log_likelihood=None):
     az_data = az.from_pystan(fit=fit, log_likelihood=log_likelihood)
 
     if pystan.__version__ < '2.18':
-        if log_likelihood is None:
+        if log_likelihood is not None:
             # Get the log likelihood
-            log_lik = np.swapaxes(extract_par(fit, 'pw_log_lik'), 0, 1)
+            log_lik = np.swapaxes(extract_par(fit, log_likelihood), 0, 1)
 
             # dims for xarray
             dims = ['chain', 'draw', 'log_likelihood_dim_0']
@@ -453,7 +453,7 @@ def waic(fit, log_likelihood=None, pointwise=False):
         raise RuntimeError('Must supply `log_likelihood`.')
 
     az_data = to_arviz(fit, log_likelihood=log_likelihood)
-    
+
     return az.waic(az_data, pointwise=pointwise)
 
 
