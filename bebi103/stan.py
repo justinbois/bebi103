@@ -16,6 +16,8 @@ import scipy.stats as st
 
 import pystan
 
+import arviz as az
+
 import bokeh.plotting
 
 from . import viz
@@ -115,6 +117,7 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
     dypes : dict
         Each entry key, value pair is param_name, data dtype. If None,
         all data types are floats. Be careful: results are cast into
+        whatever you specify.
     inc_warmup : bool, default False
         If True, include warmup samples.
     diagnostics : bool, default True
@@ -320,7 +323,7 @@ def extract_par(fit, par, permuted=False, inc_warmup=False):
 
     Parameters
     ----------
-    samples : StanFit4Model instance
+    fit : StanFit4Model instance
         Samples from a Stan calculation.
     par : str
         The name of the variable to extract. For example, if `name` is 
@@ -341,17 +344,21 @@ def extract_par(fit, par, permuted=False, inc_warmup=False):
 
     Notes
     -----
-    .. PyStan 2.17.10 has a bug where the `extract()` functionality of
+    .. PyStan 2.17.1.0 has a bug where the `extract()` functionality of
        a StanFit4Model instance does not work as advertised. This
        accommodates that functionality.
     """
+    logging.getLogger('pystan').setLevel(logging.CRITICAL)
+
     if permuted:
-        fit.extract(pars=par, permuted=True, inc_warmup=inc_warmup)[par]
+        return fit.extract(pars=par, permuted=True, dtypes=None,
+                           inc_warmup=inc_warmup)[par]
 
     if pystan.__version__ >= '2.18':
-        return fit.extract(pars=par, permuted=False, inc_warmup=inc_warmup)
+        return fit.extract(pars=par, permuted=False, dtypes=None,
+                           inc_warmup=inc_warmup)
 
-    data = fit.extract(pars=par, permuted=False, inc_warmup=inc_warmup)
+    data = fit.extract(permuted=False, inc_warmup=inc_warmup, dtypes=None)
 
     inds = []
     for k, par_name in enumerate(fit.flatnames):
@@ -368,6 +375,124 @@ def extract_par(fit, par, permuted=False, inc_warmup=False):
         return data[:,:,inds[0]]
 
     return data[:,:,inds]
+
+
+def to_arviz(fit, log_likelihood=None):
+    """Convert a StanFit4Model to an ArviZ data set.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Samples from a Stan calculation.
+    log_likelihood : str
+        Name of the variable containing the log likelihood.
+
+    Returns
+    -------
+    output : ArviZ data object.
+
+    Notes
+    -----
+    .. This function is only necessary because of problems ArviZ has
+       with PyStan < 2.18. You should just directly use 
+       `arviz.from_pystan()` if you have PyStan >= 2.18. Note that this
+       function does not allow other kwargs besides `log_likelihood`
+       that are available in `arviz.from_pystan()`. The main purpose
+       of this function is to get minimal information necessary for
+       doing PSIS-LOO and WAIC calculations using ArviZ.
+    """
+    logging.getLogger('pystan').setLevel(logging.CRITICAL)
+
+    az_data = az.from_pystan(fit=fit, log_likelihood=log_likelihood)
+
+    if pystan.__version__ < '2.18':
+        if log_likelihood is None:
+            # Get the log likelihood
+            log_lik = np.swapaxes(extract_par(fit, 'pw_log_lik'), 0, 1)
+
+            # dims for xarray
+            dims = ['chain', 'draw', 'log_likelihood_dim_0']
+
+            # Properly do the log likelihood
+            az_data.sample_stats['log_likelihood'] = (dims, log_lik)
+
+        # Get the lp__
+        lp = np.swapaxes(fit.extract(permuted=False)[:,:,-1], 0, 1)
+        az_data.sample_stats['lp'] = (['chain', 'draw'], lp)
+
+    return az_data
+
+
+def waic(fit, log_likelihood=None, pointwise=False):
+    """Compute the WAIC using ArviZ.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Samples from a Stan calculation.
+    log_likelihood : str
+        Name of the variable containing the log likelihood.
+    pointwise : bool, default False
+        If True, also return point-wise WAIC.
+
+    Returns
+    -------
+    output : Pandas data frame
+        Pandas DataFrame with columns:
+          waic: widely available information criterion
+          waic_se: standard error of waic
+          p_waic: effective number parameters
+          var_warn: 1 if posterior variance of the log predictive
+            densities exceeds 0.4
+          waic_i: and array of the pointwise predictive accuracy, only 
+            if `pointwise` True
+    """
+    logging.getLogger('pystan').setLevel(logging.CRITICAL)
+
+    if log_likelihood is None:
+        raise RuntimeError('Must supply `log_likelihood`.')
+
+    az_data = to_arviz(fit, log_likelihood=None)
+
+    return az.waic(az_data, pointwise=pointwise)
+
+
+def loo(fit, log_likelihood=None, pointwise=False, reff=None):
+    """Compute the PSIS-LOO.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Samples from a Stan calculation.
+    log_likelihood : str
+        Name of the variable containing the log likelihood.
+    pointwise : bool, default False
+        If True, also return point-wise predictive accuracy.
+    reff : float, optional
+        Relative MCMC efficiency, `effective_n / n` i.e. number of 
+        effective samples divided by the number of actual samples. 
+        Computed from trace by default.
+
+    Returns
+    -------
+    output : Pandas data frame
+        Pandas DataFrame with columns:
+          loo: approximated Leave-one-out cross-validation
+          loo_se: standard error of loo
+          p_loo: effective number of parameters
+          shape_warn: 1 if the estimated shape parameter of Pareto
+            distribution is greater than 0.7 for one or more samples.
+          loo_i: array of pointwise predictive accuracy, only if 
+            `pointwise` True
+    """
+    logging.getLogger('pystan').setLevel(logging.CRITICAL)
+
+    if log_likelihood is None:
+        raise RuntimeError('Must supply `log_likelihood`.')
+
+    az_data = to_arviz(fit, log_likelihood=None)
+
+    return az.loo(az_data, pointwise=pointwise, reff=reff)
 
 
 def df_to_datadict_hier(df=None, level_cols=None, data_cols=None, 
