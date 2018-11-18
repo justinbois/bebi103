@@ -452,8 +452,8 @@ def waic(fit, log_likelihood=None, pointwise=False):
     if log_likelihood is None:
         raise RuntimeError('Must supply `log_likelihood`.')
 
-    az_data = to_arviz(fit, log_likelihood=None)
-
+    az_data = to_arviz(fit, log_likelihood=log_likelihood)
+    
     return az.waic(az_data, pointwise=pointwise)
 
 
@@ -490,7 +490,7 @@ def loo(fit, log_likelihood=None, pointwise=False, reff=None):
     if log_likelihood is None:
         raise RuntimeError('Must supply `log_likelihood`.')
 
-    az_data = to_arviz(fit, log_likelihood=None)
+    az_data = to_arviz(fit, log_likelihood=log_likelihood)
 
     return az.loo(az_data, pointwise=pointwise, reff=reff)
 
