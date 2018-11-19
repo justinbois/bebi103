@@ -1,0 +1,9 @@
+pystan
+numpy
+numba
+scipy
+pandas
+tqdm
+bokeh
+matplotlib
+arviz
