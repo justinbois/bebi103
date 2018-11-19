@@ -746,16 +746,13 @@ def check_divergences(fit, quiet=False, return_diagnostics=False):
     return pass_check
 
 
-def check_treedepth(fit, max_treedepth=10, quiet=False,
-                    return_diagnostics=False):
+def check_treedepth(fit, quiet=False, return_diagnostics=False):
     """Check transitions that ended prematurely due to maximum tree depth limit.
 
     Parameters
     ----------
     fit : StanFit4Model instance
         Fit for which diagnostic is to be run.
-    max_treedepth : int, default 10
-        The maximum allowed tree depth.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
     return_diagnostics : bool, default False
@@ -771,6 +768,12 @@ def check_treedepth(fit, max_treedepth=10, quiet=False,
         Number of samplers wherein the tree depth was greater than
         `max_treedepth`.
     """
+    try:
+        max_treedepth = fit.stan_args[0]['ctrl']['sampling']['max_treedepth']
+    except:
+        warnings.warn('Unable to determine max_treedepth. Using value of 10.')
+        max_treedepth = 10
+
     df = _fit_to_df(fit)
 
     n_too_deep = (df['treedepth__'] >= max_treedepth).sum()
@@ -956,7 +959,7 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
     return pass_check
 
 
-def check_all_diagnostics(fit, max_treedepth=10, e_bfmi_rule_of_thumb=0.2,
+def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
                           n_eff_rule_of_thumb=0.001, rhat_rule_of_thumb=1.1,
                           known_rhat_nans=[], quiet=False):
     """Checks all MCMC diagnostics
@@ -965,8 +968,6 @@ def check_all_diagnostics(fit, max_treedepth=10, e_bfmi_rule_of_thumb=0.2,
     ----------
     fit : StanFit4Model instance
         Fit for which diagnostic is to be run.
-    max_treedepth : int, default 10
-        The maximum allowed tree depth.
     e_bfmi_rule_of_thumb : float, default 0.2
         Rule of thumb value for E-BFMI. If below this value, there may
         be cause for concern.
@@ -1011,9 +1012,7 @@ def check_all_diagnostics(fit, max_treedepth=10, e_bfmi_rule_of_thumb=0.2,
     if not check_divergences(df, quiet=quiet):
         warning_code = warning_code | (1 << 2)
 
-    if not check_treedepth(df, 
-                           max_treedepth=max_treedepth, 
-                           quiet=quiet):
+    if not check_treedepth(fit, quiet=quiet):
         warning_code = warning_code | (1 << 3)
 
     if not check_energy(df,
