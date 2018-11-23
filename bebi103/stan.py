@@ -154,12 +154,14 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
         raise RuntimeError('`dtypes` cannot be specified when `permuted`'
                             + ' is False and `pars` is None.')
 
-    if pystan.__version__ >= '2.18':
+    try:
         return fit.to_dataframe(pars=pars, 
                                 permuted=permuted, 
                                 dtypes=dtypes, 
                                 inc_warmup=inc_warmup, 
                                 diagnostics=diagnostics)
+    except:
+        pass
 
     # Diagnostics to pull out
     diags = ['divergent__', 'energy__', 'treedepth__', 'accept_stat__', 
@@ -403,12 +405,16 @@ def to_arviz(fit, log_likelihood=None):
     """
     logging.getLogger('pystan').setLevel(logging.CRITICAL)
 
+    print('check 1')
     az_data = az.from_pystan(fit=fit, log_likelihood=log_likelihood)
+    print('check 2')
 
     if pystan.__version__ < '2.18':
         if log_likelihood is not None:
             # Get the log likelihood
+            print('check 3')
             log_lik = np.swapaxes(extract_par(fit, log_likelihood), 0, 1)
+            print('check 4')
 
             # dims for xarray
             dims = ['chain', 'draw', 'log_likelihood_dim_0']
@@ -493,6 +499,45 @@ def loo(fit, log_likelihood=None, pointwise=False, reff=None):
     az_data = to_arviz(fit, log_likelihood=log_likelihood)
 
     return az.loo(az_data, pointwise=pointwise, reff=reff)
+
+
+def compare(fit_dict, log_likelihood=None, **kwargs):
+    """Compare models.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        Samples from a Stan calculation.
+    log_likelihood : str
+        Name of the variable containing the log likelihood.
+    pointwise : bool, default False
+        If True, also return point-wise predictive accuracy.
+    reff : float, optional
+        Relative MCMC efficiency, `effective_n / n` i.e. number of 
+        effective samples divided by the number of actual samples. 
+        Computed from trace by default.
+
+    Returns
+    -------
+    output : Pandas data frame
+        Pandas DataFrame with columns:
+          loo: approximated Leave-one-out cross-validation
+          loo_se: standard error of loo
+          p_loo: effective number of parameters
+          shape_warn: 1 if the estimated shape parameter of Pareto
+            distribution is greater than 0.7 for one or more samples.
+          loo_i: array of pointwise predictive accuracy, only if 
+            `pointwise` True
+    """
+    logging.getLogger('pystan').setLevel(logging.CRITICAL)
+
+    if log_likelihood is None:
+        raise RuntimeError('Must supply `log_likelihood`.')
+
+    for key in fit_dict:
+        fit_dict[key] = to_arviz(fit_dict[key], log_likelihood=log_likelihood)
+
+    return az.compare(fit_dict, **kwargs)
 
 
 def df_to_datadict_hier(df=None, level_cols=None, data_cols=None, 
