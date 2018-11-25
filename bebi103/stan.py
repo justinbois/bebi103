@@ -405,16 +405,12 @@ def to_arviz(fit, log_likelihood=None):
     """
     logging.getLogger('pystan').setLevel(logging.CRITICAL)
 
-    print('check 1')
     az_data = az.from_pystan(fit=fit, log_likelihood=log_likelihood)
-    print('check 2')
 
     if pystan.__version__ < '2.18':
         if log_likelihood is not None:
             # Get the log likelihood
-            print('check 3')
             log_lik = np.swapaxes(extract_par(fit, log_likelihood), 0, 1)
-            print('check 4')
 
             # dims for xarray
             dims = ['chain', 'draw', 'log_likelihood_dim_0']
@@ -506,28 +502,47 @@ def compare(fit_dict, log_likelihood=None, **kwargs):
 
     Parameters
     ----------
-    fit : StanFit4Model instance
-        Samples from a Stan calculation.
+    fit_dict : StanFit4Model instance
+        A dictionary where each key it a name attached to a model and
+        the value is a StanFit4Model instance that has the posterior
+        samples.
     log_likelihood : str
         Name of the variable containing the log likelihood.
-    pointwise : bool, default False
-        If True, also return point-wise predictive accuracy.
-    reff : float, optional
-        Relative MCMC efficiency, `effective_n / n` i.e. number of 
-        effective samples divided by the number of actual samples. 
-        Computed from trace by default.
 
     Returns
     -------
     output : Pandas data frame
         Pandas DataFrame with columns:
-          loo: approximated Leave-one-out cross-validation
-          loo_se: standard error of loo
-          p_loo: effective number of parameters
-          shape_warn: 1 if the estimated shape parameter of Pareto
-            distribution is greater than 0.7 for one or more samples.
-          loo_i: array of pointwise predictive accuracy, only if 
-            `pointwise` True
+          IC : Information Criteria (WAIC or LOO).
+          pIC : Estimated effective number of parameters.
+          dIC : Relative difference between each IC (WAIC or LOO) and 
+            the lowest IC (WAIC or LOO). It is always 0 for the 
+            top-ranked model.
+          weight: Relative weight for each model.
+            This can be loosely interpreted as the probability of each 
+            model (among the compared model) given the data. By default 
+            the uncertainty in the weights estimation is considered using
+            Bayesian bootstrap.
+          SE : Standard error of the IC estimate. If `method` is
+            BB-pseudo-BMA, these values are estimated using Bayesian 
+            bootstrap.
+          dSE : Standard error of the difference in IC between each 
+            model and the top-ranked model. It is always 0 for the 
+            top-ranked model.
+          warning : A value of 1 indicates that the computation of the 
+            IC may not be reliable. This could be indication of WAIC/LOO
+            starting to fail; see http://arxiv.org/abs/1507.04544.
+            
+    Notes
+    -----
+    .. All kwargs are passed into arviz.stats.compare(). These kwargs
+       are given in the ArviZ documentation. Importantly, use 
+       `ic='waic'` or `ic='loo'` to respectively use WAIC or LOO as the
+       information criterion. WAIC is the default. Use 
+       `method='stacking'` for stacking to compute weights (default) and
+       `method='BB-pseudo-BMA'` to use pseudo-Bayesian model averaging
+       with Akaike-type weights.
+
     """
     logging.getLogger('pystan').setLevel(logging.CRITICAL)
 

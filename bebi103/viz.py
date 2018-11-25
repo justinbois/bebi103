@@ -1644,7 +1644,7 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
                     plot_width=350, plot_height=225,
                     color='blue', data_color='orange', data_line=True,
                     data_size=2, x=None, discrete=False):
-    """Plot a median predictive ECDF from samples.
+    """Plot a predictive ECDF from samples.
 
     Parameters
     ----------
@@ -1702,10 +1702,13 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
         Figure populated with glyphs describing range of values for the
         ECDF of the samples. The shading goes according to percentiles
         of samples of the ECDF, with the median ECDF plotted as line in 
-        the middle. The median PPC ECDF is plotted on top.
+        the middle.
     """
     if discrete:
         raise NotImplementedError('`discrete` must be False.')
+
+    if name is None:
+        raise RuntimeError('`name` must be provided.')
 
     df = stan._fit_to_df(samples, diagnostics=False)
 
@@ -1795,6 +1798,128 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
             p.line(x_data, y_data, color=data_color, line_width=data_size)
         else:
             p.circle(x_data, y_data, color=data_color, size=data_size)
+
+    return p
+
+
+def predictive_regression(samples=None, name=None, data_x=None, data_y=None,
+                          percentiles=[80, 60, 40, 20],
+                          x_axis_label=None, y_axis_label=None, title=None,
+                          plot_width=350, plot_height=225,
+                          color='blue', data_color='orange', data_alpha=1,
+                          data_size=2):
+    """Plot a predictive regression plot from samples.
+
+    Parameters
+    ----------
+    samples : StanFit4Model instance or Pandas DataFrame
+        Samples generated from running a Stan calculation.
+    name : str
+        Name of the array to use in plotting the predictive ECDF. The
+        array must be one-dimensional.
+    data_x : 1D Numpy array, default None
+        If not None, x-values for measured data. These are plotted as 
+        points over the predictive plot.
+    data_y : 1D Numpy array, default None
+        If not None, y-values for measured data. These are plotted as 
+        points over the predictive plot.
+    percentiles : list, default [80, 60, 40, 20]
+        Percentiles for making colored envelopes for confidence
+        intervals for the predictive ECDFs. Maximally four can be 
+        specified.
+    x_axis_label : str, default None
+        Label for the x-axis. If None, the value of `name` is used.
+    y_axis_label : str, default None
+        Label for the y-axis. If None, 'ECDF' is used if `diff` is 
+        False and 'ECDF difference' is used if `diff` is True. Ignored 
+        if `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored if `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored if `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored if `p` is not None.
+    color : str, default 'blue'
+        One of ['green', 'blue', 'red', 'gray', 'purple', 'orange'].
+        There are used to make the color scheme of shading of
+        percentiles.
+    data_color : str, default 'orange'
+        String representing the color of the data to be plotted over the
+        confidence interval envelopes.
+    data_alpha : float, default 1
+        Transparency for data.
+    data_size : int, default 2
+        Size of marker of plot of data.
+
+    Returns
+    -------
+    output : Bokeh figure
+        Figure populated with glyphs describing range of values for the
+        the samples. The shading goes according to percentiles of 
+        samples, with the median plotted as line in the middle.
+    """
+    df = stan._fit_to_df(samples, diagnostics=False)
+
+    if name is None:
+        raise RuntimeError('`name` must be provided.')
+    if data_x is None:
+        raise RuntimeError('`data_x` must be provided.')
+
+    if len(percentiles) > 4:
+        raise RuntimeError('Can specify maximally four percentiles.')
+
+    # Build ptiles
+    ptiles = [pt for pt in percentiles if pt > 0]
+    ptiles = ([50 - pt/2 for pt in percentiles] + [50] 
+                + [50 + pt/2 for pt in percentiles[::-1]])
+    ptiles = np.array(ptiles) / 100
+    ptiles_str = [str(pt) for pt in ptiles]
+
+    if color not in ['green', 'blue', 'red', 'gray', 
+                     'purple', 'orange', 'betancourt']:
+        raise RuntimeError("Only allowed colors are 'green', 'blue', 'red', 'gray', 'purple', 'orange'")
+
+    sub_df = stan.extract_array(df, name)
+
+    if 'index_j' in sub_df:
+        raise RuntimeError('Can only make plot for one-dimensional data.')
+
+    colors = {'blue': ['#9ecae1','#6baed6','#4292c6','#2171b5','#084594'],
+              'green': ['#a1d99b','#74c476','#41ab5d','#238b45','#005a32'],
+              'red': ['#fc9272','#fb6a4a','#ef3b2c','#cb181d','#99000d'],
+              'orange': ['#fdae6b','#fd8d3c','#f16913','#d94801','#8c2d04'],
+              'purple': ['#bcbddc','#9e9ac8','#807dba','#6a51a3','#4a1486'],
+              'gray': ['#bdbdbd','#969696','#737373','#525252','#252525'],
+              'betancourt': ['#DCBCBC', '#C79999', '#B97C7C', 
+                             '#A25050', '#8F2727', '#7C0000']}
+
+    df_ppc = (sub_df.groupby('index_1')[name]
+                     .quantile(ptiles)
+                     .unstack()
+                     .reset_index(drop=True))
+    df_ppc.columns = df_ppc.columns.astype(str)
+
+    p = bokeh.plotting.figure(plot_width=plot_width, 
+                              plot_height=plot_height,
+                              x_axis_label=x_axis_label, 
+                              y_axis_label=y_axis_label,
+                              title=title)
+
+    for i, ptile in enumerate(ptiles_str[:len(ptiles_str)//2]):
+        fill_between(x1=data_x, x2=data_x,
+                     y1=df_ppc[ptile], y2=df_ppc[ptiles_str[-i-1]],
+                     p=p, show_line=False, fill_color=colors[color][i])
+
+    # The median as a solid line
+    p.line(data_x,
+           df_ppc['0.5'], 
+           line_width=2, 
+           color=colors[color][-1])
+
+    # Overlay data set
+    if data_y is not None:
+        p.circle(data_x, data_y, color=data_color, size=data_size, 
+            alpha=data_alpha)
 
     return p
 
