@@ -1,3 +1,4 @@
+import contextlib
 import copy
 import itertools
 import re
@@ -23,7 +24,7 @@ import bokeh.plotting
 from . import viz
 
 
-def StanModel(file=None, charset='utf-8', model_name='anon_model', 
+def StanModel(file=None, charset='utf-8', model_name='anon_model',
               model_code=None, force_compile=False, **kwargs):
     """"Utility to load/save cached compiled Stan models.
 
@@ -87,7 +88,7 @@ def StanModel(file=None, charset='utf-8', model_name='anon_model',
 
         with open(cache_fname, 'wb') as f:
             pickle.dump(sm, f)
-    else:        
+    else:
         try:
             sm = pickle.load(open(cache_fname, 'rb'))
         except:
@@ -101,7 +102,7 @@ def StanModel(file=None, charset='utf-8', model_name='anon_model',
     return sm
 
 
-def to_dataframe(fit, pars=None, permuted=False, dtypes=None, 
+def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
                  inc_warmup=False, diagnostics=True):
     """
     Convert the results of a fit to a DataFrame.
@@ -145,7 +146,7 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
     if permuted and inc_warmup:
         raise RuntimeError(
                 'If `permuted` is True, `inc_warmup` must be False.')
-        
+
     if permuted and diagnostics:
         raise RuntimeError(
                 'Diagnostics are not available when `permuted` is True.')
@@ -155,18 +156,18 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
                             + ' is False and `pars` is None.')
 
     try:
-        return fit.to_dataframe(pars=pars, 
-                                permuted=permuted, 
-                                dtypes=dtypes, 
-                                inc_warmup=inc_warmup, 
+        return fit.to_dataframe(pars=pars,
+                                permuted=permuted,
+                                dtypes=dtypes,
+                                inc_warmup=inc_warmup,
                                 diagnostics=diagnostics)
     except:
         pass
 
     # Diagnostics to pull out
-    diags = ['divergent__', 'energy__', 'treedepth__', 'accept_stat__', 
+    diags = ['divergent__', 'energy__', 'treedepth__', 'accept_stat__',
              'stepsize__', 'n_leapfrog__']
-        
+
     # Build parameters if not supplied
     if pars is not None:
         warnings.warn(
@@ -186,8 +187,8 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
 
     # Retrieve samples
     samples = fit.extract(pars=pars,
-                          permuted=permuted, 
-                          dtypes=dtypes, 
+                          permuted=permuted,
+                          dtypes=dtypes,
                           inc_warmup=inc_warmup)
     n_chains = len(fit.stan_args)
     thin = fit.stan_args[0]['thin']
@@ -201,18 +202,18 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
 
     if inc_warmup:
         n = (n_warmup + n_samples)*n_chains
-        warmup = np.concatenate([[1]*n_warmup + [0]*n_samples 
+        warmup = np.concatenate([[1]*n_warmup + [0]*n_samples
                                     for _ in range(n_chains)]).astype(int)
-        chain = np.concatenate([[i+1]*(n_warmup+n_samples) 
+        chain = np.concatenate([[i+1]*(n_warmup+n_samples)
                                     for i in range(n_chains)]).astype(int)
-        chain_idx = np.concatenate([np.arange(1, n_warmup+n_samples+1) 
+        chain_idx = np.concatenate([np.arange(1, n_warmup+n_samples+1)
                                         for _ in range(n_chains)]).astype(int)
     else:
         n = n_samples * n_chains
         warmup = np.array([0]*n, dtype=int)
         chain = np.concatenate([[i+1]*n_samples
                                     for i in range(n_chains)]).astype(int)
-        chain_idx = np.concatenate([np.arange(1, n_samples+1) 
+        chain_idx = np.concatenate([np.arange(1, n_samples+1)
                                         for _ in range(n_chains)]).astype(int)
 
     if permuted:
@@ -226,11 +227,11 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
         diag_vals = list(sampler_params[0].keys())
 
         # If they are standard, do same order as PyStan 2.18 to_dataframe
-        if (len(diag_vals) == len(diags) 
+        if (len(diag_vals) == len(diags)
                 and sum([val not in diags for val in diag_vals]) == 0):
             diag_vals = diags
         for diag in diag_vals:
-            df[diag] = np.concatenate([sampler_params[i][diag] 
+            df[diag] = np.concatenate([sampler_params[i][diag]
                                             for i in range(n_chains)])
             if diag in ['treedepth__', 'n_leapfrog__']:
                 df[diag] = df[diag].astype(int)
@@ -240,7 +241,7 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
             try:
                 indices = re.search('\[(\d+)(,\d+)*\]', par).group()
                 base_name = re.split('\[(\d+)(,\d+)*\]', par, maxsplit=1)[0]
-                col = (base_name 
+                col = (base_name
                     + re.sub('\d+', lambda x: str(int(x.group())+1), indices))
             except AttributeError:
                 col = par
@@ -251,9 +252,9 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
             if len(dim_dict[par]) == 0:
                 df[par] = samples[par].flatten(order='F')
             else:
-                for inds in itertools.product(*[range(dim) 
+                for inds in itertools.product(*[range(dim)
                                                 for dim in dim_dict[par]]):
-                    col = (par + '[' + 
+                    col = (par + '[' +
                         ','.join([str(ind+1) for ind in inds[::-1]]) + ']')
 
                     if permuted:
@@ -275,16 +276,16 @@ def extract_array(samples, name):
         Samples from a Stan calculation that contains an array for
         extraction.
     name : str
-        The name of the array to extract. For example, if `name` is 
+        The name of the array to extract. For example, if `name` is
         'my_array', and the array is one-dimensional, entries with
         variable names 'my_array[1]', 'my_array[2]', ... are extracted.
 
     Returns
     -------
     output : Pandas DataFrame
-        A tidy DataFrame with the extracted array. For a 1-D array, the 
-        DataFrame has columns: 
-            ['chain', 'chain_idx', 'warmup', 'index_1', 'name'] 
+        A tidy DataFrame with the extracted array. For a 1-D array, the
+        DataFrame has columns:
+            ['chain', 'chain_idx', 'warmup', 'index_1', 'name']
         For a 2D array, there is an additional column named 'index_2'. A
         3D array has a column 'index_3' and so on.
     """
@@ -309,18 +310,19 @@ def extract_array(samples, name):
         if col in df:
             df_out[col] = np.concatenate([df[col].values]*n_entries)
 
-    indices = [re.search('\[(\d+)(,\d+)*\]', col).group()[1:-1].split(',') 
+    indices = [re.search('\[(\d+)(,\d+)*\]', col).group()[1:-1].split(',')
                            for col in sub_df.columns]
-    indices = np.vstack([np.array([[int(i) for i in ind]]*n) 
+    indices = np.vstack([np.array([[int(i) for i in ind]]*n)
                             for ind in indices])
-    ind_df = pd.DataFrame(columns=['index_{0:d}'.format(i) 
-                                       for i in range(1, indices.shape[1]+1)], 
+    ind_df = pd.DataFrame(columns=['index_{0:d}'.format(i)
+                                       for i in range(1, indices.shape[1]+1)],
                           data=indices)
-    
+
     return pd.concat([ind_df, df_out], axis=1)
 
 
-def extract_par(fit, par, permuted=False, inc_warmup=False):
+def extract_par(fit, par, permuted=False, inc_warmup=False,
+                logging_disable_level=logging.ERROR):
     """Extract samples of a parameter out of a StanFit4Model.
 
     Parameters
@@ -328,13 +330,17 @@ def extract_par(fit, par, permuted=False, inc_warmup=False):
     fit : StanFit4Model instance
         Samples from a Stan calculation.
     par : str
-        The name of the variable to extract. For example, if `name` is 
+        The name of the variable to extract. For example, if `name` is
         'my_array', and the array is one-dimensional, entries with
         variable names 'my_array[1]', 'my_array[2]', ... are extracted.
     permuted : bool, default False
         If True, the chains are combined and the samples are permuted.
     inc_warmup : bool, default False
         If True, include warmup samples.
+    logging_disable_level : str, default logging.ERROR
+        Logging is disabled below this level. This helps deal with
+        annoying warning from PyStan when doing extractions when dtype
+        is not specified and permuted is False.
 
     Returns
     -------
@@ -350,17 +356,17 @@ def extract_par(fit, par, permuted=False, inc_warmup=False):
        a StanFit4Model instance does not work as advertised. This
        accommodates that functionality.
     """
-    logging.getLogger('pystan').setLevel(logging.CRITICAL)
-
     if permuted:
         return fit.extract(pars=par, permuted=True, dtypes=None,
                            inc_warmup=inc_warmup)[par]
 
     if pystan.__version__ >= '2.18':
-        return fit.extract(pars=par, permuted=False, dtypes=None,
-                           inc_warmup=inc_warmup)
+        with _disable_logging(level=logging_disable_level):
+            return fit.extract(pars=par, permuted=False, dtypes=None,
+                               inc_warmup=inc_warmup)
 
-    data = fit.extract(permuted=False, inc_warmup=inc_warmup, dtypes=None)
+    with _disable_logging(level=logging_disable_level):
+        data = fit.extract(permuted=False, inc_warmup=inc_warmup, dtypes=None)
 
     inds = []
     for k, par_name in enumerate(fit.flatnames):
@@ -379,7 +385,7 @@ def extract_par(fit, par, permuted=False, inc_warmup=False):
     return data[:,:,inds]
 
 
-def to_arviz(fit, log_likelihood=None):
+def to_arviz(fit, log_likelihood=None, logging_disable_level=logging.ERROR):
     """Convert a StanFit4Model to an ArviZ data set.
 
     Parameters
@@ -388,6 +394,10 @@ def to_arviz(fit, log_likelihood=None):
         Samples from a Stan calculation.
     log_likelihood : str
         Name of the variable containing the log likelihood.
+    logging_disable_level : str, default logging.ERROR
+        Logging is disabled below this level. This helps deal with
+        annoying warning from PyStan when doing extractions when dtype
+        is not specified and permuted is False.
 
     Returns
     -------
@@ -396,21 +406,22 @@ def to_arviz(fit, log_likelihood=None):
     Notes
     -----
     .. This function is only necessary because of problems ArviZ has
-       with PyStan < 2.18. You should just directly use 
+       with PyStan < 2.18. You should just directly use
        `arviz.from_pystan()` if you have PyStan >= 2.18. Note that this
        function does not allow other kwargs besides `log_likelihood`
        that are available in `arviz.from_pystan()`. The main purpose
        of this function is to get minimal information necessary for
        doing PSIS-LOO and WAIC calculations using ArviZ.
     """
-    logging.getLogger('pystan').setLevel(logging.CRITICAL)
-
-    az_data = az.from_pystan(fit=fit, log_likelihood=log_likelihood)
+    with _disable_logging(level=logging_disable_level):
+        az_data = az.from_pystan(fit=fit, log_likelihood=log_likelihood)
 
     if pystan.__version__ < '2.18':
         if log_likelihood is not None:
             # Get the log likelihood
-            log_lik = np.swapaxes(extract_par(fit, log_likelihood), 0, 1)
+            log_lik = np.swapaxes(
+                extract_par(fit, log_likelihood,
+                            logging_disable_level=logging_disable_level), 0, 1)
 
             # dims for xarray
             dims = ['chain', 'draw', 'log_likelihood_dim_0']
@@ -419,13 +430,15 @@ def to_arviz(fit, log_likelihood=None):
             az_data.sample_stats['log_likelihood'] = (dims, log_lik)
 
         # Get the lp__
-        lp = np.swapaxes(fit.extract(permuted=False)[:,:,-1], 0, 1)
+        with _disable_logging(level=logging_disable_level):
+            lp = np.swapaxes(fit.extract(permuted=False)[:,:,-1], 0, 1)
         az_data.sample_stats['lp'] = (['chain', 'draw'], lp)
 
     return az_data
 
 
-def waic(fit, log_likelihood=None, pointwise=False):
+def waic(fit, log_likelihood=None, pointwise=False,
+         logging_disable_level=logging.ERROR):
     """Compute the WAIC using ArviZ.
 
     Parameters
@@ -436,6 +449,10 @@ def waic(fit, log_likelihood=None, pointwise=False):
         Name of the variable containing the log likelihood.
     pointwise : bool, default False
         If True, also return point-wise WAIC.
+    logging_disable_level : str, default logging.ERROR
+        Logging is disabled below this level. This helps deal with
+        annoying warning from PyStan when doing extractions when dtype
+        is not specified and permuted is False.
 
     Returns
     -------
@@ -446,20 +463,20 @@ def waic(fit, log_likelihood=None, pointwise=False):
           p_waic: effective number parameters
           var_warn: 1 if posterior variance of the log predictive
             densities exceeds 0.4
-          waic_i: and array of the pointwise predictive accuracy, only 
+          waic_i: and array of the pointwise predictive accuracy, only
             if `pointwise` True
     """
-    logging.getLogger('pystan').setLevel(logging.CRITICAL)
-
     if log_likelihood is None:
         raise RuntimeError('Must supply `log_likelihood`.')
 
-    az_data = to_arviz(fit, log_likelihood=log_likelihood)
+    az_data = to_arviz(fit, log_likelihood=log_likelihood,
+                       logging_disable_level=logging_disable_level)
 
     return az.waic(az_data, pointwise=pointwise)
 
 
-def loo(fit, log_likelihood=None, pointwise=False, reff=None):
+def loo(fit, log_likelihood=None, pointwise=False, reff=None,
+        logging_disable_level=logging.ERROR):
     """Compute the PSIS-LOO.
 
     Parameters
@@ -471,9 +488,13 @@ def loo(fit, log_likelihood=None, pointwise=False, reff=None):
     pointwise : bool, default False
         If True, also return point-wise predictive accuracy.
     reff : float, optional
-        Relative MCMC efficiency, `effective_n / n` i.e. number of 
-        effective samples divided by the number of actual samples. 
+        Relative MCMC efficiency, `effective_n / n` i.e. number of
+        effective samples divided by the number of actual samples.
         Computed from trace by default.
+    logging_disable_level : str, default logging.ERROR
+        Logging is disabled below this level. This helps deal with
+        annoying warning from PyStan when doing extractions when dtype
+        is not specified and permuted is False.
 
     Returns
     -------
@@ -484,20 +505,20 @@ def loo(fit, log_likelihood=None, pointwise=False, reff=None):
           p_loo: effective number of parameters
           shape_warn: 1 if the estimated shape parameter of Pareto
             distribution is greater than 0.7 for one or more samples.
-          loo_i: array of pointwise predictive accuracy, only if 
+          loo_i: array of pointwise predictive accuracy, only if
             `pointwise` True
     """
-    logging.getLogger('pystan').setLevel(logging.CRITICAL)
-
     if log_likelihood is None:
         raise RuntimeError('Must supply `log_likelihood`.')
 
-    az_data = to_arviz(fit, log_likelihood=log_likelihood)
+    az_data = to_arviz(fit, log_likelihood=log_likelihood,
+                       logging_disable_level=logging_disable_level)
 
     return az.loo(az_data, pointwise=pointwise, reff=reff)
 
 
-def compare(fit_dict, log_likelihood=None, **kwargs):
+def compare(fit_dict, log_likelihood=None,
+            logging_disable_level=logging.ERROR, **kwargs):
     """Compare models.
 
     Parameters
@@ -508,6 +529,10 @@ def compare(fit_dict, log_likelihood=None, **kwargs):
         samples.
     log_likelihood : str
         Name of the variable containing the log likelihood.
+    logging_disable_level : str, default logging.ERROR
+        Logging is disabled below this level. This helps deal with
+        annoying warning from PyStan when doing extractions when dtype
+        is not specified and permuted is False.
 
     Returns
     -------
@@ -515,51 +540,50 @@ def compare(fit_dict, log_likelihood=None, **kwargs):
         Pandas DataFrame with columns:
           IC : Information Criteria (WAIC or LOO).
           pIC : Estimated effective number of parameters.
-          dIC : Relative difference between each IC (WAIC or LOO) and 
-            the lowest IC (WAIC or LOO). It is always 0 for the 
+          dIC : Relative difference between each IC (WAIC or LOO) and
+            the lowest IC (WAIC or LOO). It is always 0 for the
             top-ranked model.
           weight: Relative weight for each model.
-            This can be loosely interpreted as the probability of each 
-            model (among the compared model) given the data. By default 
+            This can be loosely interpreted as the probability of each
+            model (among the compared model) given the data. By default
             the uncertainty in the weights estimation is considered using
             Bayesian bootstrap.
           SE : Standard error of the IC estimate. If `method` is
-            BB-pseudo-BMA, these values are estimated using Bayesian 
+            BB-pseudo-BMA, these values are estimated using Bayesian
             bootstrap.
-          dSE : Standard error of the difference in IC between each 
-            model and the top-ranked model. It is always 0 for the 
+          dSE : Standard error of the difference in IC between each
+            model and the top-ranked model. It is always 0 for the
             top-ranked model.
-          warning : A value of 1 indicates that the computation of the 
+          warning : A value of 1 indicates that the computation of the
             IC may not be reliable. This could be indication of WAIC/LOO
             starting to fail; see http://arxiv.org/abs/1507.04544.
-            
+
     Notes
     -----
     .. All kwargs are passed into arviz.stats.compare(). These kwargs
-       are given in the ArviZ documentation. Importantly, use 
+       are given in the ArviZ documentation. Importantly, use
        `ic='waic'` or `ic='loo'` to respectively use WAIC or LOO as the
-       information criterion. WAIC is the default. Use 
+       information criterion. WAIC is the default. Use
        `method='stacking'` for stacking to compute weights (default) and
        `method='BB-pseudo-BMA'` to use pseudo-Bayesian model averaging
        with Akaike-type weights.
 
     """
-    logging.getLogger('pystan').setLevel(logging.CRITICAL)
-
     if log_likelihood is None:
         raise RuntimeError('Must supply `log_likelihood`.')
 
     for key in fit_dict:
-        fit_dict[key] = to_arviz(fit_dict[key], log_likelihood=log_likelihood)
+        fit_dict[key] = to_arviz(fit_dict[key], log_likelihood=log_likelihood,
+                                 logging_disable_level=logging_disable_level)
 
     return az.compare(fit_dict, **kwargs)
 
 
-def df_to_datadict_hier(df=None, level_cols=None, data_cols=None, 
+def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
                         cowardly=True):
     """Convert a tidy data frame to a data dictionary for a hierarchical
     Stan model.
-   
+
     Parameters
     ----------
     df : DataFrame
@@ -567,7 +591,7 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
     level_cols : list
         A list of column names containing variables that specify the
         level of the hierarchical model. These must be given in order
-        of the hierarchy of levels, with the first entry being the 
+        of the hierarchy of levels, with the first entry being the
         farthest from the data.
     data_cols : list
         A list of column names containing the data.
@@ -575,7 +599,7 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
         If True, refuse to generate new columns if they already exist
         in the data frame. If you run this function using a data frame
         that was outputted previously by this function, you will get an
-        error if `cowardly` is True. Otherwise, the columns may be 
+        error if `cowardly` is True. Otherwise, the columns may be
         overwritten.
 
     Returns
@@ -587,11 +611,11 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
           'J_1': Number of hyper parameters for hierarchical level 1.
           'J_2': Number of hyper parameters for hierarchical level 2.
             ... and so on with 'J_3', 'J_4', ...
-          'index_1': Set of `J_2` indices defining which level 1 
+          'index_1': Set of `J_2` indices defining which level 1
             parameters condition the level 2 parameters.
-          'index_2': Set of `J_3` indices defining which level 2 
+          'index_2': Set of `J_3` indices defining which level 2
             parameters condition the level 3 parameters.
-            ...and so on for 'index_3', etc. 
+            ...and so on for 'index_3', etc.
           'index_k': Set of `N` indices defining which of the level k
             parameters condition the data, for a k-level hierarchical
             model.
@@ -601,14 +625,14 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
         Updated input data frame with added columnes with names given by
         `level_col[0] + '_stan'`, `level_col[1] + '_stan'`, etc. These
         contain the integer indices that correspond to the possibly
-        non-integer values in the `level_col`s of the original data 
+        non-integer values in the `level_col`s of the original data
         frame. This enables interpretation of Stan results, which have
         everything integer indexed.
 
     Notes
     -----
     .. Assumes no missing data.
-    .. The ordering of data sets is not guaranteed. So, e.g., if you 
+    .. The ordering of data sets is not guaranteed. So, e.g., if you
        have time series data, you should use caution.
 
     Example
@@ -689,8 +713,8 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
         thursday,1,3,10.53
         thursday,1,4,10.85
         '''), skipinitialspace=True)
-    >>> data, df = bebi103.stan.df_to_datadict_hier(df, 
-                                level_cols=['day', 'batch', 'colony'], 
+    >>> data, df = bebi103.stan.df_to_datadict_hier(df,
+                                level_cols=['day', 'batch', 'colony'],
                                 data_cols=['x'])
     >>> data
     {'N': 70,
@@ -725,42 +749,42 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
     7  monday      1       3   9.30         1           1            3
     8  monday      2       1  10.56         1           2            4
     9  monday      2       1  11.40         1           2            4
-    """    
+    """
     if df is None or level_cols is None or data_cols is None:
         raise RuntimeError('`df`, `level_cols`, and `data_cols` must all be specified.')
 
     # Get a copy so we don't overwrite
     new_df = df.copy(deep=True)
-        
+
     if type(level_cols) not in [list, tuple]:
         level_cols = [level_cols]
-        
+
     if type(data_cols) not in [list, tuple]:
         data_cols = [data_cols]
 
     level_cols_stan = [col + '_stan' for col in level_cols]
-    
+
     if cowardly:
         for col in level_cols_stan:
             if col in df:
                 raise RuntimeError('column ' + col + ' already in data frame. Cowardly deciding not to overwrite.')
-    
+
     for col_ind, col in enumerate(level_cols):
         new_df[str(col)+'_stan'] = df.groupby(
                                         level_cols[:col_ind+1]).ngroup() + 1
-    
+
     new_df = new_df.sort_values(by=level_cols_stan)
-    
+
     data = dict()
     data['N'] = len(new_df)
     for i, col in enumerate(level_cols_stan):
-        data['J_'+ str(i+1)] = len(new_df[col].unique())    
+        data['J_'+ str(i+1)] = len(new_df[col].unique())
     for i, _ in enumerate(level_cols_stan[1:]):
         data['index_' + str(i+1)] = np.array([key[i] for key in new_df.groupby(level_cols_stan[:i+2]).groups]).astype(int)
     data['index_' + str(len(level_cols_stan))] = new_df[level_cols_stan[-1]].values.astype(int)
     for col in data_cols:
         data[str(col)] = new_df[col].values
-        
+
     return data, new_df
 
 
@@ -841,7 +865,7 @@ def check_treedepth(fit, quiet=False, return_diagnostics=False):
 
     if not quiet:
         msg = '{} of {} ({}%) iterations saturated'.format(
-                            n_too_deep, n_total, 100 * n_too_deep / n_total) 
+                            n_too_deep, n_total, 100 * n_too_deep / n_total)
         msg += ' the maximum tree depth of {}.'.format(max_treedepth)
         print(msg)
 
@@ -856,7 +880,7 @@ def check_treedepth(fit, quiet=False, return_diagnostics=False):
     return pass_check
 
 
-def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2, 
+def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2,
                  return_diagnostics=False):
     """Checks the energy-Bayes fraction of missing information (E-BFMI)
 
@@ -871,7 +895,7 @@ def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2,
         be cause for concern.
     return_diagnostics : bool, default False
         If True, return both a Boolean about whether the diagnostic
-        passed and a data frame containing results about the E-BMFI 
+        passed and a data frame containing results about the E-BMFI
         tests. Otherwise, only return Boolean if the test passed.
 
     Results
@@ -921,7 +945,7 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
     return_diagnostics : bool, default False
         If True, return both a Boolean about whether the diagnostic
         passed and a data frame containing results about the number
-        of effective samples tests. Otherwise, only return Boolean if 
+        of effective samples tests. Otherwise, only return Boolean if
         the test passed.
 
     Results
@@ -949,7 +973,7 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
         if not pass_check:
             for name, r in zip(names, ratio):
                 if r < n_eff_rule_of_thumb:
-                    print('n_eff / iter for parameter {} is {}.'.format(name, 
+                    print('n_eff / iter for parameter {} is {}.'.format(name,
                                                                         r))
             print('  n_eff / iter below 0.001 indicates that the effective'
                   + ' sample size has likely been overestimated.')
@@ -957,12 +981,12 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
             print('n_eff / iter looks reasonable for all parameters.')
 
     if return_diagnostics:
-        return pass_check, pd.DataFrame(data={'parameter': names, 
+        return pass_check, pd.DataFrame(data={'parameter': names,
                                               'n_eff/n_iter': ratio})
     return pass_check
 
 
-def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[], 
+def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
                return_diagnostics=False):
     """Checks the potential issues with scale reduction factors.
 
@@ -976,12 +1000,12 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
         Rule of thumb value for maximum allowed R-hat.
     known_rhat_nans : list, default []
         List of parameter names which are known to have R-hat be NaN.
-        These are typically parameters that are deterministic. 
+        These are typically parameters that are deterministic.
         Parameters in this list are ignored.
     return_diagnostics : bool, default False
         If True, return both a Boolean about whether the diagnostic
         passed and a data frame containing results about the number
-        of effective samples tests. Otherwise, only return Boolean if 
+        of effective samples tests. Otherwise, only return Boolean if
         the test passed.
 
     Results
@@ -1000,7 +1024,7 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
 
     rhat = np.array([x[-1] for x in fit_summary['summary']])
 
-    pass_check = (np.isnan(rhat[~np.array(known_nan)]).sum() == 0 
+    pass_check = (np.isnan(rhat[~np.array(known_nan)]).sum() == 0
                   and np.all(rhat[~np.array(known_nan)] < rhat_rule_of_thumb))
 
     if not quiet:
@@ -1014,7 +1038,7 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
             print('Rhat looks reasonable for all parameters.')
 
     if return_diagnostics:
-        return pass_check, pd.DataFrame(data={'parameter': names, 
+        return pass_check, pd.DataFrame(data={'parameter': names,
                                               'Rhat': rhat})
     return pass_check
 
@@ -1035,7 +1059,7 @@ def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
         Rule of thumb value for maximum allowed R-hat.
     known_rhat_nans : list, default []
         List of parameter names which are known to have R-hat be NaN.
-        These are typically parameters that are deterministic. 
+        These are typically parameters that are deterministic.
         Parameters in this list are ignored.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
@@ -1043,7 +1067,7 @@ def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
     Results
     -------
     warning_code : int
-        When converted to binary, each digit in the code stands for 
+        When converted to binary, each digit in the code stands for
         whether or not a test passed. A digit of zero indicates the test
         passed. The ordering of the tests goes:
             n_eff
@@ -1056,12 +1080,12 @@ def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
     """
     warning_code = 0
 
-    if not check_n_eff(fit, 
-                       n_eff_rule_of_thumb=n_eff_rule_of_thumb, 
+    if not check_n_eff(fit,
+                       n_eff_rule_of_thumb=n_eff_rule_of_thumb,
                        quiet=quiet):
         warning_code = warning_code | (1 << 0)
 
-    if not check_rhat(fit, 
+    if not check_rhat(fit,
                       rhat_rule_of_thumb=rhat_rule_of_thumb,
                       known_rhat_nans=known_rhat_nans,
                       quiet=quiet):
@@ -1076,7 +1100,7 @@ def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
         warning_code = warning_code | (1 << 3)
 
     if not check_energy(df,
-                        e_bfmi_rule_of_thumb=e_bfmi_rule_of_thumb, 
+                        e_bfmi_rule_of_thumb=e_bfmi_rule_of_thumb,
                         quiet=quiet):
         warning_code = warning_code | (1 << 4)
 
@@ -1084,13 +1108,13 @@ def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
 
 
 def parse_warning_code(warning_code):
-    """Parses warning code from `check_all_diagnostics()` into 
+    """Parses warning code from `check_all_diagnostics()` into
     individual failures and prints results.
 
     Parameters
     ----------
     warning_code : int
-        When converted to binary, each digit in the code stands for 
+        When converted to binary, each digit in the code stands for
         whether or not a test passed. A digit of zero indicates the test
         passed. The ordering of the tests goes:
             n_eff
@@ -1121,7 +1145,7 @@ def parse_warning_code(warning_code):
 
 
 def sbc(prior_predictive_model=None,
-        posterior_model=None, 
+        posterior_model=None,
         prior_predictive_model_data=None,
         posterior_model_data=None,
         measured_data=None,
@@ -1151,8 +1175,8 @@ def sbc(prior_predictive_model=None,
         replaced in each simulation by what was generated by the prior
         predictive model.
     measured_data : list
-        A list of strings containing the variable names of measured 
-        data. Each entry in `measured_data` must be a key in 
+        A list of strings containing the variable names of measured
+        data. Each entry in `measured_data` must be a key in
         `posterior_model_data`.
     parameters : list
         A list of strings containing parameter names to be considered
@@ -1172,10 +1196,10 @@ def sbc(prior_predictive_model=None,
     n_jobs : int, default 1
         Number of cores to use in the calculation.
     N : int, 400
-        Number of simulations to run. 
+        Number of simulations to run.
     n_prior_draws_for_sd : int, default 1000
         Number of prior draws to compute the prior standard deviation
-        for a parameter in the prior distribution. This standard 
+        for a parameter in the prior distribution. This standard
         deviation is used in the shrinkage calculation.
     progress_bar : bool, default False
         If True, display a progress bar for the calculation using tqdm.
@@ -1186,32 +1210,32 @@ def sbc(prior_predictive_model=None,
         A Pandas DataFrame with the output of the SBC analysis. It has
         the following columns.
         - trial : Unique trial number for the simulation.
-        - warning_code : Warning code based on diagnostic checks 
+        - warning_code : Warning code based on diagnostic checks
             outputted by `check_all_diagnostics()`.
         - parameter: The name of the scalar parameter.
         - prior: Value of the parameter used in the simulation. This
             value was drawn out of the prior distribution.
-        - mean : mean parameter value based on sampling out of the 
+        - mean : mean parameter value based on sampling out of the
             posterior in the simulation.
-        - sd : standard deviation of the parameter value based on 
+        - sd : standard deviation of the parameter value based on
             sampling out of the posterior in the simulation.
         - L : The number of bins used in computing the rank statistic.
             The rank statistic should be uniform on the integers [0, L].
         - rank_statistic : Value of the rank statistic for the parameter
             for the trial.
-        - shrinkage : The shrinkage for the parameter for the given 
+        - shrinkage : The shrinkage for the parameter for the given
             trial. This is computed as 1 - sd / sd_prior, where sd_prior
-            is the standard deviation of the parameters as determined 
+            is the standard deviation of the parameters as determined
             from drawing out of the prior.
-        - z_score : The z-score for the parameter for the given trial. 
+        - z_score : The z-score for the parameter for the given trial.
             This is computed as |mean - prior| / sd.
 
     Notes
     -----
-    .. Each simulation is done by sampling a parameter set out of the 
+    .. Each simulation is done by sampling a parameter set out of the
        prior distribution, using those parameters to generate data from
        the likelihood, and then performing posterior sampling based on
-       the generated data. A rank statistic for each simulation is 
+       the generated data. A rank statistic for each simulation is
        computed. This rank statistic should be uniformly distributed
        over its L possible values. See https://arxiv.org/abs/1804.06788,
        by Talts, et al., for details.
@@ -1232,8 +1256,8 @@ def sbc(prior_predictive_model=None,
         raise RuntimeError('`parameters` must be specified.')
 
     # Determine prior SDs for parameters of interest
-    prior_sd = _get_prior_sds(prior_predictive_model, 
-                              prior_predictive_model_data, 
+    prior_sd = _get_prior_sds(prior_predictive_model,
+                              prior_predictive_model_data,
                               parameters,
                               n_prior_draws_for_sd)
 
@@ -1242,7 +1266,7 @@ def sbc(prior_predictive_model=None,
         while counter < N:
             counter += 1
             yield (prior_predictive_model,
-                   posterior_model, 
+                   posterior_model,
                    prior_predictive_model_data,
                    posterior_model_data,
                    measured_data,
@@ -1252,14 +1276,14 @@ def sbc(prior_predictive_model=None,
                    iter,
                    thin,
                    prior_sd)
-    
+
     with multiprocessing.Pool(n_jobs) as pool:
         if progress_bar == 'notebook':
-            output = list(tqdm.tqdm_notebook(pool.imap(_perform_sbc, 
+            output = list(tqdm.tqdm_notebook(pool.imap(_perform_sbc,
                                              arg_input_generator()),
                                              total=N))
         elif progress_bar == True:
-            output = list(tqdm.tqdm(pool.imap(_perform_sbc, 
+            output = list(tqdm.tqdm(pool.imap(_perform_sbc,
                                     arg_input_generator()),
                                     total=N))
         elif progress_bar == False:
@@ -1286,7 +1310,7 @@ def hpd(x, mass_frac) :
         The fraction of the probability to be included in
         the HPD.  For example, `massfrac` = 0.95 gives a
         95% HPD.
-        
+
     Returns
     -------
     output : array, shape (2,)
@@ -1297,16 +1321,16 @@ def hpd(x, mass_frac) :
 
     # Number of total samples taken
     n = len(x)
-    
+
     # Get number of samples that should be included in HPD
     n_samples = np.floor(mass_frac * n).astype(int)
-    
+
     # Get width (in units of data) of all intervals with n_samples samples
     int_width = d[n_samples:] - d[:n-n_samples]
-    
+
     # Pick out minimal interval
     min_int = np.argmin(int_width)
-    
+
     # Return interval
     return np.array([d[min_int], d[min_int+n_samples]])
 
@@ -1333,7 +1357,7 @@ def _perform_sbc(args):
     logging.getLogger('pystan').setLevel(logging.CRITICAL)
 
     (prior_predictive_model,
-     posterior_model, 
+     posterior_model,
      prior_predictive_model_data,
      posterior_model_data,
      measured_data,
@@ -1347,12 +1371,12 @@ def _perform_sbc(args):
     posterior_model_data = copy.deepcopy(posterior_model_data)
 
     prior_sample = prior_predictive_model.sampling(
-        data=prior_predictive_model_data, 
-        algorithm='Fixed_param', 
+        data=prior_predictive_model_data,
+        algorithm='Fixed_param',
         iter=1,
         chains=1,
         warmup=0)
-    
+
     # Extract data generated from the prior predictive calculation
     for data in measured_data:
         ar = prior_sample.extract(data)[data]
@@ -1381,12 +1405,12 @@ def _perform_sbc(args):
 
     # Omit Rhat calculations on parameters we are not interested in
     known_rhat_nans = list(set(row_names) - set(parameters))
-    warning_code = check_all_diagnostics(posterior_samples, 
+    warning_code = check_all_diagnostics(posterior_samples,
                                          quiet=True,
                                          known_rhat_nans=known_rhat_nans)
 
     # Generate output dictionary
-    output = {param+'_rank_statistic': 
+    output = {param+'_rank_statistic':
         (posterior_samples.extract(param)[param] < param_priors[param]).sum()
                 for param in parameters}
     for param, p_prior in param_priors.items():
@@ -1400,9 +1424,9 @@ def _perform_sbc(args):
         output[param+'_mean'] = summary['summary'][param_i, mean_i]
         output[param+'_sd'] = summary['summary'][param_i, sd_i]
         output[param+'_z_score'] = np.abs(
-                (output[param+'_mean'] - output[param + '_prior']) 
+                (output[param+'_mean'] - output[param + '_prior'])
                 / output[param+'_sd'])
-        output[param+'_shrinkage'] = (1 - 
+        output[param+'_shrinkage'] = (1 -
                 (output[param+'_sd'] / prior_sd[param])**2)
 
     output['warning_code'] = warning_code
@@ -1410,15 +1434,15 @@ def _perform_sbc(args):
     return output
 
 
-def _get_prior_sds(prior_predictive_model, 
-               prior_predictive_model_data, 
+def _get_prior_sds(prior_predictive_model,
+               prior_predictive_model_data,
                parameters,
                n_prior_draws_for_sd):
-    """Compute standard deviations of prior parameters.""" 
+    """Compute standard deviations of prior parameters."""
 
     prior_samples = prior_predictive_model.sampling(
-        data=prior_predictive_model_data, 
-        algorithm='Fixed_param', 
+        data=prior_predictive_model_data,
+        algorithm='Fixed_param',
         iter=n_prior_draws_for_sd,
         chains=1,
         warmup=0)
@@ -1431,9 +1455,9 @@ def _get_prior_sds(prior_predictive_model,
         if prior_samples.par_dims[ind] != []:
             err = """Can only perform SBC checks on scalar parameters.
 Parameter {} is not a scalar. If you want to check elements
-of this parameter, use an entry in the `generated quantities` 
+of this parameter, use an entry in the `generated quantities`
 block to store the element as a scalar.""".format(param)
-            raise RuntimeError(err)    
+            raise RuntimeError(err)
 
     # Compute prior sd's
     prior_sd = {}
@@ -1471,4 +1495,17 @@ def _tidy_sbc_output(sbc_output):
         dfs.append(sub_df)
 
     return pd.concat(dfs, ignore_index=True)
-    
+
+
+@contextlib.contextmanager
+def _disable_logging(level=logging.CRITICAL):
+    """Context manager for disabling logging."""
+    previous_level = logging.root.manager.disable
+
+    logging.disable(level)
+
+    try:
+        yield
+    finally:
+        logging.disable(previous_level)
+
