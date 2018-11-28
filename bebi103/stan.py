@@ -580,7 +580,7 @@ def compare(fit_dict, log_likelihood=None,
 
 
 def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
-                        cowardly=True):
+                        cowardly=False):
     """Convert a tidy data frame to a data dictionary for a hierarchical
     Stan model.
 
@@ -595,7 +595,7 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
         farthest from the data.
     data_cols : list
         A list of column names containing the data.
-    cowardly : bool, default True
+    cowardly : bool, default False
         If True, refuse to generate new columns if they already exist
         in the data frame. If you run this function using a data frame
         that was outputted previously by this function, you will get an
@@ -783,7 +783,19 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
         data['index_' + str(i+1)] = np.array([key[i] for key in new_df.groupby(level_cols_stan[:i+2]).groups]).astype(int)
     data['index_' + str(len(level_cols_stan))] = new_df[level_cols_stan[-1]].values.astype(int)
     for col in data_cols:
-        data[str(col)] = new_df[col].values
+        # Check string naming
+        new_col = str(col)
+        try:
+           bytes(new_col, 'ascii')
+        except UnicodeEncodeError:
+            raise RuntimeError('Column names must be ASCII.')
+        if new_col[0].isdigit():
+            raise RuntimeError('Column name cannot start with a number.')
+        for char in new_col:
+            if char in '`~!@#$%^&*()-_=+[]{}\\|:;"\',<.>/?':
+                raise RuntimeError('Invalid column name for Stan variable.')
+
+        data[new_col] = new_df[col].values
 
     return data, new_df
 
