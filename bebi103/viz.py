@@ -1802,7 +1802,8 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
     return p
 
 
-def predictive_regression(samples=None, name=None, data_x=None, data_y=None,
+def predictive_regression(samples=None, name=None, diff=True,
+                          data_x=None, data_y=None,
                           percentiles=[80, 60, 40, 20],
                           x_axis_label=None, y_axis_label=None, title=None,
                           plot_width=350, plot_height=225,
