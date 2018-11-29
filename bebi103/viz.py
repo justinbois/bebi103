@@ -1934,8 +1934,12 @@ def predictive_regression(samples=None, name=None, diff=True,
 
     # Overlay data set
     if data_y is not None:
-        p.circle(data_x, data_y, color=data_color, size=data_size,
-            alpha=data_alpha)
+        if diff:
+            p.circle(data_x, data_y - df_ppc['0.5'], color=data_color,
+                     size=data_size, alpha=data_alpha)
+        else:
+            p.circle(data_x, data_y, color=data_color, size=data_size,
+                alpha=data_alpha)
 
     return p
 
