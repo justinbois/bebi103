@@ -1,6 +1,7 @@
 import contextlib
 import copy
 import itertools
+import os
 import re
 import pickle
 import hashlib
@@ -265,6 +266,55 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
                     df[col] = samples[par][array_slice].flatten(order='F')
 
     return df
+
+
+def pickle_dump_samples(fit=None, model=None, pkl_file=None):
+    """Dump samples into a pickle file.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        The output of fitting a Stan model.
+    model : StanModel instance
+        StanModel instance used to get `fit`.
+    pkl_file : str
+        Name of pickle file to create and dump result.
+
+    Returns
+    -------
+    None
+    """
+    if None in [fit, model, pkl_file]:
+        raise RuntimeError(
+            '`fit`, `model`, and `pkl_file` must all be specified.')
+
+    if os.path.isfile(pkl_file):
+        raise RuntimeError(f'File {pkl_file} already exists.')
+
+    with open(pkl_file, 'wb') as f:
+        pickle.dump({'model': model, 'fit': fit}, f, protocol=-1)
+
+
+def pickle_load_samples(pkl_file):
+    """Load samples out of a pickle file.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        The output of fitting a Stan model.
+    model : StanModel instance
+        StanModel instance used to get `fit`.
+    pkl_file : str
+        Name of pickle file to create and dump result.
+
+    Returns
+    -------
+    None
+    """
+    with open(pkl_file, 'rb') as f:
+        data_dict = pickle.load(f)
+
+    return data_dict['fit'], data_dict['model']
 
 
 def extract_array(samples, name):
