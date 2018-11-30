@@ -3435,7 +3435,7 @@ def _cat_source(df, cats, cols, color_column):
         cat_source = list(df[cats].astype(str).values)
         labels = cat_source
 
-    if type(cols) in [list, tuple]:
+    if type(cols) in [list, tuple, pd.core.indexes.base.Index]:
         source_dict = {col: list(df[col].values) for col in cols}
     else:
         source_dict = {cols: list(df[cols].values)}
