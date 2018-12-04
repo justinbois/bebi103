@@ -170,10 +170,12 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
              'stepsize__', 'n_leapfrog__']
 
     # Build parameters if not supplied
-    if pars is not None:
-        warnings.warn(
-            'For PyStan < 2.18, `pars` is ignored; all parameters are used.')
-    pars = tuple(fit.flatnames + ['lp__'])
+    if pars is None:
+        pars = tuple(fit.flatnames + ['lp__'])
+    if type(pars) not in [list, tuple, pd.core.indexes.base.Index]:
+        raise RuntimeError('`pars` must be list or tuple or pandas index.')
+    if 'lp__' not in pars:
+        pars = tuple(list(pars) + ['lp__'])
 
     # Build dtypes if not supplied
     if dtypes is None:
@@ -842,7 +844,7 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
         if new_col[0].isdigit():
             raise RuntimeError('Column name cannot start with a number.')
         for char in new_col:
-            if char in '`~!@#$%^&*()-_=+[]{}\\|:;"\',<.>/?':
+            if char in '`~!@#$%^&*()- =+[]{}\\|:;"\',<.>/?':
                 raise RuntimeError('Invalid column name for Stan variable.')
 
         data[new_col] = new_df[col].values
@@ -850,13 +852,16 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
     return data, new_df
 
 
-def check_divergences(fit, quiet=False, return_diagnostics=False):
+def check_divergences(fit, pars=None, quiet=False, return_diagnostics=False):
     """Check transitions that ended with a divergence.
 
     Parameters
     ----------
     fit : StanFit4Model instance
         Fit for which diagnostic is to be run.
+    pars : list of str, or None (default)
+        Names of parameters to use in doing diagnostic checks. If None,
+        use all parameters.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
     return_diagnostics : bool, default False
@@ -872,7 +877,7 @@ def check_divergences(fit, quiet=False, return_diagnostics=False):
         Number of divergent samples.
     """
 
-    df = _fit_to_df(fit)
+    df = _fit_to_df(fit, pars=pars)
 
     n_divergent = df['divergent__'].sum()
     n_total = len(df)
@@ -892,13 +897,16 @@ def check_divergences(fit, quiet=False, return_diagnostics=False):
     return pass_check
 
 
-def check_treedepth(fit, quiet=False, return_diagnostics=False):
+def check_treedepth(fit, pars=None, quiet=False, return_diagnostics=False):
     """Check transitions that ended prematurely due to maximum tree depth limit.
 
     Parameters
     ----------
     fit : StanFit4Model instance
         Fit for which diagnostic is to be run.
+    pars : list of str, or None (default)
+        Names of parameters to use in doing diagnostic checks. If None,
+        use all parameters.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
     return_diagnostics : bool, default False
@@ -920,7 +928,7 @@ def check_treedepth(fit, quiet=False, return_diagnostics=False):
         warnings.warn('Unable to determine max_treedepth. Using value of 10.')
         max_treedepth = 10
 
-    df = _fit_to_df(fit)
+    df = _fit_to_df(fit, pars=pars)
 
     n_too_deep = (df['treedepth__'] >= max_treedepth).sum()
     n_total = len(df)
@@ -942,7 +950,7 @@ def check_treedepth(fit, quiet=False, return_diagnostics=False):
     return pass_check
 
 
-def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2,
+def check_energy(fit, pars=None, quiet=False, e_bfmi_rule_of_thumb=0.2,
                  return_diagnostics=False):
     """Checks the energy-Bayes fraction of missing information (E-BFMI)
 
@@ -950,6 +958,9 @@ def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2,
     ----------
     fit : StanFit4Model instance
         Fit for which diagnostic is to be run.
+    pars : list of str, or None (default)
+        Names of parameters to use in doing diagnostic checks. If None,
+        use all parameters.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
     e_bfmi_rule_of_thumb : float, default 0.2
@@ -968,7 +979,7 @@ def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2,
         DataFrame with information about which chains had problematic
         E-BFMIs.
     """
-    df = _fit_to_df(fit)
+    df = _fit_to_df(fit, pars=pars)
 
     result = (df.groupby('chain')['energy__']
                 .agg(_ebfmi)
@@ -992,7 +1003,7 @@ def check_energy(fit, quiet=False, e_bfmi_rule_of_thumb=0.2,
     return pass_check
 
 
-def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
+def check_n_eff(fit, pars=None, quiet=False, n_eff_rule_of_thumb=0.001,
                 return_diagnostics=False):
     """Checks the effective sample size per iteration.
 
@@ -1000,6 +1011,9 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
     ----------
     fit : StanFit4Model instance
         Fit for which diagnostic is to be run.
+    pars : list of str, or None (default)
+        Names of parameters to use in doing diagnostic checks. If None,
+        use all parameters.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
     n_eff_rule_of_thumb : float, default 0.001
@@ -1023,7 +1037,7 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
     if 'StanFit4Model' not in str(type(fit)):
         raise RuntimeError('Must imput a StanFit4Model instance.')
 
-    fit_summary = fit.summary(probs=[])
+    fit_summary = fit.summary(probs=[], pars=pars)
     n_effs = np.array([x[-2] for x in fit_summary['summary']])
     names = fit_summary['summary_rownames']
     n_iter = len(fit.extract()['lp__'])
@@ -1048,14 +1062,17 @@ def check_n_eff(fit, quiet=False, n_eff_rule_of_thumb=0.001,
     return pass_check
 
 
-def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
-               return_diagnostics=False):
+def check_rhat(fit, pars=None, quiet=False, rhat_rule_of_thumb=1.1,
+               known_rhat_nans=[], return_diagnostics=False):
     """Checks the potential issues with scale reduction factors.
 
     Parameters
     ----------
     fit : StanFit4Model instance
         Fit for which diagnostic is to be run.
+    pars : list of str, or None (default)
+        Names of parameters to use in doing diagnostic checks. If None,
+        use all parameters.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
     rhat_rule_of_thumb : float, default 1.1
@@ -1080,7 +1097,7 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
     if 'StanFit4Model' not in str(type(fit)):
         raise RuntimeError('Must imput a StanFit4Model instance.')
 
-    fit_summary = fit.summary(probs=[])
+    fit_summary = fit.summary(probs=[], pars=pars)
     names = fit_summary['summary_rownames']
     known_nan = [True if name in known_rhat_nans else False for name in names]
 
@@ -1105,7 +1122,7 @@ def check_rhat(fit, quiet=False, rhat_rule_of_thumb=1.1, known_rhat_nans=[],
     return pass_check
 
 
-def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
+def check_all_diagnostics(fit, pars=None, e_bfmi_rule_of_thumb=0.2,
                           n_eff_rule_of_thumb=0.001, rhat_rule_of_thumb=1.1,
                           known_rhat_nans=[], quiet=False):
     """Checks all MCMC diagnostics
@@ -1114,6 +1131,9 @@ def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
     ----------
     fit : StanFit4Model instance
         Fit for which diagnostic is to be run.
+    pars : list of str, or None (default)
+        Names of parameters to use in doing diagnostic checks. If None,
+        use all parameters.
     e_bfmi_rule_of_thumb : float, default 0.2
         Rule of thumb value for E-BFMI. If below this value, there may
         be cause for concern.
@@ -1143,17 +1163,19 @@ def check_all_diagnostics(fit, e_bfmi_rule_of_thumb=0.2,
     warning_code = 0
 
     if not check_n_eff(fit,
+                       pars,
                        n_eff_rule_of_thumb=n_eff_rule_of_thumb,
                        quiet=quiet):
         warning_code = warning_code | (1 << 0)
 
     if not check_rhat(fit,
+                      pars,
                       rhat_rule_of_thumb=rhat_rule_of_thumb,
                       known_rhat_nans=known_rhat_nans,
                       quiet=quiet):
         warning_code = warning_code | (1 << 1)
 
-    df = _fit_to_df(fit)
+    df = _fit_to_df(fit, pars=pars)
 
     if not check_divergences(df, quiet=quiet):
         warning_code = warning_code | (1 << 2)
@@ -1204,6 +1226,43 @@ def parse_warning_code(warning_code):
         print('energy warning')
     if warning_code == 0:
         print('No diagnostic warnings')
+
+
+def posterior_predictive_ranking(fit=None, ppc_name=None, data=None,
+                                 fractional=False):
+    """Compute posterior predictive ranking of each data point.
+
+    Parameters
+    ----------
+    fit : StanFit4Model instance
+        A Stan fit of a model that has posterior predictive check values
+        for the data.
+    ppc_name : str
+        The name of the parameter in the `fit` that has the posterior
+        predictive checks.
+    data : 1D Numpy array
+        The data points that were observed.
+
+    Returns
+    -------
+    output : 1D Numpy array, same shape as `data`
+        The ranking among the posterior predictive samples of each data
+        points.
+    """
+    if fit is None or ppc_name is None or data is None:
+        raise RuntimeError(
+                '`fit`, `ppc_name`, and `data` must all be specified.')
+
+    ppc = fit.extract(ppc_name)[ppc_name]
+    rankings = np.empty(ppc.shape[1])
+
+    for i in range(ppc.shape[1]):
+        rankings[i] = np.searchsorted(np.sort(ppc[:,i]), data[i])
+
+    if fractional:
+        rankings /= ppc.shape[0]
+
+    return rankings
 
 
 def sbc(prior_predictive_model=None,
