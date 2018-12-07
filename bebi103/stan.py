@@ -897,7 +897,8 @@ def check_divergences(fit, pars=None, quiet=False, return_diagnostics=False):
     return pass_check
 
 
-def check_treedepth(fit, pars=None, quiet=False, return_diagnostics=False):
+def check_treedepth(fit=None, pars=None, max_treedepth='infer', df=None,
+                    quiet=False, return_diagnostics=False):
     """Check transitions that ended prematurely due to maximum tree depth limit.
 
     Parameters
@@ -907,6 +908,14 @@ def check_treedepth(fit, pars=None, quiet=False, return_diagnostics=False):
     pars : list of str, or None (default)
         Names of parameters to use in doing diagnostic checks. If None,
         use all parameters.
+    max_treedepth: int or 'infer'
+        If 'infer', infer the maximum tree depth from the fit. If an
+        int, use this a max_treedepth. An int is necessary if `df` is
+        not None.
+    df : DataFrame, default None
+        If not None and `fit` is None, `df` is a DataFrame containing
+        the fit results and is used in the check. `max_treedepth` must
+        be an int if `df` is not None.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
     return_diagnostics : bool, default False
@@ -922,13 +931,18 @@ def check_treedepth(fit, pars=None, quiet=False, return_diagnostics=False):
         Number of samplers wherein the tree depth was greater than
         `max_treedepth`.
     """
-    try:
-        max_treedepth = fit.stan_args[0]['ctrl']['sampling']['max_treedepth']
-    except:
-        warnings.warn('Unable to determine max_treedepth. Using value of 10.')
-        max_treedepth = 10
+    if (fit is None and df is None) or (fit is not None and df is not None):
+        raise RuntimeError('Exactly one of `fit` or `df` must be specified.')
 
-    df = _fit_to_df(fit, pars=pars)
+    if df is not None and type(max_treedepth) != int:
+        raise RuntimeError(
+                    'If `df` is specified, `max_treedepth` must be int.')
+
+    if max_treedepth == 'infer':
+        max_treedepth = _infer_max_treedepth(fit)
+
+    if df is None:
+        df = _fit_to_df(fit, pars=pars)
 
     n_too_deep = (df['treedepth__'] >= max_treedepth).sum()
     n_total = len(df)
@@ -1124,7 +1138,8 @@ def check_rhat(fit, pars=None, quiet=False, rhat_rule_of_thumb=1.1,
 
 def check_all_diagnostics(fit, pars=None, e_bfmi_rule_of_thumb=0.2,
                           n_eff_rule_of_thumb=0.001, rhat_rule_of_thumb=1.1,
-                          known_rhat_nans=[], quiet=False):
+                          known_rhat_nans=[], max_treedepth='infer',
+                          quiet=False, return_diagnostics=False):
     """Checks all MCMC diagnostics
 
     Parameters
@@ -1143,8 +1158,13 @@ def check_all_diagnostics(fit, pars=None, e_bfmi_rule_of_thumb=0.2,
         List of parameter names which are known to have R-hat be NaN.
         These are typically parameters that are deterministic.
         Parameters in this list are ignored.
+    max_treedepth: int, default 'infer'
+        If int, specification of maximum treedepth allowed. If 'infer',
+        inferred from `fit`.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
+    return_diagnostics : bool, default False
+        If True, return a dictionary containing the results of each test.
 
     Results
     -------
@@ -1159,39 +1179,66 @@ def check_all_diagnostics(fit, pars=None, e_bfmi_rule_of_thumb=0.2,
             E-BFMI
         For example, a warning code of 12 has a binary representation
         of 01100, which means that R-hat and divergences tests failed.
+    return_dict : dict
+        Returned if `return_dict` is True. A dictionary with the result
+        of each diagnostic test.
     """
     warning_code = 0
+    diag_results = {}
 
-    if not check_n_eff(fit,
-                       pars,
-                       n_eff_rule_of_thumb=n_eff_rule_of_thumb,
-                       quiet=quiet):
+    pass_check, diag_results['neff'] = check_n_eff(
+                        fit,
+                        pars,
+                        n_eff_rule_of_thumb=n_eff_rule_of_thumb,
+                        quiet=quiet,
+                        return_diagnostics=True)
+    if not pass_check:
         warning_code = warning_code | (1 << 0)
 
-    if not check_rhat(fit,
-                      pars,
-                      rhat_rule_of_thumb=rhat_rule_of_thumb,
-                      known_rhat_nans=known_rhat_nans,
-                      quiet=quiet):
+    pass_check, diag_results['rhat'] = check_rhat(
+                        fit,
+                        pars,
+                        rhat_rule_of_thumb=rhat_rule_of_thumb,
+                        known_rhat_nans=known_rhat_nans,
+                        quiet=quiet,
+                        return_diagnostics=True)
+    if not pass_check:
         warning_code = warning_code | (1 << 1)
 
     df = _fit_to_df(fit, pars=pars)
 
-    if not check_divergences(df, quiet=quiet):
+    pass_check, diag_results['n_divergences'] = check_divergences(
+                        df,
+                        quiet=quiet,
+                        return_diagnostics=True)
+    if not pass_check:
         warning_code = warning_code | (1 << 2)
 
-    if not check_treedepth(fit, quiet=quiet):
+    if max_treedepth == 'infer':
+        max_treedepth = _infer_max_treedepth(fit)
+    pass_check, diag_results['n_max_treedepth'] = check_treedepth(
+                        df=df,
+                        max_treedepth=max_treedepth,
+                        quiet=quiet,
+                        return_diagnostics=True)
+    if not pass_check:
         warning_code = warning_code | (1 << 3)
 
-    if not check_energy(df,
+    pass_check, diag_results['e_bfmi'] = check_energy(
+                        df,
                         e_bfmi_rule_of_thumb=e_bfmi_rule_of_thumb,
-                        quiet=quiet):
+                        quiet=quiet,
+                        return_diagnostics=True)
+    if not pass_check:
         warning_code = warning_code | (1 << 4)
+
+    if return_diagnostics:
+        return warning_code, diag_results
 
     return warning_code
 
 
-def parse_warning_code(warning_code):
+def parse_warning_code(warning_code, quiet=False, return_dict=False):
     """Parses warning code from `check_all_diagnostics()` into
     individual failures and prints results.
 
@@ -1208,24 +1255,52 @@ def parse_warning_code(warning_code):
             E-BFMI
         For example, a warning code of 12 has a binary representation
         of 01100, which means that R-hat and divergences tests failed.
+    quiet : bool, default False
+        If True, suppress print results to the screen.
+    return_dict : bool, default False
+        If True, return a dictionary of containing test passage info.
 
     Returns
     -------
-    None
-        Results are printed to the screen.
+    output : dict
+        If `return_dict` is True, returns a dictionary where each entry
+        is True is the respective diagnostic check was passed and False
+        if it was not.
     """
+
+    if quiet and not return_dict:
+        raise RuntimeError('`quiet` is True and `return_dict` is False, '
+            + 'so there is nothing to do.')
+
+    passed_tests = dict(neff=True, rhat=True, divergence=True,
+                        treedepth=True, energy=True)
+
     if warning_code & (1 << 0):
-        print('n_eff / iteration warning')
+        passed_tests['neff'] = False
+        if not quiet:
+            print('n_eff / iteration warning')
     if warning_code & (1 << 1):
-        print('rhat warning')
+        passed_tests['rhat'] = False
+        if not quiet:
+            print('rhat warning')
     if warning_code & (1 << 2):
-        print('divergence warning')
+        passed_tests['divergence'] = False
+        if not quiet:
+            print('divergence warning')
     if warning_code & (1 << 3):
-        print('treedepth warning')
+        passed_tests['treedepth'] = False
+        if not quiet:
+            print('treedepth warning')
     if warning_code & (1 << 4):
-        print('energy warning')
+        passed_tests['energy'] = False
+        if not quiet:
+            print('energy warning')
     if warning_code == 0:
-        print('No diagnostic warnings')
+        if not quiet:
+            print('No diagnostic warnings')
+
+    if return_dict:
+        return passed_tests
 
 
 def posterior_predictive_ranking(fit=None, ppc_name=None, data=None,
@@ -1271,10 +1346,13 @@ def sbc(prior_predictive_model=None,
         posterior_model_data=None,
         measured_data=None,
         parameters=None,
+        measured_data_dtypes={},
         chains=4,
         warmup=1000,
         iter=2000,
         thin=10,
+        init=None,
+        control=None,
         n_jobs=1,
         N=400,
         n_prior_draws_for_sd=1000,
@@ -1304,6 +1382,10 @@ def sbc(prior_predictive_model=None,
         in the SBC analysis. Not all parameters of the model need be
         considered; only those in `parameters` have rank statistics
         calculated.
+    measured_data_dtypes : dict, default {}
+        The key in the dtypes dict is a string representing the date
+        name, and the corresponding item is its dtype, almost always
+        either `int` or `float`.
     chains : int
         Number of chains to use in each simulation.
     warmup : int, default 1000
@@ -1312,6 +1394,12 @@ def sbc(prior_predictive_model=None,
     iter : int, default 2000
         Number of posterior samples, including warmup, to draw in each
         simuation.
+    init : {0, '0', 'random', function returning dict, list of dict}
+        Specification of initialization in MCMC sampling, as defined
+        in the PyStan docs for StanModel.sampling().
+    control : dict, default None
+        Specification of control parameters for MCMC sampler, as defined
+        in the PyStan docs for StanModel.sampling().
     thin : int, default 10
         Thinning parameter for outputted samples.
     n_jobs : int, default 1
@@ -1376,6 +1464,22 @@ def sbc(prior_predictive_model=None,
     if parameters is None:
         raise RuntimeError('`parameters` must be specified.')
 
+    # Take a prior sample to infer data types
+    prior_sample = prior_predictive_model.sampling(
+        data=prior_predictive_model_data,
+        algorithm='Fixed_param',
+        iter=1,
+        chains=1,
+        warmup=0)
+
+    # Infer dtypes of measured data
+    for data in measured_data:
+        ar = prior_sample.extract(data)[data]
+        if data not in measured_data_dtypes:
+            if np.sum(ar != ar.astype(int)) == 0:
+                warnings.warn(f'Inferring int dtype for {data}.')
+                measured_data_dtypes[data] = int
+
     # Determine prior SDs for parameters of interest
     prior_sd = _get_prior_sds(prior_predictive_model,
                               prior_predictive_model_data,
@@ -1396,7 +1500,10 @@ def sbc(prior_predictive_model=None,
                    warmup,
                    iter,
                    thin,
-                   prior_sd)
+                   init,
+                   control,
+                   prior_sd,
+                   measured_data_dtypes)
 
     with multiprocessing.Pool(n_jobs) as pool:
         if progress_bar == 'notebook':
@@ -1468,6 +1575,16 @@ def _fit_to_df(fit, **kwargs):
     return df
 
 
+def _infer_max_treedepth(fit):
+    """Extract max treedepth from a StanFit4Model instance."""
+    try:
+        return fit.stan_args[0]['ctrl']['sampling']['max_treedepth']
+    except:
+        warnings.warn('Unable to determine max_treedepth. '
+                    + 'Using value of 10.')
+        return 10
+
+
 def _ebfmi(energy):
     """Compute energy-Bayes fraction of missing information"""
     return np.sum(np.diff(energy)**2) / (len(energy) - 1) / np.var(energy)
@@ -1487,7 +1604,10 @@ def _perform_sbc(args):
      warmup,
      iter,
      thin,
-     prior_sd) = args
+     init,
+     control,
+     prior_sd,
+     measured_data_dtypes) = args
 
     posterior_model_data = copy.deepcopy(posterior_model_data)
 
@@ -1502,9 +1622,11 @@ def _perform_sbc(args):
     for data in measured_data:
         ar = prior_sample.extract(data)[data]
         if len(ar.shape) == 0:
-            posterior_model_data[data] = np.asscalar(ar)
+            posterior_model_data[data] = np.asscalar(
+                                ar.astype(measured_data_dtypes[data]))
         else:
-            posterior_model_data[data] = ar[0]
+            posterior_model_data[data] = ar[0].astype(
+                                            measured_data_dtypes[data])
 
     # Store what the parameters were to generate prior predictive data
     param_priors = {param: float(prior_sample.extract(param)[param])
@@ -1526,16 +1648,16 @@ def _perform_sbc(args):
 
     # Omit Rhat calculations on parameters we are not interested in
     known_rhat_nans = list(set(row_names) - set(parameters))
-    warning_code = check_all_diagnostics(posterior_samples,
-                                         quiet=True,
-                                         known_rhat_nans=known_rhat_nans)
+    warning_code, diagnostics = check_all_diagnostics(
+        posterior_samples, quiet=True, known_rhat_nans=known_rhat_nans,
+        return_diagnostics=True)
 
     # Generate output dictionary
     output = {param+'_rank_statistic':
         (posterior_samples.extract(param)[param] < param_priors[param]).sum()
                 for param in parameters}
     for param, p_prior in param_priors.items():
-        output[param + '_prior'] = p_prior
+        output[param + '_ground_truth'] = p_prior
 
     # Compute posterior sensitivities
     for param in parameters:
@@ -1544,12 +1666,21 @@ def _perform_sbc(args):
         param_i = row_names.index(param)
         output[param+'_mean'] = summary['summary'][param_i, mean_i]
         output[param+'_sd'] = summary['summary'][param_i, sd_i]
-        output[param+'_z_score'] = np.abs(
-                (output[param+'_mean'] - output[param + '_prior'])
+        output[param+'_z_score'] = (
+                (output[param+'_mean'] - output[param + '_ground_truth'])
                 / output[param+'_sd'])
         output[param+'_shrinkage'] = (1 -
                 (output[param+'_sd'] / prior_sd[param])**2)
+        output[param+'_n_eff/n_iter'] = (
+            diagnostics['neff'].loc[diagnostics['neff']['parameter']==param,
+                                    'n_eff/n_iter'].values[0])
+        output[param+'_rhat'] = (
+            diagnostics['rhat'].loc[diagnostics['rhat']['parameter']==param,
+                                    'Rhat'].values[0])
 
+    output['n_bad_ebfmi'] = diagnostics['e_bfmi']['problematic'].sum()
+    output['n_divergences'] = int(diagnostics['n_divergences'])
+    output['n_max_treedepth'] = int(diagnostics['n_max_treedepth'])
     output['warning_code'] = warning_code
 
     return output
@@ -1607,8 +1738,11 @@ def _tidy_sbc_output(sbc_output):
     params = [col[:col.rfind('_rank_statistic')] for col in rank_stat_cols]
 
     dfs = []
-    stats = ['prior', 'rank_statistic', 'mean', 'sd', 'shrinkage', 'z_score']
-    aux_cols = ['warning_code', 'L', 'trial']
+    stats = ['ground_truth', 'rank_statistic', 'mean', 'sd', 'shrinkage',
+             'z_score', 'rhat', 'n_eff/n_iter']
+
+    aux_cols = ['n_divergences', 'n_bad_ebfmi', 'n_max_treedepth',
+                'warning_code', 'L', 'trial']
     for param in params:
         cols = [param+'_'+stat for stat in stats]
         sub_df = df[cols+aux_cols].rename(columns={old_col: new_col for old_col, new_col in zip(cols, stats)})
