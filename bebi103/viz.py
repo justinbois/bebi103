@@ -818,7 +818,7 @@ def colored_ecdf(data=None, cats=None, val=None, p=None, complementary=False,
     ----------
     data : Pandas DataFrame
         DataFrame containing tidy data for plotting.
-    cats : hashable or list of hastables
+    cats : hashable or list of hashables
         Name of column(s) to use as categorical variable (x-axis).
     val : hashable
         Name of column to use as value variable.
@@ -828,9 +828,6 @@ def colored_ecdf(data=None, cats=None, val=None, p=None, complementary=False,
     complementary : bool, default False
         If True, plot the empirical complementary cumulative
         distribution functon.
-    formal : bool, default False
-        If True, make a plot of a formal ECDF (staircase). If False,
-        plot the ECDF as dots.
     x_axis_label : str, default None
         Label for the x-axis. Ignored if `p` is not None.
     y_axis_label : str, default 'ECDF'
@@ -848,12 +845,12 @@ def colored_ecdf(data=None, cats=None, val=None, p=None, complementary=False,
     show_legend : bool, default False
         If True, show legend.
     order : list or None
-        If not None, must be a list of unique entries in `df[val]`. The
-        order of the list specifies the order of the boxes. If None,
-        the boxes appear in the order in which they appeared in the
+        If not None, must be a list of unique entries in `df[cat]`. The
+        order of the list specifies the order of the colors. If None,
+        the colors appear in the order in which they appeared in the
         inputted DataFrame.
     tooltips : list of 2-tuples
-        Specification for tooltips. Ignored if `formal` is True.
+        Specification for tooltips.
     show_legend : bool, default False
         If True, show a legend.
     val_axis_type : 'linear' or 'log'
@@ -861,8 +858,7 @@ def colored_ecdf(data=None, cats=None, val=None, p=None, complementary=False,
     ecdf_axis_type : 'linear' or 'log'
         Type of y-axis.
     kwargs
-        Any kwargs to be passed to `p.circle()` or `p.line()` when
-        making the plot.
+        Any kwargs to be passed to `p.circle()` when making the plot.
 
     Returns
     -------
@@ -920,6 +916,107 @@ def colored_ecdf(data=None, cats=None, val=None, p=None, complementary=False,
             p.legend.location = 'top_right'
         else:
             p.legend.location = 'bottom_right'
+
+    return p
+
+
+def colored_scatter(data=None, cats=None, x=None, y=None, p=None,
+                 x_axis_label=None, y_axis_label=None, title=None,
+                 plot_height=300, plot_width=400,
+                 palette=['#4e79a7', '#f28e2b', '#e15759', '#76b7b2',
+                          '#59a14f', '#edc948', '#b07aa1', '#ff9da7',
+                          '#9c755f', '#bab0ac'],
+                 order=None, show_legend=True, tooltips=None,
+                 x_axis_type='linear', y_axis_type='linear', **kwargs):
+    """
+    Parameters
+    ----------
+    data : Pandas DataFrame
+        DataFrame containing tidy data for plotting.
+    cats : hashable or list of hashables
+        Name of column(s) to use as categorical variable (x-axis).
+    x : hashable
+        Name of column to use as x-axis.
+    y : hashable
+        Name of column to use as y-axis.
+    p : bokeh.plotting.Figure instance, or None (default)
+        If None, create a new figure. Otherwise, populate the existing
+        figure `p`.
+    x_axis_label : str, default None
+        Label for the x-axis. Ignored if `p` is not None.
+    y_axis_label : str, default 'ECDF'
+        Label for the y-axis. Ignored if `p` is not None.
+    title : str, default None
+        Title of the plot. Ignored if `p` is not None.
+    plot_height : int, default 300
+        Height of plot, in pixels. Ignored if `p` is not None.
+    plot_width : int, default 450
+        Width of plot, in pixels. Ignored if `p` is not None.
+    palette : list of strings of hex colors, or single hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by Altair.
+    show_legend : bool, default False
+        If True, show legend.
+    order : list or None
+        If not None, must be a list of unique entries in `df[cat]`. The
+        order of the list specifies the order of the colors. If None,
+        the colors appear in the order in which they appeared in the
+        inputted DataFrame.
+    tooltips : list of 2-tuples
+        Specification for tooltips.
+    show_legend : bool, default False
+        If True, show a legend.
+    x_axis_type : 'linear' or 'log'
+        Type of x-axis.
+    y_axis_type : 'linear' or 'log'
+        Type of y-axis.
+    kwargs
+        Any kwargs to be passed to `p.circle()` when making the plot.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with jitter plot or box plot.
+    if formal and tooltips is not None:
+        raise RuntimeError('tooltips not possible for formal ECDFs.')
+    """
+    cols = _check_cat_input(data, cats, x, None, tooltips, palette, kwargs)
+    if y in data:
+        cols += [y]
+    else:
+        raise RuntimeError(f'Column {y} not in inputted dataframe.')
+
+    df = data.copy()
+    source = _cat_source(df, cats, cols, None)
+    _, _, color_factors = _get_cat_range(df,
+                                         df.groupby(cats),
+                                         order,
+                                         None,
+                                         False)
+
+    if 'color' not in kwargs:
+        kwargs['color'] = bokeh.transform.factor_cmap('cat',
+                                                    palette=palette,
+                                                    factors=color_factors)
+
+    if show_legend:
+        kwargs['legend'] = '__label'
+
+    if p is None:
+        p = bokeh.plotting.figure(plot_height=plot_height,
+                                  plot_width=plot_width,
+                                  x_axis_label=x_axis_label,
+                                  y_axis_label=y_axis_label,
+                                  x_axis_type=x_axis_type,
+                                  y_axis_type=y_axis_type,
+                                  title=title,
+                                  tooltips=tooltips)
+
+    p.circle(source=source,
+             x=x,
+             y=y,
+             **kwargs)
 
     return p
 
