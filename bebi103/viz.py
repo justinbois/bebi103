@@ -1900,7 +1900,7 @@ def predictive_ecdf(samples=None, name=None, diff=False, data=None,
 
 
 def predictive_regression(samples=None, name=None, diff=True,
-                          data_x=None, data_y=None,
+                          data_x=None, data_y=None, inds=None,
                           percentiles=[80, 60, 40, 20],
                           x_axis_label=None, y_axis_label=None, title=None,
                           plot_width=350, plot_height=225,
@@ -1924,6 +1924,10 @@ def predictive_regression(samples=None, name=None, diff=True,
     data_y : 1D Numpy array, default None
         If not None, y-values for measured data. These are plotted as
         points over the predictive plot.
+    inds : list, default None
+        If given, a list of indices (one-origin, as per Stan) to use
+        in the predictive plot. This is useful to only plot a portion
+        of the results, particularly when they are repeated x-values.
     percentiles : list, default [80, 60, 40, 20]
         Percentiles for making colored envelopes for confidence
         intervals for the predictive ECDFs. Maximally four can be
@@ -1982,6 +1986,9 @@ def predictive_regression(samples=None, name=None, diff=True,
 
     sub_df = stan.extract_array(df, name)
 
+    if inds is not None:
+        sub_df = sub_df.loc[sub_df['index_1'].isin(inds), :]
+
     if 'index_j' in sub_df:
         raise RuntimeError('Can only make plot for one-dimensional data.')
 
@@ -2000,6 +2007,12 @@ def predictive_regression(samples=None, name=None, diff=True,
                      .reset_index(drop=True))
     df_ppc.columns = df_ppc.columns.astype(str)
 
+    # Add data_x column to enable sorting
+    df_ppc['__data_x'] = data_x
+    if data_y is not None:
+        df_ppc['__data_y'] = data_y
+    df_ppc = df_ppc.sort_values(by='__data_x')
+
     p = bokeh.plotting.figure(plot_width=plot_width,
                               plot_height=plot_height,
                               x_axis_label=x_axis_label,
@@ -2014,17 +2027,17 @@ def predictive_regression(samples=None, name=None, diff=True,
             y1 = df_ppc[ptile]
             y2 = df_ppc[ptiles_str[-i-1]]
 
-        fill_between(x1=data_x, x2=data_x, y1=y1, y2=y2, p=p,
-                     show_line=False, fill_color=colors[color][i])
+        fill_between(x1=df_ppc['__data_x'], x2=df_ppc['__data_x'], y1=y1, 
+                     y2=y2, p=p, show_line=False, fill_color=colors[color][i])
 
     # The median as a solid line
     if diff:
-        p.line(data_x,
+        p.line(df_ppc['__data_x'],
                np.zeros_like(data_x),
                line_width=2,
                color=colors[color][-1])
     else:
-        p.line(data_x,
+        p.line(df_ppc['__data_x'],
                df_ppc['0.5'],
                line_width=2,
                color=colors[color][-1])
@@ -2032,11 +2045,11 @@ def predictive_regression(samples=None, name=None, diff=True,
     # Overlay data set
     if data_y is not None:
         if diff:
-            p.circle(data_x, data_y - df_ppc['0.5'], color=data_color,
-                     size=data_size, alpha=data_alpha)
+            p.circle(df_ppc['__data_x'], df_ppc['__data_y'] - df_ppc['0.5'],
+                     color=data_color, size=data_size, alpha=data_alpha)
         else:
-            p.circle(data_x, data_y, color=data_color, size=data_size,
-                alpha=data_alpha)
+            p.circle(df_ppc['__data_x'], df_ppc['__data_y'], color=data_color,
+                     size=data_size, alpha=data_alpha)
 
     return p
 

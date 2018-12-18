@@ -624,15 +624,17 @@ def compare(fit_dict, log_likelihood=None,
     if log_likelihood is None:
         raise RuntimeError('Must supply `log_likelihood`.')
 
+    arviz_dict = {}
     for key in fit_dict:
-        fit_dict[key] = to_arviz(fit_dict[key], log_likelihood=log_likelihood,
-                                 logging_disable_level=logging_disable_level)
+        arviz_dict[key] = to_arviz(fit_dict[key], 
+                                   log_likelihood=log_likelihood,
+                                logging_disable_level=logging_disable_level)
 
-    return az.compare(fit_dict, **kwargs)
+    return az.compare(arviz_dict, **kwargs)
 
 
 def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
-                        cowardly=False):
+                        sort_cols=[], cowardly=False):
     """Convert a tidy data frame to a data dictionary for a hierarchical
     Stan model.
 
@@ -647,6 +649,10 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
         farthest from the data.
     data_cols : list
         A list of column names containing the data.
+    sort_cols : list, default []]
+        List of columns names to use in sorting the data. They will be
+        first sorted by the level indices, and the subsequently sorted
+        accoring to sort_cols.
     cowardly : bool, default False
         If True, refuse to generate new columns if they already exist
         in the data frame. If you run this function using a data frame
@@ -805,6 +811,9 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
     if df is None or level_cols is None or data_cols is None:
         raise RuntimeError('`df`, `level_cols`, and `data_cols` must all be specified.')
 
+    if type(sort_cols) != list:
+        raise RuntimeError('`sort_cols` must be a list.')
+
     # Get a copy so we don't overwrite
     new_df = df.copy(deep=True)
 
@@ -825,7 +834,7 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
         new_df[str(col)+'_stan'] = df.groupby(
                                         level_cols[:col_ind+1]).ngroup() + 1
 
-    new_df = new_df.sort_values(by=level_cols_stan)
+    new_df = new_df.sort_values(by=level_cols_stan + sort_cols)
 
     data = dict()
     data['N'] = len(new_df)
