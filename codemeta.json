@@ -1,0 +1,29 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "description": "Python utilities for the Caltech course BE/Bi 103: Data Analysis in the Biological Sciences.",
+  "name": "bebi103",
+  "codeRepository": "https://github.com/justinbois/bebi103",
+  "issueTracker": "https://github.com/justinbois/bebi103/issues",
+  "license": "https://spdx.org/licenses/BSD-3-Clause",
+  "version": "0.0.41",
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Justin",
+      "familyName": "Bois",
+      "affiliation": "Caltech",
+      "email": "bois@caltech.edu",
+      "@id": "https://orcid.org/0000-0001-7137-8746"
+    }],
+  "developmentStatus": "active",
+  "downloadUrl": "https://github.com/justinbois/bebi103/releases",
+  "keywords": [
+    "GitHub",
+    "Python",
+    "Instruction",
+    "Biology"
+  ],
+  "maintainer": "https://orcid.org/0000-0001-7137-8746",
+  "programmingLanguage": "Python"
+}
