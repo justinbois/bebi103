@@ -25,8 +25,14 @@ import bokeh.plotting
 from . import viz
 
 
-def StanModel(file=None, charset='utf-8', model_name='anon_model',
-              model_code=None, force_compile=False, **kwargs):
+def StanModel(
+    file=None,
+    charset="utf-8",
+    model_name="anon_model",
+    model_code=None,
+    force_compile=False,
+    **kwargs,
+):
     """"Utility to load/save cached compiled Stan models.
 
     Parameters
@@ -58,17 +64,16 @@ def StanModel(file=None, charset='utf-8', model_name='anon_model',
        model does exist, the pickled model is loaded.
     """
 
-    logger = logging.getLogger('pystan')
+    logger = logging.getLogger("pystan")
 
     if file and model_code:
-        raise ValueError("Specify stan model with `file` or `model_code`, "
-                         "not both.")
+        raise ValueError("Specify stan model with `file` or `model_code`, " "not both.")
     if file is None and model_code is None:
         raise ValueError("Model file missing and empty model_code.")
     if file is not None:
         if isinstance(file, str):
             try:
-                with open(file, 'rt', encoding=charset) as f:
+                with open(file, "rt", encoding=charset) as f:
                     model_code = f.read()
             except:
                 logger.critical("Unable to read file specified by `file`.")
@@ -77,25 +82,25 @@ def StanModel(file=None, charset='utf-8', model_name='anon_model',
             model_code = file.read()
 
     # Make a code_hash to use for file name
-    code_hash = hashlib.md5(model_code.encode('ascii')).hexdigest()
+    code_hash = hashlib.md5(model_code.encode("ascii")).hexdigest()
 
     if model_name is None:
-        cache_fname = 'cached-model-{}.pkl'.format(code_hash)
+        cache_fname = "cached-model-{}.pkl".format(code_hash)
     else:
-        cache_fname = 'cached-{}-{}.pkl'.format(model_name, code_hash)
+        cache_fname = "cached-{}-{}.pkl".format(model_name, code_hash)
 
     if force_compile:
         sm = pystan.StanModel(model_code=model_code, **kwargs)
 
-        with open(cache_fname, 'wb') as f:
+        with open(cache_fname, "wb") as f:
             pickle.dump(sm, f)
     else:
         try:
-            sm = pickle.load(open(cache_fname, 'rb'))
+            sm = pickle.load(open(cache_fname, "rb"))
         except:
             sm = pystan.StanModel(model_code=model_code, **kwargs)
 
-            with open(cache_fname, 'wb') as f:
+            with open(cache_fname, "wb") as f:
                 pickle.dump(sm, f)
         else:
             print("Using cached StanModel.")
@@ -103,8 +108,9 @@ def StanModel(file=None, charset='utf-8', model_name='anon_model',
     return sm
 
 
-def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
-                 inc_warmup=False, diagnostics=True):
+def to_dataframe(
+    fit, pars=None, permuted=False, dtypes=None, inc_warmup=False, diagnostics=True
+):
     """
     Convert the results of a fit to a DataFrame.
 
@@ -145,43 +151,51 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
        licensing of this module.
     """
     if permuted and inc_warmup:
-        raise RuntimeError(
-                'If `permuted` is True, `inc_warmup` must be False.')
+        raise RuntimeError("If `permuted` is True, `inc_warmup` must be False.")
 
     if permuted and diagnostics:
-        raise RuntimeError(
-                'Diagnostics are not available when `permuted` is True.')
+        raise RuntimeError("Diagnostics are not available when `permuted` is True.")
 
     if dtypes is not None and not permuted and pars is None:
-        raise RuntimeError('`dtypes` cannot be specified when `permuted`'
-                            + ' is False and `pars` is None.')
+        raise RuntimeError(
+            "`dtypes` cannot be specified when `permuted`"
+            + " is False and `pars` is None."
+        )
 
     try:
-        return fit.to_dataframe(pars=pars,
-                                permuted=permuted,
-                                dtypes=dtypes,
-                                inc_warmup=inc_warmup,
-                                diagnostics=diagnostics)
+        return fit.to_dataframe(
+            pars=pars,
+            permuted=permuted,
+            dtypes=dtypes,
+            inc_warmup=inc_warmup,
+            diagnostics=diagnostics,
+        )
     except:
         pass
 
     # Diagnostics to pull out
-    diags = ['divergent__', 'energy__', 'treedepth__', 'accept_stat__',
-             'stepsize__', 'n_leapfrog__']
+    diags = [
+        "divergent__",
+        "energy__",
+        "treedepth__",
+        "accept_stat__",
+        "stepsize__",
+        "n_leapfrog__",
+    ]
 
     # Build parameters if not supplied
     if pars is None:
-        pars = tuple(fit.flatnames + ['lp__'])
+        pars = tuple(fit.flatnames + ["lp__"])
     if type(pars) not in [list, tuple, pd.core.indexes.base.Index]:
-        raise RuntimeError('`pars` must be list or tuple or pandas index.')
-    if 'lp__' not in pars:
-        pars = tuple(list(pars) + ['lp__'])
+        raise RuntimeError("`pars` must be list or tuple or pandas index.")
+    if "lp__" not in pars:
+        pars = tuple(list(pars) + ["lp__"])
 
     # Build dtypes if not supplied
     if dtypes is None:
         dtypes = {par: float for par in pars}
     else:
-        dtype['lp__'] = float
+        dtype["lp__"] = float
 
     # Make sure dtypes supplied for every parameter
     for par in pars:
@@ -189,83 +203,90 @@ def to_dataframe(fit, pars=None, permuted=False, dtypes=None,
             raise RuntimeError(f"'{par}' not in `dtypes`.")
 
     # Retrieve samples
-    samples = fit.extract(pars=pars,
-                          permuted=permuted,
-                          dtypes=dtypes,
-                          inc_warmup=inc_warmup)
+    samples = fit.extract(
+        pars=pars, permuted=permuted, dtypes=dtypes, inc_warmup=inc_warmup
+    )
     n_chains = len(fit.stan_args)
-    thin = fit.stan_args[0]['thin']
-    n_iters = fit.stan_args[0]['iter'] // thin
-    n_warmup = fit.stan_args[0]['warmup'] // thin
+    thin = fit.stan_args[0]["thin"]
+    n_iters = fit.stan_args[0]["iter"] // thin
+    n_warmup = fit.stan_args[0]["warmup"] // thin
     n_samples = n_iters - n_warmup
 
     # Dimensions of parameters
     dim_dict = {par: dim for par, dim in zip(fit.model_pars, fit.par_dims)}
-    dim_dict['lp__'] = []
+    dim_dict["lp__"] = []
 
     if inc_warmup:
-        n = (n_warmup + n_samples)*n_chains
-        warmup = np.concatenate([[1]*n_warmup + [0]*n_samples
-                                    for _ in range(n_chains)]).astype(int)
-        chain = np.concatenate([[i+1]*(n_warmup+n_samples)
-                                    for i in range(n_chains)]).astype(int)
-        chain_idx = np.concatenate([np.arange(1, n_warmup+n_samples+1)
-                                        for _ in range(n_chains)]).astype(int)
+        n = (n_warmup + n_samples) * n_chains
+        warmup = np.concatenate(
+            [[1] * n_warmup + [0] * n_samples for _ in range(n_chains)]
+        ).astype(int)
+        chain = np.concatenate(
+            [[i + 1] * (n_warmup + n_samples) for i in range(n_chains)]
+        ).astype(int)
+        chain_idx = np.concatenate(
+            [np.arange(1, n_warmup + n_samples + 1) for _ in range(n_chains)]
+        ).astype(int)
     else:
         n = n_samples * n_chains
-        warmup = np.array([0]*n, dtype=int)
-        chain = np.concatenate([[i+1]*n_samples
-                                    for i in range(n_chains)]).astype(int)
-        chain_idx = np.concatenate([np.arange(1, n_samples+1)
-                                        for _ in range(n_chains)]).astype(int)
+        warmup = np.array([0] * n, dtype=int)
+        chain = np.concatenate([[i + 1] * n_samples for i in range(n_chains)]).astype(
+            int
+        )
+        chain_idx = np.concatenate(
+            [np.arange(1, n_samples + 1) for _ in range(n_chains)]
+        ).astype(int)
 
     if permuted:
         df = pd.DataFrame()
     else:
-        df = pd.DataFrame(
-                data=dict(chain=chain, chain_idx=chain_idx, warmup=warmup))
+        df = pd.DataFrame(data=dict(chain=chain, chain_idx=chain_idx, warmup=warmup))
 
     if diagnostics:
         sampler_params = fit.get_sampler_params(inc_warmup=inc_warmup)
         diag_vals = list(sampler_params[0].keys())
 
         # If they are standard, do same order as PyStan 2.18 to_dataframe
-        if (len(diag_vals) == len(diags)
-                and sum([val not in diags for val in diag_vals]) == 0):
+        if (
+            len(diag_vals) == len(diags)
+            and sum([val not in diags for val in diag_vals]) == 0
+        ):
             diag_vals = diags
         for diag in diag_vals:
-            df[diag] = np.concatenate([sampler_params[i][diag]
-                                            for i in range(n_chains)])
-            if diag in ['treedepth__', 'n_leapfrog__']:
+            df[diag] = np.concatenate(
+                [sampler_params[i][diag] for i in range(n_chains)]
+            )
+            if diag in ["treedepth__", "n_leapfrog__"]:
                 df[diag] = df[diag].astype(int)
 
     if isinstance(samples, np.ndarray):
         for k, par in enumerate(pars):
             try:
-                indices = re.search('\[(\d+)(,\d+)*\]', par).group()
-                base_name = re.split('\[(\d+)(,\d+)*\]', par, maxsplit=1)[0]
-                col = (base_name
-                    + re.sub('\d+', lambda x: str(int(x.group())+1), indices))
+                indices = re.search("\[(\d+)(,\d+)*\]", par).group()
+                base_name = re.split("\[(\d+)(,\d+)*\]", par, maxsplit=1)[0]
+                col = base_name + re.sub(
+                    "\d+", lambda x: str(int(x.group()) + 1), indices
+                )
             except AttributeError:
                 col = par
 
-            df[col] = samples[:,:,k].flatten(order='F')
+            df[col] = samples[:, :, k].flatten(order="F")
     else:
         for par in pars:
             if len(dim_dict[par]) == 0:
-                df[par] = samples[par].flatten(order='F')
+                df[par] = samples[par].flatten(order="F")
             else:
-                for inds in itertools.product(*[range(dim)
-                                                for dim in dim_dict[par]]):
-                    col = (par + '[' +
-                        ','.join([str(ind+1) for ind in inds[::-1]]) + ']')
+                for inds in itertools.product(*[range(dim) for dim in dim_dict[par]]):
+                    col = (
+                        par + "[" + ",".join([str(ind + 1) for ind in inds[::-1]]) + "]"
+                    )
 
                     if permuted:
                         array_slice = tuple([slice(n), *inds[::-1]])
                     else:
                         array_slice = tuple([slice(n), slice(n), *inds[::-1]])
 
-                    df[col] = samples[par][array_slice].flatten(order='F')
+                    df[col] = samples[par][array_slice].flatten(order="F")
 
     return df
 
@@ -287,14 +308,13 @@ def pickle_dump_samples(fit=None, model=None, pkl_file=None):
     None
     """
     if None in [fit, model, pkl_file]:
-        raise RuntimeError(
-            '`fit`, `model`, and `pkl_file` must all be specified.')
+        raise RuntimeError("`fit`, `model`, and `pkl_file` must all be specified.")
 
     if os.path.isfile(pkl_file):
-        raise RuntimeError(f'File {pkl_file} already exists.')
+        raise RuntimeError(f"File {pkl_file} already exists.")
 
-    with open(pkl_file, 'wb') as f:
-        pickle.dump({'model': model, 'fit': fit}, f, protocol=-1)
+    with open(pkl_file, "wb") as f:
+        pickle.dump({"model": model, "fit": fit}, f, protocol=-1)
 
 
 def pickle_load_samples(pkl_file):
@@ -313,10 +333,10 @@ def pickle_load_samples(pkl_file):
     -------
     None
     """
-    with open(pkl_file, 'rb') as f:
+    with open(pkl_file, "rb") as f:
         data_dict = pickle.load(f)
 
-    return data_dict['fit'], data_dict['model']
+    return data_dict["fit"], data_dict["model"]
 
 
 def extract_array(samples, name):
@@ -344,37 +364,41 @@ def extract_array(samples, name):
     df = _fit_to_df(samples, diagnostics=False)
 
     regex_name = name
-    for char in '[\^$.|?*+(){}':
-        regex_name = regex_name.replace(char, '\\'+char)
+    for char in "[\^$.|?*+(){}":
+        regex_name = regex_name.replace(char, "\\" + char)
 
     # Extract columns that match the name
-    sub_df = df.filter(regex=regex_name+'\[(\d+)(,\d+)*\]')
+    sub_df = df.filter(regex=regex_name + "\[(\d+)(,\d+)*\]")
 
     if len(sub_df.columns) == 0:
         raise RuntimeError(
-                "column '{}' is either absent or scalar-valued.".format(name))
+            "column '{}' is either absent or scalar-valued.".format(name)
+        )
 
     n_entries = len(sub_df.columns)
     n = len(sub_df)
 
-    df_out = pd.DataFrame(data={name: sub_df.values.flatten(order='F')})
-    for col in ['chain', 'chain_idx', 'warmup']:
+    df_out = pd.DataFrame(data={name: sub_df.values.flatten(order="F")})
+    for col in ["chain", "chain_idx", "warmup"]:
         if col in df:
-            df_out[col] = np.concatenate([df[col].values]*n_entries)
+            df_out[col] = np.concatenate([df[col].values] * n_entries)
 
-    indices = [re.search('\[(\d+)(,\d+)*\]', col).group()[1:-1].split(',')
-                           for col in sub_df.columns]
-    indices = np.vstack([np.array([[int(i) for i in ind]]*n)
-                            for ind in indices])
-    ind_df = pd.DataFrame(columns=['index_{0:d}'.format(i)
-                                       for i in range(1, indices.shape[1]+1)],
-                          data=indices)
+    indices = [
+        re.search("\[(\d+)(,\d+)*\]", col).group()[1:-1].split(",")
+        for col in sub_df.columns
+    ]
+    indices = np.vstack([np.array([[int(i) for i in ind]] * n) for ind in indices])
+    ind_df = pd.DataFrame(
+        columns=["index_{0:d}".format(i) for i in range(1, indices.shape[1] + 1)],
+        data=indices,
+    )
 
     return pd.concat([ind_df, df_out], axis=1)
 
 
-def extract_par(fit, par, permuted=False, inc_warmup=False,
-                logging_disable_level=logging.ERROR):
+def extract_par(
+    fit, par, permuted=False, inc_warmup=False, logging_disable_level=logging.ERROR
+):
     """Extract samples of a parameter out of a StanFit4Model.
 
     Parameters
@@ -409,13 +433,15 @@ def extract_par(fit, par, permuted=False, inc_warmup=False,
        accommodates that functionality.
     """
     if permuted:
-        return fit.extract(pars=par, permuted=True, dtypes=None,
-                           inc_warmup=inc_warmup)[par]
+        return fit.extract(pars=par, permuted=True, dtypes=None, inc_warmup=inc_warmup)[
+            par
+        ]
 
-    if pystan.__version__ >= '2.18':
+    if pystan.__version__ >= "2.18":
         with _disable_logging(level=logging_disable_level):
-            return fit.extract(pars=par, permuted=False, dtypes=None,
-                               inc_warmup=inc_warmup)
+            return fit.extract(
+                pars=par, permuted=False, dtypes=None, inc_warmup=inc_warmup
+            )
 
     with _disable_logging(level=logging_disable_level):
         data = fit.extract(permuted=False, inc_warmup=inc_warmup, dtypes=None)
@@ -423,8 +449,8 @@ def extract_par(fit, par, permuted=False, inc_warmup=False,
     inds = []
     for k, par_name in enumerate(fit.flatnames):
         try:
-            indices = re.search('\[(\d+)(,\d+)*\]', par_name).group()
-            base_name = re.split('\[(\d+)(,\d+)*\]', par_name, maxsplit=1)[0]
+            indices = re.search("\[(\d+)(,\d+)*\]", par_name).group()
+            base_name = re.split("\[(\d+)(,\d+)*\]", par_name, maxsplit=1)[0]
             if base_name == par:
                 inds.append(k)
         except AttributeError:
@@ -432,9 +458,9 @@ def extract_par(fit, par, permuted=False, inc_warmup=False,
                 inds.append(k)
 
     if len(inds) == 1:
-        return data[:,:,inds[0]]
+        return data[:, :, inds[0]]
 
-    return data[:,:,inds]
+    return data[:, :, inds]
 
 
 def to_arviz(fit, log_likelihood=None, logging_disable_level=logging.ERROR):
@@ -468,29 +494,34 @@ def to_arviz(fit, log_likelihood=None, logging_disable_level=logging.ERROR):
     with _disable_logging(level=logging_disable_level):
         az_data = az.from_pystan(fit=fit, log_likelihood=log_likelihood)
 
-    if pystan.__version__ < '2.18':
+    if pystan.__version__ < "2.18":
         if log_likelihood is not None:
             # Get the log likelihood
             log_lik = np.swapaxes(
-                extract_par(fit, log_likelihood,
-                            logging_disable_level=logging_disable_level), 0, 1)
+                extract_par(
+                    fit, log_likelihood, logging_disable_level=logging_disable_level
+                ),
+                0,
+                1,
+            )
 
             # dims for xarray
-            dims = ['chain', 'draw', 'log_likelihood_dim_0']
+            dims = ["chain", "draw", "log_likelihood_dim_0"]
 
             # Properly do the log likelihood
-            az_data.sample_stats['log_likelihood'] = (dims, log_lik)
+            az_data.sample_stats["log_likelihood"] = (dims, log_lik)
 
         # Get the lp__
         with _disable_logging(level=logging_disable_level):
-            lp = np.swapaxes(fit.extract(permuted=False)[:,:,-1], 0, 1)
-        az_data.sample_stats['lp'] = (['chain', 'draw'], lp)
+            lp = np.swapaxes(fit.extract(permuted=False)[:, :, -1], 0, 1)
+        az_data.sample_stats["lp"] = (["chain", "draw"], lp)
 
     return az_data
 
 
-def waic(fit, log_likelihood=None, pointwise=False,
-         logging_disable_level=logging.ERROR):
+def waic(
+    fit, log_likelihood=None, pointwise=False, logging_disable_level=logging.ERROR
+):
     """Compute the WAIC using ArviZ.
 
     Parameters
@@ -519,16 +550,22 @@ def waic(fit, log_likelihood=None, pointwise=False,
             if `pointwise` True
     """
     if log_likelihood is None:
-        raise RuntimeError('Must supply `log_likelihood`.')
+        raise RuntimeError("Must supply `log_likelihood`.")
 
-    az_data = to_arviz(fit, log_likelihood=log_likelihood,
-                       logging_disable_level=logging_disable_level)
+    az_data = to_arviz(
+        fit, log_likelihood=log_likelihood, logging_disable_level=logging_disable_level
+    )
 
     return az.waic(az_data, pointwise=pointwise)
 
 
-def loo(fit, log_likelihood=None, pointwise=False, reff=None,
-        logging_disable_level=logging.ERROR):
+def loo(
+    fit,
+    log_likelihood=None,
+    pointwise=False,
+    reff=None,
+    logging_disable_level=logging.ERROR,
+):
     """Compute the PSIS-LOO.
 
     Parameters
@@ -561,16 +598,18 @@ def loo(fit, log_likelihood=None, pointwise=False, reff=None,
             `pointwise` True
     """
     if log_likelihood is None:
-        raise RuntimeError('Must supply `log_likelihood`.')
+        raise RuntimeError("Must supply `log_likelihood`.")
 
-    az_data = to_arviz(fit, log_likelihood=log_likelihood,
-                       logging_disable_level=logging_disable_level)
+    az_data = to_arviz(
+        fit, log_likelihood=log_likelihood, logging_disable_level=logging_disable_level
+    )
 
     return az.loo(az_data, pointwise=pointwise, reff=reff)
 
 
-def compare(fit_dict, log_likelihood=None,
-            logging_disable_level=logging.ERROR, **kwargs):
+def compare(
+    fit_dict, log_likelihood=None, logging_disable_level=logging.ERROR, **kwargs
+):
     """Compare models.
 
     Parameters
@@ -622,19 +661,22 @@ def compare(fit_dict, log_likelihood=None,
 
     """
     if log_likelihood is None:
-        raise RuntimeError('Must supply `log_likelihood`.')
+        raise RuntimeError("Must supply `log_likelihood`.")
 
     arviz_dict = {}
     for key in fit_dict:
-        arviz_dict[key] = to_arviz(fit_dict[key], 
-                                   log_likelihood=log_likelihood,
-                                logging_disable_level=logging_disable_level)
+        arviz_dict[key] = to_arviz(
+            fit_dict[key],
+            log_likelihood=log_likelihood,
+            logging_disable_level=logging_disable_level,
+        )
 
     return az.compare(arviz_dict, **kwargs)
 
 
-def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
-                        sort_cols=[], cowardly=False):
+def df_to_datadict_hier(
+    df=None, level_cols=None, data_cols=None, sort_cols=[], cowardly=False
+):
     """Convert a tidy data frame to a data dictionary for a hierarchical
     Stan model.
 
@@ -809,10 +851,10 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
     9  monday      2       1  11.40         1           2            4
     """
     if df is None or level_cols is None or data_cols is None:
-        raise RuntimeError('`df`, `level_cols`, and `data_cols` must all be specified.')
+        raise RuntimeError("`df`, `level_cols`, and `data_cols` must all be specified.")
 
     if type(sort_cols) != list:
-        raise RuntimeError('`sort_cols` must be a list.')
+        raise RuntimeError("`sort_cols` must be a list.")
 
     # Get a copy so we don't overwrite
     new_df = df.copy(deep=True)
@@ -823,38 +865,45 @@ def df_to_datadict_hier(df=None, level_cols=None, data_cols=None,
     if type(data_cols) not in [list, tuple]:
         data_cols = [data_cols]
 
-    level_cols_stan = [col + '_stan' for col in level_cols]
+    level_cols_stan = [col + "_stan" for col in level_cols]
 
     if cowardly:
         for col in level_cols_stan:
             if col in df:
-                raise RuntimeError('column ' + col + ' already in data frame. Cowardly deciding not to overwrite.')
+                raise RuntimeError(
+                    "column "
+                    + col
+                    + " already in data frame. Cowardly deciding not to overwrite."
+                )
 
     for col_ind, col in enumerate(level_cols):
-        new_df[str(col)+'_stan'] = df.groupby(
-                                        level_cols[:col_ind+1]).ngroup() + 1
+        new_df[str(col) + "_stan"] = df.groupby(level_cols[: col_ind + 1]).ngroup() + 1
 
     new_df = new_df.sort_values(by=level_cols_stan + sort_cols)
 
     data = dict()
-    data['N'] = len(new_df)
+    data["N"] = len(new_df)
     for i, col in enumerate(level_cols_stan):
-        data['J_'+ str(i+1)] = len(new_df[col].unique())
+        data["J_" + str(i + 1)] = len(new_df[col].unique())
     for i, _ in enumerate(level_cols_stan[1:]):
-        data['index_' + str(i+1)] = np.array([key[i] for key in new_df.groupby(level_cols_stan[:i+2]).groups]).astype(int)
-    data['index_' + str(len(level_cols_stan))] = new_df[level_cols_stan[-1]].values.astype(int)
+        data["index_" + str(i + 1)] = np.array(
+            [key[i] for key in new_df.groupby(level_cols_stan[: i + 2]).groups]
+        ).astype(int)
+    data["index_" + str(len(level_cols_stan))] = new_df[
+        level_cols_stan[-1]
+    ].values.astype(int)
     for col in data_cols:
         # Check string naming
         new_col = str(col)
         try:
-           bytes(new_col, 'ascii')
+            bytes(new_col, "ascii")
         except UnicodeEncodeError:
-            raise RuntimeError('Column names must be ASCII.')
+            raise RuntimeError("Column names must be ASCII.")
         if new_col[0].isdigit():
-            raise RuntimeError('Column name cannot start with a number.')
+            raise RuntimeError("Column name cannot start with a number.")
         for char in new_col:
-            if char in '`~!@#$%^&*()- =+[]{}\\|:;"\',<.>/?':
-                raise RuntimeError('Invalid column name for Stan variable.')
+            if char in "`~!@#$%^&*()- =+[]{}\\|:;\"',<.>/?":
+                raise RuntimeError("Invalid column name for Stan variable.")
 
         data[new_col] = new_df[col].values
 
@@ -888,26 +937,33 @@ def check_divergences(fit, pars=None, quiet=False, return_diagnostics=False):
 
     df = _fit_to_df(fit, pars=pars)
 
-    n_divergent = df['divergent__'].sum()
+    n_divergent = df["divergent__"].sum()
     n_total = len(df)
 
     if not quiet:
-        msg = '{} of {} ({}%) iterations ended with a divergence.'.format(
-                            n_divergent, n_total, 100 * n_divergent / n_total)
+        msg = "{} of {} ({}%) iterations ended with a divergence.".format(
+            n_divergent, n_total, 100 * n_divergent / n_total
+        )
         print(msg)
 
     pass_check = n_divergent == 0
 
     if not pass_check and not quiet:
-        print('  Try running with larger adapt_delta to remove divergences.')
+        print("  Try running with larger adapt_delta to remove divergences.")
 
     if return_diagnostics:
         return pass_check, n_divergent
     return pass_check
 
 
-def check_treedepth(fit=None, pars=None, max_treedepth='infer', df=None,
-                    quiet=False, return_diagnostics=False):
+def check_treedepth(
+    fit=None,
+    pars=None,
+    max_treedepth="infer",
+    df=None,
+    quiet=False,
+    return_diagnostics=False,
+):
     """Check transitions that ended prematurely due to maximum tree depth limit.
 
     Parameters
@@ -941,40 +997,43 @@ def check_treedepth(fit=None, pars=None, max_treedepth='infer', df=None,
         `max_treedepth`.
     """
     if (fit is None and df is None) or (fit is not None and df is not None):
-        raise RuntimeError('Exactly one of `fit` or `df` must be specified.')
+        raise RuntimeError("Exactly one of `fit` or `df` must be specified.")
 
     if df is not None and type(max_treedepth) != int:
-        raise RuntimeError(
-                    'If `df` is specified, `max_treedepth` must be int.')
+        raise RuntimeError("If `df` is specified, `max_treedepth` must be int.")
 
-    if max_treedepth == 'infer':
+    if max_treedepth == "infer":
         max_treedepth = _infer_max_treedepth(fit)
 
     if df is None:
         df = _fit_to_df(fit, pars=pars)
 
-    n_too_deep = (df['treedepth__'] >= max_treedepth).sum()
+    n_too_deep = (df["treedepth__"] >= max_treedepth).sum()
     n_total = len(df)
 
     if not quiet:
-        msg = '{} of {} ({}%) iterations saturated'.format(
-                            n_too_deep, n_total, 100 * n_too_deep / n_total)
-        msg += ' the maximum tree depth of {}.'.format(max_treedepth)
+        msg = "{} of {} ({}%) iterations saturated".format(
+            n_too_deep, n_total, 100 * n_too_deep / n_total
+        )
+        msg += " the maximum tree depth of {}.".format(max_treedepth)
         print(msg)
 
     pass_check = n_too_deep == 0
 
     if not pass_check and not quiet:
-        print('  Try running again with max_treedepth set to a larger value'
-               + ' to avoid saturation.')
+        print(
+            "  Try running again with max_treedepth set to a larger value"
+            + " to avoid saturation."
+        )
 
     if return_diagnostics:
         return pass_check, n_too_deep
     return pass_check
 
 
-def check_energy(fit, pars=None, quiet=False, e_bfmi_rule_of_thumb=0.2,
-                 return_diagnostics=False):
+def check_energy(
+    fit, pars=None, quiet=False, e_bfmi_rule_of_thumb=0.2, return_diagnostics=False
+):
     """Checks the energy-Bayes fraction of missing information (E-BFMI)
 
     Parameters
@@ -1004,30 +1063,35 @@ def check_energy(fit, pars=None, quiet=False, e_bfmi_rule_of_thumb=0.2,
     """
     df = _fit_to_df(fit, pars=pars)
 
-    result = (df.groupby('chain')['energy__']
-                .agg(_ebfmi)
-                .reset_index()
-                .rename(columns={'energy__': 'E-BFMI'}))
-    result['problematic'] = result['E-BFMI'] < e_bfmi_rule_of_thumb
+    result = (
+        df.groupby("chain")["energy__"]
+        .agg(_ebfmi)
+        .reset_index()
+        .rename(columns={"energy__": "E-BFMI"})
+    )
+    result["problematic"] = result["E-BFMI"] < e_bfmi_rule_of_thumb
 
-    pass_check = (~result['problematic']).all()
+    pass_check = (~result["problematic"]).all()
 
     if not quiet:
         if pass_check:
-            print('E-BFMI indicated no pathological behavior.')
+            print("E-BFMI indicated no pathological behavior.")
         else:
             for _, r in result.iterrows():
-                print('Chain {}: E-BFMI = {}'.format(r['chain'], r['E-BFMI']))
-            print('  E-BFMI below 0.2 indicates you may need to '
-                    + 'reparametrize your model.')
+                print("Chain {}: E-BFMI = {}".format(r["chain"], r["E-BFMI"]))
+            print(
+                "  E-BFMI below 0.2 indicates you may need to "
+                + "reparametrize your model."
+            )
 
     if return_diagnostics:
         return pass_check, result
     return pass_check
 
 
-def check_n_eff(fit, pars=None, quiet=False, n_eff_rule_of_thumb=0.001,
-                return_diagnostics=False):
+def check_n_eff(
+    fit, pars=None, quiet=False, n_eff_rule_of_thumb=0.001, return_diagnostics=False
+):
     """Checks the effective sample size per iteration.
 
     Parameters
@@ -1057,13 +1121,13 @@ def check_n_eff(fit, pars=None, quiet=False, n_eff_rule_of_thumb=0.001,
     .. Notes
        Parameters with n_eff given as NaN are not checked.
     """
-    if 'StanFit4Model' not in str(type(fit)):
-        raise RuntimeError('Must imput a StanFit4Model instance.')
+    if "StanFit4Model" not in str(type(fit)):
+        raise RuntimeError("Must imput a StanFit4Model instance.")
 
     fit_summary = fit.summary(probs=[], pars=pars)
-    n_effs = np.array([x[-2] for x in fit_summary['summary']])
-    names = fit_summary['summary_rownames']
-    n_iter = len(fit.extract()['lp__'])
+    n_effs = np.array([x[-2] for x in fit_summary["summary"]])
+    names = fit_summary["summary_rownames"]
+    n_iter = len(fit.extract()["lp__"])
     ratio = n_effs / n_iter
 
     pass_check = (ratio[~np.isnan(ratio)] > n_eff_rule_of_thumb).all()
@@ -1072,21 +1136,30 @@ def check_n_eff(fit, pars=None, quiet=False, n_eff_rule_of_thumb=0.001,
         if not pass_check:
             for name, r in zip(names, ratio):
                 if r < n_eff_rule_of_thumb:
-                    print('n_eff / iter for parameter {} is {}.'.format(name,
-                                                                        r))
-            print('  n_eff / iter below 0.001 indicates that the effective'
-                  + ' sample size has likely been overestimated.')
+                    print("n_eff / iter for parameter {} is {}.".format(name, r))
+            print(
+                "  n_eff / iter below 0.001 indicates that the effective"
+                + " sample size has likely been overestimated."
+            )
         else:
-            print('n_eff / iter looks reasonable for all parameters.')
+            print("n_eff / iter looks reasonable for all parameters.")
 
     if return_diagnostics:
-        return pass_check, pd.DataFrame(data={'parameter': names,
-                                              'n_eff/n_iter': ratio})
+        return (
+            pass_check,
+            pd.DataFrame(data={"parameter": names, "n_eff/n_iter": ratio}),
+        )
     return pass_check
 
 
-def check_rhat(fit, pars=None, quiet=False, rhat_rule_of_thumb=1.1,
-               known_rhat_nans=[], return_diagnostics=False):
+def check_rhat(
+    fit,
+    pars=None,
+    quiet=False,
+    rhat_rule_of_thumb=1.1,
+    known_rhat_nans=[],
+    return_diagnostics=False,
+):
     """Checks the potential issues with scale reduction factors.
 
     Parameters
@@ -1117,38 +1190,47 @@ def check_rhat(fit, pars=None, quiet=False, rhat_rule_of_thumb=1.1,
     rhat_diagnostics : DataFrame
         Data frame with information about problematic R-hat values.
     """
-    if 'StanFit4Model' not in str(type(fit)):
-        raise RuntimeError('Must imput a StanFit4Model instance.')
+    if "StanFit4Model" not in str(type(fit)):
+        raise RuntimeError("Must imput a StanFit4Model instance.")
 
     fit_summary = fit.summary(probs=[], pars=pars)
-    names = fit_summary['summary_rownames']
+    names = fit_summary["summary_rownames"]
     known_nan = [True if name in known_rhat_nans else False for name in names]
 
-    rhat = np.array([x[-1] for x in fit_summary['summary']])
+    rhat = np.array([x[-1] for x in fit_summary["summary"]])
 
-    pass_check = (np.isnan(rhat[~np.array(known_nan)]).sum() == 0
-                  and np.all(rhat[~np.array(known_nan)] < rhat_rule_of_thumb))
+    pass_check = np.isnan(rhat[~np.array(known_nan)]).sum() == 0 and np.all(
+        rhat[~np.array(known_nan)] < rhat_rule_of_thumb
+    )
 
     if not quiet:
         if not pass_check:
             for name, r, nan in zip(names, rhat, known_nan):
                 if (np.isnan(r) and not nan) or r > rhat_rule_of_thumb:
-                    print('Rhat for parameter {} is {}.'.format(name, r))
-            print('  Rhat above 1.1 indicates that the chains very likely'
-                  + ' have not mixed')
+                    print("Rhat for parameter {} is {}.".format(name, r))
+            print(
+                "  Rhat above 1.1 indicates that the chains very likely"
+                + " have not mixed"
+            )
         else:
-            print('Rhat looks reasonable for all parameters.')
+            print("Rhat looks reasonable for all parameters.")
 
     if return_diagnostics:
-        return pass_check, pd.DataFrame(data={'parameter': names,
-                                              'Rhat': rhat})
+        return pass_check, pd.DataFrame(data={"parameter": names, "Rhat": rhat})
     return pass_check
 
 
-def check_all_diagnostics(fit, pars=None, e_bfmi_rule_of_thumb=0.2,
-                          n_eff_rule_of_thumb=0.001, rhat_rule_of_thumb=1.1,
-                          known_rhat_nans=[], max_treedepth='infer',
-                          quiet=False, return_diagnostics=False):
+def check_all_diagnostics(
+    fit,
+    pars=None,
+    e_bfmi_rule_of_thumb=0.2,
+    n_eff_rule_of_thumb=0.001,
+    rhat_rule_of_thumb=1.1,
+    known_rhat_nans=[],
+    max_treedepth="infer",
+    quiet=False,
+    return_diagnostics=False,
+):
     """Checks all MCMC diagnostics
 
     Parameters
@@ -1195,49 +1277,49 @@ def check_all_diagnostics(fit, pars=None, e_bfmi_rule_of_thumb=0.2,
     warning_code = 0
     diag_results = {}
 
-    pass_check, diag_results['neff'] = check_n_eff(
-                        fit,
-                        pars,
-                        n_eff_rule_of_thumb=n_eff_rule_of_thumb,
-                        quiet=quiet,
-                        return_diagnostics=True)
+    pass_check, diag_results["neff"] = check_n_eff(
+        fit,
+        pars,
+        n_eff_rule_of_thumb=n_eff_rule_of_thumb,
+        quiet=quiet,
+        return_diagnostics=True,
+    )
     if not pass_check:
         warning_code = warning_code | (1 << 0)
 
-    pass_check, diag_results['rhat'] = check_rhat(
-                        fit,
-                        pars,
-                        rhat_rule_of_thumb=rhat_rule_of_thumb,
-                        known_rhat_nans=known_rhat_nans,
-                        quiet=quiet,
-                        return_diagnostics=True)
+    pass_check, diag_results["rhat"] = check_rhat(
+        fit,
+        pars,
+        rhat_rule_of_thumb=rhat_rule_of_thumb,
+        known_rhat_nans=known_rhat_nans,
+        quiet=quiet,
+        return_diagnostics=True,
+    )
     if not pass_check:
         warning_code = warning_code | (1 << 1)
 
     df = _fit_to_df(fit, pars=pars)
 
-    pass_check, diag_results['n_divergences'] = check_divergences(
-                        df,
-                        quiet=quiet,
-                        return_diagnostics=True)
+    pass_check, diag_results["n_divergences"] = check_divergences(
+        df, quiet=quiet, return_diagnostics=True
+    )
     if not pass_check:
         warning_code = warning_code | (1 << 2)
 
-    if max_treedepth == 'infer':
+    if max_treedepth == "infer":
         max_treedepth = _infer_max_treedepth(fit)
-    pass_check, diag_results['n_max_treedepth'] = check_treedepth(
-                        df=df,
-                        max_treedepth=max_treedepth,
-                        quiet=quiet,
-                        return_diagnostics=True)
+    pass_check, diag_results["n_max_treedepth"] = check_treedepth(
+        df=df, max_treedepth=max_treedepth, quiet=quiet, return_diagnostics=True
+    )
     if not pass_check:
         warning_code = warning_code | (1 << 3)
 
-    pass_check, diag_results['e_bfmi'] = check_energy(
-                        df,
-                        e_bfmi_rule_of_thumb=e_bfmi_rule_of_thumb,
-                        quiet=quiet,
-                        return_diagnostics=True)
+    pass_check, diag_results["e_bfmi"] = check_energy(
+        df,
+        e_bfmi_rule_of_thumb=e_bfmi_rule_of_thumb,
+        quiet=quiet,
+        return_diagnostics=True,
+    )
     if not pass_check:
         warning_code = warning_code | (1 << 4)
 
@@ -1278,42 +1360,44 @@ def parse_warning_code(warning_code, quiet=False, return_dict=False):
     """
 
     if quiet and not return_dict:
-        raise RuntimeError('`quiet` is True and `return_dict` is False, '
-            + 'so there is nothing to do.')
+        raise RuntimeError(
+            "`quiet` is True and `return_dict` is False, "
+            + "so there is nothing to do."
+        )
 
-    passed_tests = dict(neff=True, rhat=True, divergence=True,
-                        treedepth=True, energy=True)
+    passed_tests = dict(
+        neff=True, rhat=True, divergence=True, treedepth=True, energy=True
+    )
 
     if warning_code & (1 << 0):
-        passed_tests['neff'] = False
+        passed_tests["neff"] = False
         if not quiet:
-            print('n_eff / iteration warning')
+            print("n_eff / iteration warning")
     if warning_code & (1 << 1):
-        passed_tests['rhat'] = False
+        passed_tests["rhat"] = False
         if not quiet:
-            print('rhat warning')
+            print("rhat warning")
     if warning_code & (1 << 2):
-        passed_tests['divergence'] = False
+        passed_tests["divergence"] = False
         if not quiet:
-            print('divergence warning')
+            print("divergence warning")
     if warning_code & (1 << 3):
-        passed_tests['treedepth'] = False
+        passed_tests["treedepth"] = False
         if not quiet:
-            print('treedepth warning')
+            print("treedepth warning")
     if warning_code & (1 << 4):
-        passed_tests['energy'] = False
+        passed_tests["energy"] = False
         if not quiet:
-            print('energy warning')
+            print("energy warning")
     if warning_code == 0:
         if not quiet:
-            print('No diagnostic warnings')
+            print("No diagnostic warnings")
 
     if return_dict:
         return passed_tests
 
 
-def posterior_predictive_ranking(fit=None, ppc_name=None, data=None,
-                                 fractional=False):
+def posterior_predictive_ranking(fit=None, ppc_name=None, data=None, fractional=False):
     """Compute posterior predictive ranking of each data point.
 
     Parameters
@@ -1334,14 +1418,13 @@ def posterior_predictive_ranking(fit=None, ppc_name=None, data=None,
         points.
     """
     if fit is None or ppc_name is None or data is None:
-        raise RuntimeError(
-                '`fit`, `ppc_name`, and `data` must all be specified.')
+        raise RuntimeError("`fit`, `ppc_name`, and `data` must all be specified.")
 
     ppc = fit.extract(ppc_name)[ppc_name]
     rankings = np.empty(ppc.shape[1])
 
     for i in range(ppc.shape[1]):
-        rankings[i] = np.searchsorted(np.sort(ppc[:,i]), data[i])
+        rankings[i] = np.searchsorted(np.sort(ppc[:, i]), data[i])
 
     if fractional:
         rankings /= ppc.shape[0]
@@ -1349,23 +1432,25 @@ def posterior_predictive_ranking(fit=None, ppc_name=None, data=None,
     return rankings
 
 
-def sbc(prior_predictive_model=None,
-        posterior_model=None,
-        prior_predictive_model_data=None,
-        posterior_model_data=None,
-        measured_data=None,
-        parameters=None,
-        measured_data_dtypes={},
-        chains=4,
-        warmup=1000,
-        iter=2000,
-        thin=10,
-        init=None,
-        control=None,
-        n_jobs=1,
-        N=400,
-        n_prior_draws_for_sd=1000,
-        progress_bar=False):
+def sbc(
+    prior_predictive_model=None,
+    posterior_model=None,
+    prior_predictive_model_data=None,
+    posterior_model_data=None,
+    measured_data=None,
+    parameters=None,
+    measured_data_dtypes={},
+    chains=4,
+    warmup=1000,
+    iter=2000,
+    thin=10,
+    init=None,
+    control=None,
+    n_jobs=1,
+    N=400,
+    n_prior_draws_for_sd=1000,
+    progress_bar=False,
+):
     """Perform simulation-based calibration on a Stan Model.
 
     Parameters
@@ -1461,80 +1546,87 @@ def sbc(prior_predictive_model=None,
     """
 
     if prior_predictive_model is None:
-        raise RuntimeError('`prior_predictive_model` must be specified.')
+        raise RuntimeError("`prior_predictive_model` must be specified.")
     if posterior_model is None:
-        raise RuntimeError('`posterior_model` must be specified.')
+        raise RuntimeError("`posterior_model` must be specified.")
     if prior_predictive_model_data is None:
-        raise RuntimeError('`prior_predictive_model_data` must be specified.')
+        raise RuntimeError("`prior_predictive_model_data` must be specified.")
     if posterior_model_data is None:
-        raise RuntimeError('`posterior_model_data` must be specified.')
+        raise RuntimeError("`posterior_model_data` must be specified.")
     if measured_data is None:
-        raise RuntimeError('`measured_data` must be specified.')
+        raise RuntimeError("`measured_data` must be specified.")
     if parameters is None:
-        raise RuntimeError('`parameters` must be specified.')
+        raise RuntimeError("`parameters` must be specified.")
 
     # Take a prior sample to infer data types
     prior_sample = prior_predictive_model.sampling(
         data=prior_predictive_model_data,
-        algorithm='Fixed_param',
+        algorithm="Fixed_param",
         iter=1,
         chains=1,
-        warmup=0)
+        warmup=0,
+    )
 
     # Infer dtypes of measured data
     for data in measured_data:
         ar = prior_sample.extract(data)[data]
         if data not in measured_data_dtypes:
             if np.sum(ar != ar.astype(int)) == 0:
-                warnings.warn(f'Inferring int dtype for {data}.')
+                warnings.warn(f"Inferring int dtype for {data}.")
                 measured_data_dtypes[data] = int
 
     # Determine prior SDs for parameters of interest
-    prior_sd = _get_prior_sds(prior_predictive_model,
-                              prior_predictive_model_data,
-                              parameters,
-                              n_prior_draws_for_sd)
+    prior_sd = _get_prior_sds(
+        prior_predictive_model,
+        prior_predictive_model_data,
+        parameters,
+        n_prior_draws_for_sd,
+    )
 
     def arg_input_generator():
         counter = 0
         while counter < N:
             counter += 1
-            yield (prior_predictive_model,
-                   posterior_model,
-                   prior_predictive_model_data,
-                   posterior_model_data,
-                   measured_data,
-                   parameters,
-                   chains,
-                   warmup,
-                   iter,
-                   thin,
-                   init,
-                   control,
-                   prior_sd,
-                   measured_data_dtypes)
+            yield (
+                prior_predictive_model,
+                posterior_model,
+                prior_predictive_model_data,
+                posterior_model_data,
+                measured_data,
+                parameters,
+                chains,
+                warmup,
+                iter,
+                thin,
+                init,
+                control,
+                prior_sd,
+                measured_data_dtypes,
+            )
 
     with multiprocessing.Pool(n_jobs) as pool:
-        if progress_bar == 'notebook':
-            output = list(tqdm.tqdm_notebook(pool.imap(_perform_sbc,
-                                             arg_input_generator()),
-                                             total=N))
+        if progress_bar == "notebook":
+            output = list(
+                tqdm.tqdm_notebook(
+                    pool.imap(_perform_sbc, arg_input_generator()), total=N
+                )
+            )
         elif progress_bar == True:
-            output = list(tqdm.tqdm(pool.imap(_perform_sbc,
-                                    arg_input_generator()),
-                                    total=N))
+            output = list(
+                tqdm.tqdm(pool.imap(_perform_sbc, arg_input_generator()), total=N)
+            )
         elif progress_bar == False:
             output = pool.map(_perform_sbc, arg_input_generator())
         else:
-            raise RuntimeError('Invalid `progress_bar`.')
+            raise RuntimeError("Invalid `progress_bar`.")
 
     output = pd.DataFrame(output)
-    output['L'] = (iter - warmup) * chains // thin
+    output["L"] = (iter - warmup) * chains // thin
 
     return _tidy_sbc_output(output)
 
 
-def hpd(x, mass_frac) :
+def hpd(x, mass_frac):
     """
     Returns highest probability density region given by
     a set of samples.
@@ -1563,23 +1655,23 @@ def hpd(x, mass_frac) :
     n_samples = np.floor(mass_frac * n).astype(int)
 
     # Get width (in units of data) of all intervals with n_samples samples
-    int_width = d[n_samples:] - d[:n-n_samples]
+    int_width = d[n_samples:] - d[: n - n_samples]
 
     # Pick out minimal interval
     min_int = np.argmin(int_width)
 
     # Return interval
-    return np.array([d[min_int], d[min_int+n_samples]])
+    return np.array([d[min_int], d[min_int + n_samples]])
 
 
 def _fit_to_df(fit, **kwargs):
     """Convert StanFit4Model to data frame."""
-    if 'StanFit4Model' in str(type(fit)):
+    if "StanFit4Model" in str(type(fit)):
         df = to_dataframe(fit, inc_warmup=False, **kwargs)
     elif type(fit) != pd.core.frame.DataFrame:
-        raise RuntimeError('`fit` must be a StanModel or Pandas data frame.')
+        raise RuntimeError("`fit` must be a StanModel or Pandas data frame.")
     else:
-        df = fit.loc[fit['warmup']==0, :]
+        df = fit.loc[fit["warmup"] == 0, :]
 
     return df
 
@@ -1587,146 +1679,167 @@ def _fit_to_df(fit, **kwargs):
 def _infer_max_treedepth(fit):
     """Extract max treedepth from a StanFit4Model instance."""
     try:
-        return fit.stan_args[0]['ctrl']['sampling']['max_treedepth']
+        return fit.stan_args[0]["ctrl"]["sampling"]["max_treedepth"]
     except:
-        warnings.warn('Unable to determine max_treedepth. '
-                    + 'Using value of 10.')
+        warnings.warn("Unable to determine max_treedepth. " + "Using value of 10.")
         return 10
 
 
 def _ebfmi(energy):
     """Compute energy-Bayes fraction of missing information"""
-    return np.sum(np.diff(energy)**2) / (len(energy) - 1) / np.var(energy)
+    return np.sum(np.diff(energy) ** 2) / (len(energy) - 1) / np.var(energy)
 
 
 def _perform_sbc(args):
     """Perform an SBC analysis"""
-    logging.getLogger('pystan').setLevel(logging.CRITICAL)
+    logging.getLogger("pystan").setLevel(logging.CRITICAL)
 
-    (prior_predictive_model,
-     posterior_model,
-     prior_predictive_model_data,
-     posterior_model_data,
-     measured_data,
-     parameters,
-     chains,
-     warmup,
-     iter,
-     thin,
-     init,
-     control,
-     prior_sd,
-     measured_data_dtypes) = args
+    (
+        prior_predictive_model,
+        posterior_model,
+        prior_predictive_model_data,
+        posterior_model_data,
+        measured_data,
+        parameters,
+        chains,
+        warmup,
+        iter,
+        thin,
+        init,
+        control,
+        prior_sd,
+        measured_data_dtypes,
+    ) = args
 
     posterior_model_data = copy.deepcopy(posterior_model_data)
 
     prior_sample = prior_predictive_model.sampling(
         data=prior_predictive_model_data,
-        algorithm='Fixed_param',
+        algorithm="Fixed_param",
         iter=1,
         chains=1,
-        warmup=0)
+        warmup=0,
+    )
 
     # Extract data generated from the prior predictive calculation
     for data in measured_data:
         ar = prior_sample.extract(data)[data]
         if len(ar.shape) == 0:
             posterior_model_data[data] = np.asscalar(
-                                ar.astype(measured_data_dtypes[data]))
+                ar.astype(measured_data_dtypes[data])
+            )
         else:
-            posterior_model_data[data] = ar[0].astype(
-                                            measured_data_dtypes[data])
+            posterior_model_data[data] = ar[0].astype(measured_data_dtypes[data])
 
     # Store what the parameters were to generate prior predictive data
-    param_priors = {param: float(prior_sample.extract(param)[param])
-                            for param in parameters}
+    param_priors = {
+        param: float(prior_sample.extract(param)[param]) for param in parameters
+    }
 
     # Generate posterior samples
     posterior_samples = posterior_model.sampling(
-            data=posterior_model_data,
-            iter=iter,
-            chains=chains,
-            warmup=warmup,
-            n_jobs=1,
-            thin=thin)
+        data=posterior_model_data,
+        iter=iter,
+        chains=chains,
+        warmup=warmup,
+        n_jobs=1,
+        thin=thin,
+    )
 
     # Extract summary
     summary = posterior_samples.summary(probs=[])
-    row_names = tuple(summary['summary_rownames'])
-    col_names = tuple(summary['summary_colnames'])
+    row_names = tuple(summary["summary_rownames"])
+    col_names = tuple(summary["summary_colnames"])
 
     # Omit Rhat calculations on parameters we are not interested in
     known_rhat_nans = list(set(row_names) - set(parameters))
     warning_code, diagnostics = check_all_diagnostics(
-        posterior_samples, quiet=True, known_rhat_nans=known_rhat_nans,
-        return_diagnostics=True)
+        posterior_samples,
+        quiet=True,
+        known_rhat_nans=known_rhat_nans,
+        return_diagnostics=True,
+    )
 
     # Generate output dictionary
-    output = {param+'_rank_statistic':
-        (posterior_samples.extract(param)[param] < param_priors[param]).sum()
-                for param in parameters}
+    output = {
+        param
+        + "_rank_statistic": (
+            posterior_samples.extract(param)[param] < param_priors[param]
+        ).sum()
+        for param in parameters
+    }
     for param, p_prior in param_priors.items():
-        output[param + '_ground_truth'] = p_prior
+        output[param + "_ground_truth"] = p_prior
 
     # Compute posterior sensitivities
     for param in parameters:
-        mean_i = col_names.index('mean')
-        sd_i = col_names.index('sd')
+        mean_i = col_names.index("mean")
+        sd_i = col_names.index("sd")
         param_i = row_names.index(param)
-        output[param+'_mean'] = summary['summary'][param_i, mean_i]
-        output[param+'_sd'] = summary['summary'][param_i, sd_i]
-        output[param+'_z_score'] = (
-                (output[param+'_mean'] - output[param + '_ground_truth'])
-                / output[param+'_sd'])
-        output[param+'_shrinkage'] = (1 -
-                (output[param+'_sd'] / prior_sd[param])**2)
-        output[param+'_n_eff/n_iter'] = (
-            diagnostics['neff'].loc[diagnostics['neff']['parameter']==param,
-                                    'n_eff/n_iter'].values[0])
-        output[param+'_rhat'] = (
-            diagnostics['rhat'].loc[diagnostics['rhat']['parameter']==param,
-                                    'Rhat'].values[0])
+        output[param + "_mean"] = summary["summary"][param_i, mean_i]
+        output[param + "_sd"] = summary["summary"][param_i, sd_i]
+        output[param + "_z_score"] = (
+            output[param + "_mean"] - output[param + "_ground_truth"]
+        ) / output[param + "_sd"]
+        output[param + "_shrinkage"] = (
+            1 - (output[param + "_sd"] / prior_sd[param]) ** 2
+        )
+        output[param + "_n_eff/n_iter"] = (
+            diagnostics["neff"]
+            .loc[diagnostics["neff"]["parameter"] == param, "n_eff/n_iter"]
+            .values[0]
+        )
+        output[param + "_rhat"] = (
+            diagnostics["rhat"]
+            .loc[diagnostics["rhat"]["parameter"] == param, "Rhat"]
+            .values[0]
+        )
 
-    output['n_bad_ebfmi'] = diagnostics['e_bfmi']['problematic'].sum()
-    output['n_divergences'] = int(diagnostics['n_divergences'])
-    output['n_max_treedepth'] = int(diagnostics['n_max_treedepth'])
-    output['warning_code'] = warning_code
+    output["n_bad_ebfmi"] = diagnostics["e_bfmi"]["problematic"].sum()
+    output["n_divergences"] = int(diagnostics["n_divergences"])
+    output["n_max_treedepth"] = int(diagnostics["n_max_treedepth"])
+    output["warning_code"] = warning_code
 
     return output
 
 
-def _get_prior_sds(prior_predictive_model,
-               prior_predictive_model_data,
-               parameters,
-               n_prior_draws_for_sd):
+def _get_prior_sds(
+    prior_predictive_model,
+    prior_predictive_model_data,
+    parameters,
+    n_prior_draws_for_sd,
+):
     """Compute standard deviations of prior parameters."""
 
     prior_samples = prior_predictive_model.sampling(
         data=prior_predictive_model_data,
-        algorithm='Fixed_param',
+        algorithm="Fixed_param",
         iter=n_prior_draws_for_sd,
         chains=1,
-        warmup=0)
+        warmup=0,
+    )
 
     # Make sure only scalar parameters are being checked
     for param in parameters:
         if param not in prior_samples.model_pars:
-            raise RuntimeError(f'Parameter {param} not in the model.')
+            raise RuntimeError(f"Parameter {param} not in the model.")
         ind = prior_samples.model_pars.index(param)
         if prior_samples.par_dims[ind] != []:
             err = """Can only perform SBC checks on scalar parameters.
 Parameter {} is not a scalar. If you want to check elements
 of this parameter, use an entry in the `generated quantities`
-block to store the element as a scalar.""".format(param)
+block to store the element as a scalar.""".format(
+                param
+            )
             raise RuntimeError(err)
 
     # Compute prior sd's
     prior_sd = {}
     summary = prior_samples.summary(probs=[])
-    sd_i = tuple(summary['summary_colnames']).index('sd')
+    sd_i = tuple(summary["summary_colnames"]).index("sd")
     for param in parameters:
-        param_i = tuple(summary['summary_rownames']).index(param)
-        prior_sd[param] = summary['summary'][param_i, sd_i]
+        param_i = tuple(summary["summary_rownames"]).index(param)
+        prior_sd[param] = summary["summary"][param_i, sd_i]
 
     return prior_sd
 
@@ -1740,22 +1853,37 @@ def _tidy_sbc_output(sbc_output):
         Tidy data frame with SBC results.
     """
     df = sbc_output.copy()
-    df['trial'] = df.index.values
+    df["trial"] = df.index.values
 
-    rank_stat_cols = list(
-                df.columns[df.columns.str.contains('_rank_statistic')])
-    params = [col[:col.rfind('_rank_statistic')] for col in rank_stat_cols]
+    rank_stat_cols = list(df.columns[df.columns.str.contains("_rank_statistic")])
+    params = [col[: col.rfind("_rank_statistic")] for col in rank_stat_cols]
 
     dfs = []
-    stats = ['ground_truth', 'rank_statistic', 'mean', 'sd', 'shrinkage',
-             'z_score', 'rhat', 'n_eff/n_iter']
+    stats = [
+        "ground_truth",
+        "rank_statistic",
+        "mean",
+        "sd",
+        "shrinkage",
+        "z_score",
+        "rhat",
+        "n_eff/n_iter",
+    ]
 
-    aux_cols = ['n_divergences', 'n_bad_ebfmi', 'n_max_treedepth',
-                'warning_code', 'L', 'trial']
+    aux_cols = [
+        "n_divergences",
+        "n_bad_ebfmi",
+        "n_max_treedepth",
+        "warning_code",
+        "L",
+        "trial",
+    ]
     for param in params:
-        cols = [param+'_'+stat for stat in stats]
-        sub_df = df[cols+aux_cols].rename(columns={old_col: new_col for old_col, new_col in zip(cols, stats)})
-        sub_df['parameter'] = param
+        cols = [param + "_" + stat for stat in stats]
+        sub_df = df[cols + aux_cols].rename(
+            columns={old_col: new_col for old_col, new_col in zip(cols, stats)}
+        )
+        sub_df["parameter"] = param
         dfs.append(sub_df)
 
     return pd.concat(dfs, ignore_index=True)
@@ -1772,4 +1900,3 @@ def _disable_logging(level=logging.CRITICAL):
         yield
     finally:
         logging.disable(previous_level)
-

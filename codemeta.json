@@ -6,7 +6,7 @@
   "codeRepository": "https://github.com/justinbois/bebi103",
   "issueTracker": "https://github.com/justinbois/bebi103/issues",
   "license": "https://spdx.org/licenses/BSD-3-Clause",
-  "version": "0.0.41",
+  "version": "0.0.42",
   "author": [
     {
       "@type": "Person",

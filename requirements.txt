@@ -7,3 +7,5 @@ tqdm
 bokeh
 matplotlib
 arviz
+colorcet
+holoviews

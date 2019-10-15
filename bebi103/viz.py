@@ -826,11 +826,6 @@ def ecdf_collection(
     p=None,
     complementary=False,
     formal=False,
-    x_axis_label=None,
-    y_axis_label=None,
-    title=None,
-    plot_height=300,
-    plot_width=400,
     palette=[
         "#4e79a7",
         "#f28e2b",
@@ -848,6 +843,7 @@ def ecdf_collection(
     tooltips=None,
     val_axis_type="linear",
     ecdf_axis_type="linear",
+    marker_kwargs={},
     **kwargs,
 ):
     """
@@ -897,9 +893,9 @@ def ecdf_collection(
         Type of x-axis.
     ecdf_axis_type : 'linear' or 'log'
         Type of y-axis.
+
     kwargs
-        Any kwargs to be passed to `p.circle()` or `p.line()` when
-        making the plot.
+        Any kwargs to be passed to bokeh.plotting.figure().
 
     Returns
     -------
@@ -908,34 +904,38 @@ def ecdf_collection(
     if formal and tooltips is not None:
         raise RuntimeError('tooltips not possible for formal ECDFs.')
     """
-    cols = _check_cat_input(data, cats, val, None, tooltips, palette, kwargs)
+    cols = _check_cat_input(data, cats, val, None, tooltips, palette, marker_kwargs)
 
     if complementary:
         y = "__ECCDF"
-        if y_axis_label is None:
-            y_axis_label = "ECCDF"
+        if "y_axis_label" not in kwargs:
+            kwargs["y_axis_label"] = "ECCDF"
     else:
         y = "__ECDF"
-        if y_axis_label is None:
-            y_axis_label = "ECDF"
+        if "y_axis_label" not in kwargs:
+            kwargs["y_axis_label"] = "ECDF"
 
-    if x_axis_label is None:
-        x_axis_label = val
+    if "x_axis_label" not in kwargs:
+        kwargs["x_axis_label"] = val
 
     if p is None:
-        p = bokeh.plotting.figure(
-            plot_height=plot_height,
-            plot_width=plot_width,
-            x_axis_label=x_axis_label,
-            y_axis_label=y_axis_label,
-            x_axis_type=val_axis_type,
-            y_axis_type=ecdf_axis_type,
-            title=title,
-        )
+        if "height" not in kwargs:
+            kwargs["height"] = 300
+        if "width" not in kwargs:
+            kwargs["width"] = 400
+        p = bokeh.plotting.figure(**kwargs)
 
     if formal:
         p = _ecdf_collection_formal(
-            data, val, cats, complementary, order, palette, show_legend, p, **kwargs
+            data,
+            val,
+            cats,
+            complementary,
+            order,
+            palette,
+            show_legend,
+            p,
+            **marker_kwargs,
         )
     else:
         p = _ecdf_collection_dots(
@@ -949,7 +949,7 @@ def ecdf_collection(
             show_legend,
             y,
             p,
-            **kwargs,
+            **marker_kwargs,
         )
 
     if not formal and tooltips is not None:
