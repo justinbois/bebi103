@@ -107,6 +107,16 @@ def set_defaults():
 
 
     hv.opts.defaults(
+        hv.opts.HexTiles(
+            cmap=default_sequential_cmap,
+            padding=0.05,
+            show_grid=True,
+            toolbar="above",
+        )
+    )
+
+
+    hv.opts.defaults(
         hv.opts.Histogram(
             fill_alpha=0.3,
             fill_color=hv.Cycle(default_categorical_cmap),
@@ -122,6 +132,14 @@ def set_defaults():
             ylim=(0, None),
         )
     )
+
+
+    hv.opts.defaults(
+        hv.opts.Image(
+            cmap=default_sequential_cmap
+        )
+    )
+
 
     hv.opts.defaults(
         hv.opts.NdOverlay(
@@ -142,7 +160,7 @@ def set_defaults():
     hv.opts.defaults(
         hv.opts.Overlay(
             click_policy="hide",
-            fontsize=dict(legend=8, title=12),
+            fontsize=dict(legend=8),
             height=350,
             legend_offset=(10, 100),
             legend_position="right",
