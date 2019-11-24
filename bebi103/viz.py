@@ -33,6 +33,7 @@ Features requiring DataShader will not work and you will get exceptions."""
 
 
 from . import utils
+from . import image
 
 try:
     from . import stan
@@ -40,6 +41,55 @@ except:
     warnings.warn(
         "Could not import `stan` submodule. Perhaps pystan is not properly installed."
     )
+
+
+def plot_with_error_bars(
+    centers, confs, names, marker_kwargs={}, line_kwargs={}, **kwargs
+):
+    """Make a horizontal plot of centers/conf ints with error bars.
+
+    Parameters
+    ----------
+    centers : array_like, shape (n,)
+        Array of center points for error bar plot.
+    confs : array_like, shape (n, 2)
+        Array of low and high values of confidence intervals
+    names : list of strings
+        Names of the variables for the plot. These give the y-ticks.
+    marker_kwargs : dict, default {}
+        Kwargs to be passed to p.circle() for plotting centers.
+    line_kwargs : dict, default {}
+        Kwargs passsed to p.line() to plot the confidence interval.
+    kwargs : dict
+        Any addition kwargs are passed to bokeh.plotting.figure().
+
+    Returns
+    -------
+    output : Bokeh figure
+        Plot of error bars.
+    """
+    n = len(names)
+    if len(centers) != n:
+        raise ValueError("len(centers) ≠ len(names)")
+    if confs.shape != (n, 2):
+        raise ValueError("Shape of `confs` must be (len(names), 2).")
+
+    frame_height = kwargs.pop("frame_height", 50 * n)
+    frame_width = kwargs.pop("frame_width", 450)
+    line_width = kwargs.pop("line_width", 2)
+
+    p = bokeh.plotting.figure(
+        y_range=names[::-1],
+        frame_height=frame_height,
+        frame_width=frame_width,
+        **kwargs,
+    )
+
+    p.circle(x=centers, y=names, **marker_kwargs)
+    for conf, name in zip(confs, names):
+        p.line(x=conf, y=[name, name], line_width=2)
+
+    return p
 
 
 def fill_between(
@@ -2220,6 +2270,21 @@ def trace_plot(
     return bokeh.layouts.gridplot(plots, ncols=1)
 
 
+def contour_from_samples(
+    x,
+    y,
+    bins_2d=50,
+    levels=None,
+    weights=None,
+    smooth=1,
+    extend_contour_domain=False,
+    marker_kwargs={},
+    line_kwargs={},
+    **kwargs,
+):
+    raise NotImplementedError("Contour from samples not yet implemented.")
+
+
 def corner(
     samples=None,
     pars=None,
@@ -2374,11 +2439,10 @@ def corner(
         factors = tuple(df["chain"].unique())
         cmap = bokeh.transform.factor_cmap("chain", palette=palette, factors=factors)
 
-    if "divergent__" not in df.columns and divergence_color is not None:
-        raise RuntimeError(
-            "No divergence information available. "
-            + "You may want to use the `divergence_color=None` kwarg."
-        )
+    # Add dummy divergent column if no divergence information is given
+    if "divergent__" not in df.columns:
+        df = df.copy()
+        df["divergent__"] = 0
 
     if len(pars) > 6:
         raise RuntimeError("For space purposes, can show only six variables.")
@@ -2592,18 +2656,12 @@ def contour(
     levels=None,
     p=None,
     overlaid=False,
-    plot_width=350,
-    plot_height=300,
-    x_axis_label="x",
-    y_axis_label="y",
-    title=None,
-    line_color=None,
-    line_width=2,
-    color_mapper=None,
+    cmap=None,
     overlay_grid=False,
     fill=False,
     fill_palette=None,
     fill_alpha=0.75,
+    line_kwargs={},
     **kwargs,
 ):
     """
@@ -2630,25 +2688,23 @@ def contour(
     overlaid : bool, default False
         If True, `Z` is displayed as an image and the contours are
         overlaid.
-    plot_width : int, default 350
-        Width of the plot in pixels. Ignored if `p` is not None.
-    plot_height : int, default 300
-        Height of the plot in pixels. Ignored if `p` is not None.
-    x_axis_label : str, default 'x'
-        Label for the x-axis. Ignored if `p` is not None.
-    y_axis_label : str, default 'y'
-        Label for the y-axis. Ignored if `p` is not None.
     title : str, default None
         Title of the plot. Ignored if `p` is not None.
     line_color : str, defaults to Bokeh default
         Color, either named CSS color or hex, of contour lines.
     line_width : int, default 2
         Width of contour lines.
-    color_mapper : bokeh.models.LinearColorMapper, default Viridis
-        Mapping of `Z` level to color. Ignored if `overlaid` is False.
+    cmap : str or list of hex colors, default None
+        If `im` is an intensity image, `cmap` is a mapping of
+        intensity to color. If None, default is 256-level Viridis.
+        If `im` is a color image, then `cmap` can either be
+        'rgb' or 'cmy' (default), for RGB or CMY merge of channels.
     overlay_grid : bool, default False
         If True, faintly overlay the grid on top of image. Ignored if
         overlaid is False.
+    line_kwargs : dict, default {}
+        Keyword arguments passed to `p.multiline()` for rendering the
+        contour.
 
     Returns
     -------
@@ -2661,19 +2717,28 @@ def contour(
     if overlaid and p is not None:
         raise RuntimeError("Cannot specify `p` if showing image.")
 
-    if line_color is None:
+    # Set defaults
+    x_axis_label = kwargs.pop("x_axis_label", "x")
+    y_axis_label = kwargs.pop("y_axis_label", "y")
+    frame_height = kwargs.pop("frame_height", 300)
+    frame_width = kwargs.pop("frame_width", 300)
+    title = kwargs.pop("title", None)
+
+    if "line_color" not in line_kwargs:
         if overlaid:
-            line_color = "white"
+            line_kwargs["line_color"] = "white"
         else:
-            line_color = "black"
+            line_kwargs["line_color"] = "black"
+
+    line_width = line_kwargs.pop("line_width", 2)
 
     if p is None:
         if overlaid:
-            p = imshow(
+            p = image.imshow(
                 Z,
-                color_mapper=color_mapper,
-                plot_height=plot_height,
-                plot_width=plot_width,
+                cmap=cmap,
+                frame_height=frame_height,
+                frame_width=frame_width,
                 x_axis_label=x_axis_label,
                 y_axis_label=y_axis_label,
                 title=title,
@@ -2685,11 +2750,12 @@ def contour(
             )
         else:
             p = bokeh.plotting.figure(
-                plot_width=plot_width,
-                plot_height=plot_height,
+                frame_width=frame_width,
+                frame_height=frame_height,
                 x_axis_label=x_axis_label,
                 y_axis_label=y_axis_label,
                 title=title,
+                **kwargs,
             )
 
     # Set default levels
@@ -2729,8 +2795,7 @@ def contour(
         p.background_fill_color = fill_palette[-1]
 
     # Populate the plot with contour lines
-    if line_width:
-        p.multi_line(xs, ys, line_color=line_color, line_width=line_width, **kwargs)
+    p.multi_line(xs, ys, line_width=line_width, **line_kwargs)
 
     if overlay_grid and overlaid:
         p.grid.level = "overlay"

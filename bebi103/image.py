@@ -18,6 +18,8 @@ import bokeh.plotting
 
 from matplotlib import path
 
+from . import viz
+
 
 def imshow(
     im,
@@ -255,7 +257,7 @@ def imshow(
     if record_clicks or display_clicks:
         div = bokeh.models.Div(width=200)
         layout = bokeh.layouts.row(p, div)
-        p.js_on_event(bokeh.events.Tap, _display_clicks(div, attributes=["x", "y"]))
+        p.js_on_event(bokeh.events.Tap, viz._display_clicks(div, attributes=["x", "y"]))
         if return_im:
             return layout, im_bokeh
         else:
