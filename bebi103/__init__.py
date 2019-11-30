@@ -15,6 +15,8 @@ from . import viz
 
 from . import image
 
+from .utils import *
+
 try:
     from . import stan
 except:
@@ -23,4 +25,4 @@ except:
 
 __author__ = """Justin Bois"""
 __email__ = 'bois@caltech.edu'
-__version__ = '0.0.44'
+__version__ = '0.0.45'
