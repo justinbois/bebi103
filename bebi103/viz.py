@@ -512,6 +512,7 @@ def predictive_ecdf(
         raise RuntimeError("Can specify maximally four percentiles.")
 
     # Build ptiles
+    percentiles = np.sort(percentiles)[::-1]
     ptiles = [pt for pt in percentiles if pt > 0]
     ptiles = (
         [50 - pt / 2 for pt in percentiles]
@@ -682,6 +683,7 @@ def predictive_regression(
         raise RuntimeError("Can specify maximally four percentiles.")
 
     # Build ptiles
+    percentiles = np.sort(percentiles)[::-1]
     ptiles = [pt for pt in percentiles if pt > 0]
     ptiles = (
         [50 - pt / 2 for pt in percentiles]
