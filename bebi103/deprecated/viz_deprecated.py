@@ -341,3 +341,263 @@ def bokeh_im(im, plot_height=400, plot_width=None,
     p.image(image=[im], x=0, y=0, dw=m, dh=n, color_mapper=color)
 
     return p
+
+
+def distribution_plot_app(
+    x_min=None,
+    x_max=None,
+    scipy_dist=None,
+    transform=None,
+    custom_pdf=None,
+    custom_pmf=None,
+    custom_cdf=None,
+    params=None,
+    n=400,
+    plot_height=200,
+    plot_width=300,
+    x_axis_label="x",
+    title=None,
+):
+    """
+    Build interactive Bokeh app displaying a univariate
+    probability distribution.
+
+    Parameters
+    ----------
+    x_min : float
+        Minimum value that the random variable can take in plots.
+    x_max : float
+        Maximum value that the random variable can take in plots.
+    scipy_dist : scipy.stats distribution
+        Distribution to use in plotting.
+    transform : function or None (default)
+        A function of call signature `transform(*params)` that takes
+        a tuple or Numpy array of parameters and returns a tuple of
+        the same length with transformed parameters.
+    custom_pdf : function
+        Function with call signature f(x, *params) that computes the
+        PDF of a distribution.
+    custom_pmf : function
+        Function with call signature f(x, *params) that computes the
+        PDF of a distribution.
+    custom_cdf : function
+        Function with call signature F(x, *params) that computes the
+        CDF of a distribution.
+    params : list of dicts
+        A list of parameter specifications. Each entry in the list gives
+        specifications for a parameter of the distribution stored as a
+        dictionary. Each dictionary must have the following keys.
+            name : str, name of the parameter
+            start : float, starting point of slider for parameter (the
+                smallest allowed value of the parameter)
+            end : float, ending point of slider for parameter (the
+                largest allowed value of the parameter)
+            value : float, the value of the parameter that the slider
+                takes initially. Must be between start and end.
+            step : float, the step size for the slider
+    n : int, default 400
+        Number of points to use in making plots of PDF and CDF for
+        continuous distributions. This should be large enough to give
+        smooth plots.
+    plot_height : int, default 200
+        Height of plots.
+    plot_width : int, default 300
+        Width of plots.
+    x_axis_label : str, default 'x'
+        Label for x-axis.
+    title : str, default None
+        Title to be displayed above the PDF or PMF plot.
+
+    Returns
+    -------
+    output : Bokeh app
+        An app to visualize the PDF/PMF and CDF. It can be displayed
+        with bokeh.io.show(). If it is displayed in a notebook, the
+        notebook_url kwarg should be specified.
+    """
+    if None in [x_min, x_max]:
+        raise RuntimeError("`x_min` and `x_max` must be specified.")
+
+    if scipy_dist is None:
+        fun_c = custom_cdf
+        if (custom_pdf is None and custom_pmf is None) or custom_cdf is None:
+            raise RuntimeError(
+                "For custom distributions, both PDF/PMF and" + " CDF must be specified."
+            )
+        if custom_pdf is not None and custom_pmf is not None:
+            raise RuntimeError("Can only specify custom PMF or PDF.")
+        if custom_pmf is None:
+            discrete = False
+            fun_p = custom_pdf
+        else:
+            discrete = True
+            fun_p = custom_pmf
+    elif custom_pdf is not None or custom_pmf is not None or custom_cdf is not None:
+        raise RuntimeError("Can only specify either custom or scipy distribution.")
+    else:
+        fun_c = scipy_dist.cdf
+        if hasattr(scipy_dist, "pmf"):
+            discrete = True
+            fun_p = scipy_dist.pmf
+        else:
+            discrete = False
+            fun_p = scipy_dist.pdf
+
+    if discrete:
+        p_y_axis_label = "PMF"
+    else:
+        p_y_axis_label = "PDF"
+
+    if params is None:
+        raise RuntimeError("`params` must be specified.")
+
+    def _plot_app(doc):
+        p_p = bokeh.plotting.figure(
+            plot_height=plot_height,
+            plot_width=plot_width,
+            x_axis_label=x_axis_label,
+            y_axis_label=p_y_axis_label,
+            title=title,
+        )
+        p_c = bokeh.plotting.figure(
+            plot_height=plot_height,
+            plot_width=plot_width,
+            x_axis_label=x_axis_label,
+            y_axis_label="CDF",
+        )
+
+        # Link the axes
+        p_c.x_range = p_p.x_range
+
+        # Make sure CDF y_range is zero to one
+        p_c.y_range = bokeh.models.Range1d(-0.05, 1.05)
+
+        # Make array of parameter values
+        param_vals = np.array([param["value"] for param in params])
+        if transform is not None:
+            param_vals = transform(*param_vals)
+
+        # Set up data for plot
+        if discrete:
+            x = np.arange(int(np.ceil(x_min)), int(np.floor(x_max)) + 1)
+            x_size = x[-1] - x[0]
+            x_c = np.empty(2 * len(x))
+            x_c[::2] = x
+            x_c[1::2] = x
+            x_c = np.concatenate(
+                (
+                    (max(x[0] - 0.05 * x_size, x[0] - 0.95),),
+                    x_c,
+                    (min(x[-1] + 0.05 * x_size, x[-1] + 0.95),),
+                )
+            )
+            x_cdf = np.concatenate(((x_c[0],), x))
+        else:
+            x = np.linspace(x_min, x_max, n)
+            x_c = x_cdf = x
+
+        # Compute PDF and CDF
+        y_p = fun_p(x, *param_vals)
+        y_c = fun_c(x_cdf, *param_vals)
+        if discrete:
+            y_c_plot = np.empty_like(x_c)
+            y_c_plot[::2] = y_c
+            y_c_plot[1::2] = y_c
+            y_c = y_c_plot
+
+        # Set up data sources
+        source_p = bokeh.models.ColumnDataSource(data={"x": x, "y_p": y_p})
+        source_c = bokeh.models.ColumnDataSource(data={"x": x_c, "y_c": y_c})
+
+        # Plot PDF and CDF
+        p_c.line("x", "y_c", source=source_c, line_width=2)
+        if discrete:
+            p_p.circle("x", "y_p", source=source_p, size=5)
+            p_p.segment(x0="x", x1="x", y0=0, y1="y_p", source=source_p, line_width=2)
+        else:
+            p_p.line("x", "y_p", source=source_p, line_width=2)
+
+        def _callback(attr, old, new):
+            param_vals = tuple([slider.value for slider in sliders])
+            if transform is not None:
+                param_vals = transform(*param_vals)
+
+            # Compute PDF and CDF
+            source_p.data["y_p"] = fun_p(x, *param_vals)
+            y_c = fun_c(x_cdf, *param_vals)
+            if discrete:
+                y_c_plot = np.empty_like(x_c)
+                y_c_plot[::2] = y_c
+                y_c_plot[1::2] = y_c
+                y_c = y_c_plot
+            source_c.data["y_c"] = y_c
+
+        sliders = [
+            bokeh.models.Slider(
+                start=param["start"],
+                end=param["end"],
+                value=param["value"],
+                step=param["step"],
+                title=param["name"],
+            )
+            for param in params
+        ]
+        for slider in sliders:
+            slider.on_change("value", _callback)
+
+        # Add the plot to the app
+        widgets = bokeh.layouts.widgetbox(sliders)
+        grid = bokeh.layouts.gridplot([p_p, p_c], ncols=2)
+        doc.add_root(bokeh.layouts.column(widgets, grid))
+
+    handler = bokeh.application.handlers.FunctionHandler(_plot_app)
+    return bokeh.application.Application(handler)
+
+
+def adjust_range(element, buffer=0.05):
+    """
+    Adjust soft ranges of dimensions of HoloViews element.
+
+    Parameters
+    ----------
+    element : holoviews element
+        Element which will have the `soft_range` of each kdim and vdim
+        recomputed to give a buffer around the glyphs.
+    buffer : float, default 0.05
+        Buffer, as a fraction of the whole data range, to give around
+        data.
+
+    Returns
+    -------
+    output : holoviews element
+        Inputted HoloViews element with updated soft_ranges for its
+        dimensions.
+    """
+    # This only works with DataFrames
+    if type(element.data) != pd.core.frame.DataFrame:
+        raise RuntimeError("Can only adjust range if data is Pandas DataFrame.")
+
+    # Adjust ranges of kdims
+    for i, dim in enumerate(element.kdims):
+        if element.data[dim.name].dtype in [float, int]:
+            data_range = (element.data[dim.name].min(), element.data[dim.name].max())
+            if data_range[1] - data_range[0] > 0:
+                buff = buffer * (data_range[1] - data_range[0])
+                element.kdims[i].soft_range = (
+                    data_range[0] - buff,
+                    data_range[1] + buff,
+                )
+
+    # Adjust ranges of vdims
+    for i, dim in enumerate(element.vdims):
+        if element.data[dim.name].dtype in [float, int]:
+            data_range = (element.data[dim.name].min(), element.data[dim.name].max())
+            if data_range[1] - data_range[0] > 0:
+                buff = buffer * (data_range[1] - data_range[0])
+                element.vdims[i].soft_range = (
+                    data_range[0] - buff,
+                    data_range[1] + buff,
+                )
+
+    return element
+

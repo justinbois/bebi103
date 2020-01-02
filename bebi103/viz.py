@@ -2,6 +2,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import xarray
 import scipy.stats as st
 import numba
 
@@ -9,6 +10,9 @@ try:
     import pymc3 as pm
 except:
     pass
+
+import arviz as az
+import arviz.plots.plot_utils
 
 import scipy.ndimage
 import skimage
@@ -21,6 +25,8 @@ import bokeh.application.handlers
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
+
+import colorcet
 
 try:
     import datashader as ds
@@ -80,7 +86,7 @@ def plot_with_error_bars(
         kwargs["frame_width"] = 450
     line_width = kwargs.pop("line_width", 2)
 
-    p = bokeh.plotting.figure(y_range=names[::-1], **kwargs,)
+    p = bokeh.plotting.figure(y_range=names[::-1], **kwargs)
 
     p.circle(x=centers, y=names, **marker_kwargs)
     for conf, name in zip(confs, names):
@@ -459,9 +465,9 @@ def predictive_ecdf(
 
     Parameters
     ----------
-    samples : Numpy array, shape (n_samples, n)
+    samples : Numpy array or xarray, shape (n_samples, n) or xarray DataArray
         A Numpy array containing predictive samples.
-    data : Numpy array, shape (n,)
+    data : Numpy array, shape (n,) or xarray DataArray
         If not None, ECDF of measured data is overlaid with predictive
         ECDF.
     diff : bool, default True
@@ -504,9 +510,10 @@ def predictive_ecdf(
         the middle.
     """
     if type(samples) != np.ndarray:
-        raise RuntimeError(
-            "Samples can only be Numpy arrays. See v. 0.0.44 for using samples from a Stan model. This functionality will be added back in a future release."
-        )
+        if type(samples) == xarray.core.dataarray.DataArray:
+            samples = samples.squeeze().values
+        else:
+            raise RuntimeError("Samples can only be Numpy arrays and xarrays.")
 
     if len(percentiles) > 4:
         raise RuntimeError("Can specify maximally four percentiles.")
@@ -548,7 +555,7 @@ def predictive_ecdf(
         x = np.arange(samples.min(), samples.max() + 1)
     elif x is None:
         x = np.linspace(
-            samples.min() - 0.05 * data_range, samples.max() + 0.05 * data_range, 400,
+            samples.min() - 0.05 * data_range, samples.max() + 0.05 * data_range, 400
         )
 
     ecdfs = np.array([_ecdf_arbitrary_points(sample, x) for sample in samples])
@@ -640,10 +647,10 @@ def predictive_regression(
 
     Parameters
     ----------
-    samples : Numpy array, shape (n_samples, n_x)
+    samples : Numpy array, shape (n_samples, n_x) or xarray DataArray
         Numpy array containing predictive samples of y-values.
     sample_x : Numpy array, shape (n_x,)
-    data : Numpy array, shape (n, 2)
+    data : Numpy array, shape (n, 2) or xarray DataArray
         If not None, the measured data. The first column is the x-data,
         and the second the y-data. These are plotted as points over the
         predictive plot.
@@ -675,9 +682,16 @@ def predictive_regression(
         samples, with the median plotted as line in the middle.
     """
     if type(samples) != np.ndarray:
-        raise RuntimeError(
-            "Samples can only be Numpy arrays. See v. 0.0.44 for using samples from a Stan model. This functionality will be added back in a future release."
-        )
+        if type(samples) == xarray.core.dataarray.DataArray:
+            samples = samples.squeeze().values
+        else:
+            raise RuntimeError("Samples can only be Numpy arrays and xarrays.")
+
+    if type(samples_x) != np.ndarray:
+        if type(samples_x) == xarray.core.dataarray.DataArray:
+            samples_x = samples_x.squeeze().values
+        else:
+            raise RuntimeError("`samples_x` can only be Numpy array or xarray.")
 
     if len(percentiles) > 4:
         raise RuntimeError("Can specify maximally four percentiles.")
@@ -1057,87 +1071,52 @@ def sbc_rank_ecdf(
 def parcoord_plot(
     samples=None,
     pars=None,
-    plot_width=600,
-    plot_height=175,
-    x_axis_label=None,
-    y_axis_label=None,
-    inc_warmup=False,
-    color_by_chain=False,
-    color="black",
-    palette=[
-        "#4e79a7",
-        "#f28e2b",
-        "#e15759",
-        "#76b7b2",
-        "#59a14f",
-        "#edc948",
-        "#b07aa1",
-        "#ff9da7",
-        "#9c755f",
-        "#bab0ac",
-    ],
-    alpha=0.02,
-    line_width=0.5,
-    line_join="bevel",
-    divergence_color="orange",
-    divergence_alpha=1,
-    divergence_line_width=1,
-    xtick_label_orientation="horizontal",
     transformation=None,
+    color_by_chain=False,
+    palette=None,
+    line_kwargs={},
+    divergence_kwargs={},
+    xtick_label_orientation="horizontal",
     **kwargs,
 ):
     """
     Make a parallel coordinate plot of MCMC samples. The x-axis is the
-    parameter name and the y-axis is the value of the parameter centered
-    by its median and scaled by its 95 percentile range.
+    parameter name and the y-axis is the value of the parameter,
+    possibly transformed to so the scale of all parameters are similar.
 
     Parameters
     ----------
-    samples : StanFit4Model instance or Pandas DataFrame
+    samples : ArviZ InferenceData instance or xarray Dataset instance
         Result of MCMC sampling.
-    pars : list
-        List of variables as strings included in `samples` to construct
-        the plot.
-    plot_width : int, default 600
-        Width of the trace plot for each variable in pixels.
-    plot_height : int, default 175
-        Height of the trace plot for each variable in pixels.
-    x_axis_label : str or None, default None
-        Label for x-axis in the plot.
-    y_axis_label : str, default 'scaled value'
-        Label for x-axis in the plot.
-    inc_warmup : bool, default False
-        If True, include warmup samples in the trace.
+    pars : list of strings
+        List of variables to include in the plot.
+    transformation : function, str, or dict, default None
+        A transformation to apply to each set of samples. The function
+        must take a single array as input and return an array as the
+        same size. If None, nor transformation is done. If a dictionary,
+        each key is the variable name and the corresponding value is a
+        function for the transformation of that variable. Alternatively,
+        if `transformation` is `'minmax'`, the data are scaled to range
+        from zero to one, or if `transformation` is `'rank'`, the rank
+        of the each data is used.
     color_by_chain : bool, default False
         If True, color the lines by chain.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
-        the default color cycle employed by Altair.
-    alpha : float, default 0.02
-        Opacity of the traces.
-    line_width : float, default 0.5
-        Width of the lines in the trace plot.
-    line_join : str, default 'bevel'
-        Specification for `line_join` for lines in the plot.
-    divergence_color : str, default 'orange'
-        Color of samples that are divergent.
-    divergence_alpha : float, default 1.0
-        Opactive for samples that are divergent
-    divergence_line_width : float, default 1
-        Width of lines for divergent samples.
+        colorcet.b_glasbey_category10 from the colorcet package.
+    line_kwargs: dict
+        Dictionary of kwargs to be passed to `p.multi_line()` in making
+        the plot of non-divergent samples.
+    divergence_kwargs: dict
+        Dictionary of kwargs to be passed to `p.multi_line()` in making
+        the plot of divergent samples.
     xtick_label_orientation : str or float, default 'horizontal'
         Orientation of x tick labels. In some plots, horizontally
         labeled ticks will have label clashes, and this can fix that.
-    transformation : function or list of functions, default None
-        A transformation to apply to each set of samples. The function
-        must take a single array as input and return an array as the
-        same size. If None, nor transformation is done. If a list of
-        functions, the transformations are applied to the respective
-        variables in `pars`.
     kwargs
-        Any kwargs to be passed to the `line()` function while making
-        the plot.
+        Any kwargs to be passed to `bokeh.plotting.figure()` when
+        instantiating the figure.
 
     Returns
     -------
@@ -1145,70 +1124,81 @@ def parcoord_plot(
         Parallel coordinates plot.
 
     """
-    if type(samples) == pd.core.frame.DataFrame:
-        df = samples
-        if inc_warmup and "warmup" in df.columns:
-            df = df.loc[df["warmup"] == 0, :]
-    elif "pymc3" in str(type(samples)):
-        raise NotImplementedError("Plots of PyMC3 traces not implemented.")
-    elif "StanFit4Model" in str(type(samples)):
-        df = stan.to_dataframe(samples, diagnostics=True, inc_warmup=inc_warmup)
+    # Default properties
+    if palette is None:
+        palette = colorcet.b_glasbey_category10
+    line_width = line_kwargs.pop("line_width", 0.5)
+    alpha = line_kwargs.pop("alpha", 0.02)
+    line_join = line_kwargs.pop("line_join", "bevel")
+    if "color" in line_kwargs and color_by_chain:
+        raise RuntimeError(
+            "Cannot specify line color and also color by chain. If coloring by chain, use `palette` kwarg to specify color scheme."
+        )
+    color = line_kwargs.pop("color", "black")
 
-    if pars is None:
-        exclude = [
-            "chain",
-            "chain_idx",
-            "warmup",
-            "divergent__",
-            "energy__",
-            "treedepth__",
-            "accept_stat__",
-            "stepsize__",
-            "n_leapfrog__",
-        ]
-        pars = [col for col in df.columns if col not in exclude]
+    divergence_line_join = divergence_kwargs.pop("line_join", "bevel")
+    divergence_line_width = divergence_kwargs.pop("line_width", 1)
+    divergence_color = divergence_kwargs.pop("color", "orange")
+    divergence_alpha = divergence_kwargs.pop("alpha", 1)
 
-    if type(pars) not in (list, tuple):
-        raise RuntimeError("`pars` must be a list or tuple.")
-
-    if type(transformation) not in (list, tuple):
-        transformation = [transformation] * len(pars)
-    for i, trans in enumerate(transformation):
-        if trans is None:
-            transformation[i] = lambda x: x
+    if "plot_height" not in kwargs and "frame_height" not in kwargs:
+        kwargs["frame_height"] = 175
+    if "plot_width" not in kwargs and "frame_width" not in kwargs:
+        kwargs["frame_width"] = 600
+    toolbar_location = kwargs.pop("toolbar_location", "above")
+    if "x_range" in kwargs:
+        raise RuntimeError("Cannot specify x_range; this is inferred.")
 
     if not color_by_chain:
         palette = [color] * len(palette)
 
-    for col in pars:
-        if col not in df.columns:
-            raise RuntimeError("Column " + col + " not in the columns of DataFrame.")
+    if type(samples) != az.data.inference_data.InferenceData:
+        raise RuntimeError("Input must be an ArviZ InferenceData instance.")
 
-    cols = pars + ["divergent__", "chain", "chain_idx"]
-    df = df[cols].copy()
-    df = df.melt(id_vars=["divergent__", "chain", "chain_idx"])
+    if not hasattr(samples, "posterior"):
+        raise RuntimeError("Input samples do not have 'posterior' group.")
+
+    if not (
+        hasattr(samples, "sample_stats") and hasattr(samples.sample_stats, "diverging")
+    ):
+        warnings.warn("No divergence information available.")
+
+    pars, df = _sample_pars_to_df(samples, pars)
+
+    if transformation == "minmax":
+        transformation = {
+            par: lambda x: (x - x.min()) / (x.max() - x.min())
+            if x.min() < x.max()
+            else 0.0
+            for par in pars
+        }
+    elif transformation == "rank":
+        transformation = {par: lambda x: st.rankdata(x) for par in pars}
+
+    if transformation is None:
+        transformation = {par: lambda x: x for par in pars}
+
+    if callable(transformation) or transformation is None:
+        transformation = {par: transformation for par in pars}
+
+    for col, trans in transformation.items():
+        df[col] = trans(df[col])
+    df = df.melt(id_vars=["divergent__", "chain__", "draw__"])
 
     p = bokeh.plotting.figure(
-        plot_height=plot_height,
-        plot_width=plot_width,
-        x_axis_label=x_axis_label,
-        y_axis_label=y_axis_label,
-        x_range=bokeh.models.FactorRange(*list(df["variable"].unique())),
-        toolbar_location="above",
+        x_range=bokeh.models.FactorRange(*pars),
+        toolbar_location=toolbar_location,
+        **kwargs,
     )
 
     # Plots for samples that were not divergent
     ys = np.array(
         [
             group["value"].values
-            for _, group in df.loc[df["divergent__"] == 0].groupby(
-                ["chain", "chain_idx"]
-            )
+            for _, group in df.loc[~df["divergent__"]].groupby(["chain__", "draw__"])
         ]
     )
     if len(ys) > 0:
-        for j in range(ys.shape[1]):
-            ys[:, j] = transformation[j](ys[:, j])
         ys = [y for y in ys]
         xs = [list(df["variable"].unique())] * len(ys)
 
@@ -1219,20 +1209,17 @@ def parcoord_plot(
             alpha=alpha,
             line_join=line_join,
             color=[palette[i % len(palette)] for i in range(len(ys))],
+            **line_kwargs,
         )
 
     # Plots for samples that were divergent
     ys = np.array(
         [
             group["value"].values
-            for _, group in df.loc[df["divergent__"] == 1].groupby(
-                ["chain", "chain_idx"]
-            )
+            for _, group in df.loc[df["divergent__"]].groupby(["chain__", "draw__"])
         ]
     )
     if len(ys) > 0:
-        for j in range(ys.shape[1]):
-            ys[:, j] = transformation[j](ys[:, j])
         ys = [y for y in ys]
         xs = [list(df["variable"].unique())] * len(ys)
 
@@ -1243,6 +1230,7 @@ def parcoord_plot(
             line_join=line_join,
             color=divergence_color,
             line_width=divergence_line_width,
+            **divergence_kwargs,
         )
 
     p.xaxis.major_label_orientation = xtick_label_orientation
@@ -1250,111 +1238,72 @@ def parcoord_plot(
     return p
 
 
-def trace_plot(
-    samples=None,
-    pars=None,
-    labels=None,
-    plot_width=600,
-    plot_height=150,
-    x_axis_label="step",
-    inc_warmup=False,
-    palette=[
-        "#4e79a7",
-        "#f28e2b",
-        "#e15759",
-        "#76b7b2",
-        "#59a14f",
-        "#edc948",
-        "#b07aa1",
-        "#ff9da7",
-        "#9c755f",
-        "#bab0ac",
-    ],
-    alpha=0.02,
-    line_width=0.5,
-    line_join="bevel",
-    **kwargs,
-):
+def trace_plot(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
     """
     Make a trace plot of MCMC samples.
 
     Parameters
     ----------
-    samples : StanFit4Model instance or Pandas DataFrame
+    samples : ArviZ InferenceData instance or xarray Dataset instance
         Result of MCMC sampling.
-    pars : list
-        List of variables as strings included in `samples` to construct
-        the plot.
-    labels : list, default None
-        List of labels for the respective variables given in `pars`. If
-        None, the variable names from `pars` are used.
-    plot_width : int, default 600
-        Width of the trace plot for each variable in pixels.
-    plot_height : int, default 150
-        Height of the trace plot for each variable in pixels.
-    x_axis_label : str, default 'step'
-        Label for x-axis in the trace plots.
-    inc_warmup : bool, default False
-        If True, include warmup samples in the trace.
+    pars : list of strings
+        List of variables to include in the plot.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
-        the default color cycle employed by Altair.
-    alpha : float, default 0.1
-        Opacity of the traces.
-    line_width : float, default 0.5
-        Width of the lines in the trace plot.
-    line_join : str, default 'bevel'
-        Specification for `line_join` for lines in the plot.
+        colorcet.b_glasbey_category10 from the colorcet package.
+    line_kwargs: dict
+        Dictionary of kwargs to be passed to `p.multi_line()` in making
+        the plot of non-divergent samples.
     kwargs
-        Any kwargs to be passed to the `line()` function while making
-        the plot.
+        Any kwargs to be passed to `bokeh.plotting.figure()`.
 
     Returns
     -------
     output : Bokeh gridplot
         Set of chain traces as a Bokeh gridplot.
     """
-    if type(samples) == pd.core.frame.DataFrame:
-        df = samples
-        if inc_warmup and "warmup" in df.columns:
-            df = df.loc[df["warmup"] == 0, :]
-    elif "pymc3" in str(type(samples)):
-        raise NotImplementedError("Plots of PyMC3 traces not implemented.")
-    elif "StanFit4Model" in str(type(samples)):
-        df = stan.to_dataframe(samples, inc_warmup=inc_warmup)
+    # Default properties
+    if palette is None:
+        palette = colorcet.b_glasbey_category10
+    line_width = line_kwargs.pop("line_width", 0.5)
+    alpha = line_kwargs.pop("alpha", 0.5)
+    line_join = line_kwargs.pop("line_join", "bevel")
+    if "color" in line_kwargs:
+        raise RuntimeError(
+            "Cannot specify line color. Specify color scheme with `palette` kwarg."
+        )
 
-    if pars is None:
-        raise RuntimeError("Must specify pars.")
+    if "plot_height" not in kwargs and "frame_height" not in kwargs:
+        kwargs["frame_height"] = 150
+    if "plot_width" not in kwargs and "frame_width" not in kwargs:
+        kwargs["frame_width"] = 600
+    x_axis_label = kwargs.pop("x_axis_label", "step")
+    if "y_axis_label" in kwargs:
+        raise RuntimeError(
+            "`y_axis_label` cannot be specified; it is inferred from samples."
+        )
 
-    if type(pars) not in (list, tuple):
-        raise RuntimeError("`pars` must be a list or tuple.")
+    if type(samples) != az.data.inference_data.InferenceData:
+        raise RuntimeError("Input must be an ArviZ InferenceData instance.")
 
-    for col in pars:
-        if col not in df.columns:
-            raise RuntimeError("Column " + col + " not in the columns of DataFrame.")
+    if not hasattr(samples, "posterior"):
+        raise RuntimeError("Input samples do not have 'posterior' group.")
 
-    if labels is None:
-        labels = pars
-    elif len(labels) != len(pars):
-        raise RuntimeError("len(pars) must equal len(labels)")
+    pars, df = _sample_pars_to_df(samples, pars)
 
     plots = []
-    grouped = df.groupby("chain")
-    for i, (par, label) in enumerate(zip(pars, labels)):
-        p = bokeh.plotting.figure(
-            plot_width=plot_width,
-            plot_height=plot_height,
-            x_axis_label=x_axis_label,
-            y_axis_label=label,
-        )
-        for chain, group in grouped:
+    grouped = df.groupby("chain__")
+    for i, par in enumerate(pars):
+        p = bokeh.plotting.figure(x_axis_label=x_axis_label, y_axis_label=par, **kwargs)
+        for i, (chain, group) in enumerate(grouped):
             p.line(
-                group["chain_idx"],
+                group["draw__"],
                 group[par],
                 line_width=line_width,
                 line_join=line_join,
-                color=palette[int(chain) - 1],
+                color=palette[i],
+                *line_kwargs,
             )
 
         plots.append(p)
@@ -1378,18 +1327,7 @@ def corner(
     plot_ecdf=False,
     cmap="black",
     color_by_chain=False,
-    palette=[
-        "#4e79a7",
-        "#f28e2b",
-        "#e15759",
-        "#76b7b2",
-        "#59a14f",
-        "#edc948",
-        "#b07aa1",
-        "#ff9da7",
-        "#9c755f",
-        "#bab0ac",
-    ],
+    palette=None,
     divergence_color="orange",
     alpha=0.02,
     single_param_color="black",
@@ -1411,8 +1349,8 @@ def corner(
 
     Parameters
     ----------
-    samples : StanFit4Model instance or Pandas DataFrame
-        Result of MCMC sampling.
+    samples : Pandas DataFrame or ArviZ InferenceData instance
+        Results of sampling.
     pars : list
         List of variables as strings included in `samples` to construct
         corner plot.
@@ -1485,12 +1423,9 @@ def corner(
     output : Bokeh gridplot
         Corner plot as a Bokeh gridplot.
     """
-
-    if pars is None:
-        raise RuntimeError("Must specify pars.")
-
-    if type(pars) not in (list, tuple):
-        raise RuntimeError("`pars` must be a list or tuple.")
+    # Default properties
+    if palette is None:
+        palette = colorcet.b_glasbey_category10
 
     if color_by_chain:
         if datashade:
@@ -1505,23 +1440,16 @@ def corner(
 
     if type(samples) == pd.core.frame.DataFrame:
         df = samples
-    elif "pymc3" in str(type(samples)):
-        try:
-            df = pm.trace_to_dataframe(samples)
-        except:
-            raise RuntimeError(
-                "PyMC3 could not be imported. Check your installation."
-                + " PyMC3 features will soon be deprecated."
-            )
-    elif "StanFit4Model" in str(type(samples)):
-        df = stan.to_dataframe(samples, diagnostics=True)
+        pars = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
+    else:
+        pars, df = _sample_pars_to_df(samples, pars)
 
     if color_by_chain:
         # Have to convert datatype to string to play nice with Bokeh
-        df["chain"] = df["chain"].astype(str)
+        df["chain__"] = df["chain__"].astype(str)
 
-        factors = tuple(df["chain"].unique())
-        cmap = bokeh.transform.factor_cmap("chain", palette=palette, factors=factors)
+        factors = tuple(df["chain__"].unique())
+        cmap = bokeh.transform.factor_cmap("chain__", palette=palette, factors=factors)
 
     # Add dummy divergent column if no divergence information is given
     if "divergent__" not in df.columns:
@@ -1626,7 +1554,7 @@ def corner(
                     plots[i][j].circle(df[x], df[y], size=2, alpha=alpha, color=cmap)
                 else:
                     plots[i][j].circle(
-                        source=df.loc[df["divergent__"] == 0, [x, y, "chain"]],
+                        source=df.loc[df["divergent__"] == 0, [x, y, "chain__"]],
                         x=x,
                         y=y,
                         size=2,
@@ -1772,12 +1700,6 @@ def contour(
     overlaid : bool, default False
         If True, `Z` is displayed as an image and the contours are
         overlaid.
-    title : str, default None
-        Title of the plot. Ignored if `p` is not None.
-    line_color : str, defaults to Bokeh default
-        Color, either named CSS color or hex, of contour lines.
-    line_width : int, default 2
-        Width of contour lines.
     cmap : str or list of hex colors, default None
         If `im` is an intensity image, `cmap` is a mapping of
         intensity to color. If None, default is 256-level Viridis.
@@ -1789,6 +1711,8 @@ def contour(
     line_kwargs : dict, default {}
         Keyword arguments passed to `p.multiline()` for rendering the
         contour.
+    kwargs
+        Any kwargs to be passed to `bokeh.plotting.figure()`.
 
     Returns
     -------
@@ -2040,217 +1964,6 @@ def ds_point_plot(
     )
 
 
-def distribution_plot_app(
-    x_min=None,
-    x_max=None,
-    scipy_dist=None,
-    transform=None,
-    custom_pdf=None,
-    custom_pmf=None,
-    custom_cdf=None,
-    params=None,
-    n=400,
-    plot_height=200,
-    plot_width=300,
-    x_axis_label="x",
-    title=None,
-):
-    """
-    Build interactive Bokeh app displaying a univariate
-    probability distribution.
-
-    Parameters
-    ----------
-    x_min : float
-        Minimum value that the random variable can take in plots.
-    x_max : float
-        Maximum value that the random variable can take in plots.
-    scipy_dist : scipy.stats distribution
-        Distribution to use in plotting.
-    transform : function or None (default)
-        A function of call signature `transform(*params)` that takes
-        a tuple or Numpy array of parameters and returns a tuple of
-        the same length with transformed parameters.
-    custom_pdf : function
-        Function with call signature f(x, *params) that computes the
-        PDF of a distribution.
-    custom_pmf : function
-        Function with call signature f(x, *params) that computes the
-        PDF of a distribution.
-    custom_cdf : function
-        Function with call signature F(x, *params) that computes the
-        CDF of a distribution.
-    params : list of dicts
-        A list of parameter specifications. Each entry in the list gives
-        specifications for a parameter of the distribution stored as a
-        dictionary. Each dictionary must have the following keys.
-            name : str, name of the parameter
-            start : float, starting point of slider for parameter (the
-                smallest allowed value of the parameter)
-            end : float, ending point of slider for parameter (the
-                largest allowed value of the parameter)
-            value : float, the value of the parameter that the slider
-                takes initially. Must be between start and end.
-            step : float, the step size for the slider
-    n : int, default 400
-        Number of points to use in making plots of PDF and CDF for
-        continuous distributions. This should be large enough to give
-        smooth plots.
-    plot_height : int, default 200
-        Height of plots.
-    plot_width : int, default 300
-        Width of plots.
-    x_axis_label : str, default 'x'
-        Label for x-axis.
-    title : str, default None
-        Title to be displayed above the PDF or PMF plot.
-
-    Returns
-    -------
-    output : Bokeh app
-        An app to visualize the PDF/PMF and CDF. It can be displayed
-        with bokeh.io.show(). If it is displayed in a notebook, the
-        notebook_url kwarg should be specified.
-    """
-    if None in [x_min, x_max]:
-        raise RuntimeError("`x_min` and `x_max` must be specified.")
-
-    if scipy_dist is None:
-        fun_c = custom_cdf
-        if (custom_pdf is None and custom_pmf is None) or custom_cdf is None:
-            raise RuntimeError(
-                "For custom distributions, both PDF/PMF and" + " CDF must be specified."
-            )
-        if custom_pdf is not None and custom_pmf is not None:
-            raise RuntimeError("Can only specify custom PMF or PDF.")
-        if custom_pmf is None:
-            discrete = False
-            fun_p = custom_pdf
-        else:
-            discrete = True
-            fun_p = custom_pmf
-    elif custom_pdf is not None or custom_pmf is not None or custom_cdf is not None:
-        raise RuntimeError("Can only specify either custom or scipy distribution.")
-    else:
-        fun_c = scipy_dist.cdf
-        if hasattr(scipy_dist, "pmf"):
-            discrete = True
-            fun_p = scipy_dist.pmf
-        else:
-            discrete = False
-            fun_p = scipy_dist.pdf
-
-    if discrete:
-        p_y_axis_label = "PMF"
-    else:
-        p_y_axis_label = "PDF"
-
-    if params is None:
-        raise RuntimeError("`params` must be specified.")
-
-    def _plot_app(doc):
-        p_p = bokeh.plotting.figure(
-            plot_height=plot_height,
-            plot_width=plot_width,
-            x_axis_label=x_axis_label,
-            y_axis_label=p_y_axis_label,
-            title=title,
-        )
-        p_c = bokeh.plotting.figure(
-            plot_height=plot_height,
-            plot_width=plot_width,
-            x_axis_label=x_axis_label,
-            y_axis_label="CDF",
-        )
-
-        # Link the axes
-        p_c.x_range = p_p.x_range
-
-        # Make sure CDF y_range is zero to one
-        p_c.y_range = bokeh.models.Range1d(-0.05, 1.05)
-
-        # Make array of parameter values
-        param_vals = np.array([param["value"] for param in params])
-        if transform is not None:
-            param_vals = transform(*param_vals)
-
-        # Set up data for plot
-        if discrete:
-            x = np.arange(int(np.ceil(x_min)), int(np.floor(x_max)) + 1)
-            x_size = x[-1] - x[0]
-            x_c = np.empty(2 * len(x))
-            x_c[::2] = x
-            x_c[1::2] = x
-            x_c = np.concatenate(
-                (
-                    (max(x[0] - 0.05 * x_size, x[0] - 0.95),),
-                    x_c,
-                    (min(x[-1] + 0.05 * x_size, x[-1] + 0.95),),
-                )
-            )
-            x_cdf = np.concatenate(((x_c[0],), x))
-        else:
-            x = np.linspace(x_min, x_max, n)
-            x_c = x_cdf = x
-
-        # Compute PDF and CDF
-        y_p = fun_p(x, *param_vals)
-        y_c = fun_c(x_cdf, *param_vals)
-        if discrete:
-            y_c_plot = np.empty_like(x_c)
-            y_c_plot[::2] = y_c
-            y_c_plot[1::2] = y_c
-            y_c = y_c_plot
-
-        # Set up data sources
-        source_p = bokeh.models.ColumnDataSource(data={"x": x, "y_p": y_p})
-        source_c = bokeh.models.ColumnDataSource(data={"x": x_c, "y_c": y_c})
-
-        # Plot PDF and CDF
-        p_c.line("x", "y_c", source=source_c, line_width=2)
-        if discrete:
-            p_p.circle("x", "y_p", source=source_p, size=5)
-            p_p.segment(x0="x", x1="x", y0=0, y1="y_p", source=source_p, line_width=2)
-        else:
-            p_p.line("x", "y_p", source=source_p, line_width=2)
-
-        def _callback(attr, old, new):
-            param_vals = tuple([slider.value for slider in sliders])
-            if transform is not None:
-                param_vals = transform(*param_vals)
-
-            # Compute PDF and CDF
-            source_p.data["y_p"] = fun_p(x, *param_vals)
-            y_c = fun_c(x_cdf, *param_vals)
-            if discrete:
-                y_c_plot = np.empty_like(x_c)
-                y_c_plot[::2] = y_c
-                y_c_plot[1::2] = y_c
-                y_c = y_c_plot
-            source_c.data["y_c"] = y_c
-
-        sliders = [
-            bokeh.models.Slider(
-                start=param["start"],
-                end=param["end"],
-                value=param["value"],
-                step=param["step"],
-                title=param["name"],
-            )
-            for param in params
-        ]
-        for slider in sliders:
-            slider.on_change("value", _callback)
-
-        # Add the plot to the app
-        widgets = bokeh.layouts.widgetbox(sliders)
-        grid = bokeh.layouts.gridplot([p_p, p_c], ncols=2)
-        doc.add_root(bokeh.layouts.column(widgets, grid))
-
-    handler = bokeh.application.handlers.FunctionHandler(_plot_app)
-    return bokeh.application.Application(handler)
-
-
 def mpl_cmap_to_color_mapper(cmap):
     """
     Convert a Matplotlib colormap to a bokeh.models.LinearColorMapper
@@ -2274,54 +1987,6 @@ def mpl_cmap_to_color_mapper(cmap):
     cm = mpl_get_cmap(cmap)
     palette = [rgb_frac_to_hex(cm(i)[:3]) for i in range(256)]
     return bokeh.models.LinearColorMapper(palette=palette)
-
-
-def adjust_range(element, buffer=0.05):
-    """
-    Adjust soft ranges of dimensions of HoloViews element.
-
-    Parameters
-    ----------
-    element : holoviews element
-        Element which will have the `soft_range` of each kdim and vdim
-        recomputed to give a buffer around the glyphs.
-    buffer : float, default 0.05
-        Buffer, as a fraction of the whole data range, to give around
-        data.
-
-    Returns
-    -------
-    output : holoviews element
-        Inputted HoloViews element with updated soft_ranges for its
-        dimensions.
-    """
-    # This only works with DataFrames
-    if type(element.data) != pd.core.frame.DataFrame:
-        raise RuntimeError("Can only adjust range if data is Pandas DataFrame.")
-
-    # Adjust ranges of kdims
-    for i, dim in enumerate(element.kdims):
-        if element.data[dim.name].dtype in [float, int]:
-            data_range = (element.data[dim.name].min(), element.data[dim.name].max())
-            if data_range[1] - data_range[0] > 0:
-                buff = buffer * (data_range[1] - data_range[0])
-                element.kdims[i].soft_range = (
-                    data_range[0] - buff,
-                    data_range[1] + buff,
-                )
-
-    # Adjust ranges of vdims
-    for i, dim in enumerate(element.vdims):
-        if element.data[dim.name].dtype in [float, int]:
-            data_range = (element.data[dim.name].min(), element.data[dim.name].max())
-            if data_range[1] - data_range[0] > 0:
-                buff = buffer * (data_range[1] - data_range[0])
-                element.vdims[i].soft_range = (
-                    data_range[0] - buff,
-                    data_range[1] + buff,
-                )
-
-    return element
 
 
 def _ecdf_vals(data, staircase=False, complementary=False):
@@ -3032,6 +2697,27 @@ def contour_lines_from_samples(
     return _contour_lines(X2, Y2, H2.transpose(), levels)
 
 
+def _sample_pars_to_df(samples, pars):
+    """Convert ArviZ InferenceData posterior results to a data frame"""
+    if pars is not None and type(pars) not in (list, tuple):
+        raise RuntimeError("`pars` must be a list or tuple.")
+
+    if pars is None:
+        pars = list(samples.posterior.data_vars)
+    else:
+        sample_pars = list(samples.posterior.data_vars)
+        for par in pars:
+            if par not in sample_pars:
+                raise RuntimeError(f"parameter {par} not in the input.")
+
+    df = stan.posterior_to_dataframe(samples, var_names=pars)
+    pars = [
+        col for col in df.columns if col not in ["chain__", "draw__", "divergent__"]
+    ]
+
+    return pars, df
+
+
 def box(**kwargs):
     raise RuntimeError(
         "`bebi103` no longer supports box plots. Instead, use the bokeh-catplot package."
@@ -3065,4 +2751,16 @@ def ecdf_collection(**kwargs):
 def colored_scatter(**kwargs):
     raise RuntimeError(
         "`bebi103` no longer supports colored scatter plots. Instead, use HoloViews."
+    )
+
+
+def distribution_plot_app(**kwargs):
+    raise RuntimeError(
+        "`bebi103` no longer supports the distribution plot app. Instead, see https://github.com/justinbois/distribution-explorer-app."
+    )
+
+
+def adjust_range(**kwargs):
+    raise RuntimeError(
+        "`bebi103` no longer supports the adjust_range. This feature is not part of HoloViews, available using `padding` kwargs for many plotting elements."
     )
