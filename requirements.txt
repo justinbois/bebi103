@@ -1,6 +1,7 @@
-pystan
+cmdstanpy
 numpy
 numba
+xarray
 scipy
 pandas
 tqdm
