@@ -20,9 +20,9 @@ from .utils import *
 try:
     from . import stan
 except:
-    warnings.warn('Could not import `stan` submodule. Perhaps pystan is not properly installed.')
+    warnings.warn('Could not import `stan` submodule. Perhaps PyStan or CmdStanPy is not properly installed.')
 
 
 __author__ = """Justin Bois"""
 __email__ = 'bois@caltech.edu'
-__version__ = '0.0.46'
+__version__ = '0.0.47'

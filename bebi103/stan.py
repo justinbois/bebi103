@@ -35,11 +35,11 @@ except:
 
 if pystan_success and cmdstanpy_success:
     warnings.warn(
-        "Both pystan and cmdstanpy are importable in this environment. As per the cmdstanpy documentation, this is not advised. "
+        "Both pystan and cmdstanpy are importable in this environment. As per the cmdstanpy documentation, this is not advised."
     )
 
 if not pystan_success and not cmdstanpy_success:
-    raise RuntimeError()
+    raise RuntimeError("Neither PyStan nor CmdStanPy could be imported.")
 
 import bokeh.plotting
 
@@ -1043,14 +1043,14 @@ def sbc(
         considered; only those in `parameters` have rank statistics
         calculated.
     posterior_predictive_var_names : list of strings, default None
-        List of variables that are posterior predictive. These are 
+        List of variables that are posterior predictive. These are
         ignored in the SBC analysis.
     measured_data_dtypes : dict, default {}
         The key in the dtypes dict is a string representing the data
         name, and the corresponding item is its dtype, almost always
         either `int` or `float`.
     sampling_kwargs : dict, default {}
-        kwargs to be passed to `sm.sample()` for a CmdStanPy model `sm` 
+        kwargs to be passed to `sm.sample()` for a CmdStanPy model `sm`
         or to `sm.sampling()` for a PyStan model `sm`.
     cores : int, default 1
         Number of cores to use in the SBC calculation.
@@ -1495,13 +1495,13 @@ def _tidy_sbc_output(sbc_output):
 
 
 def xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
-    """Convert xarray data set with coordinates `chain` and `draw` to a 
+    """Convert xarray data set with coordinates `chain` and `draw` to a
     Numpy array and a list of row labels for the Numpy array.
 
     Parameters
     ----------
     ds : xarray Dataset
-        Dataset stored in an ArviZ InferenceData instance. This is 
+        Dataset stored in an ArviZ InferenceData instance. This is
         usually contained in the `prior` or `posterior` fields of the
         InferenceData instance.
     var_names : list of strings, default None
@@ -1514,10 +1514,10 @@ def xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
     Output
     ------
     names : list of strings
-        List of names of headings. For a mulitdimensional xarray 
-        DataArray, each entry in the array is the variable name, 
+        List of names of headings. For a mulitdimensional xarray
+        DataArray, each entry in the array is the variable name,
         followed by a newline character and indexing information. As
-        an example, if `A` is a 2x2 matrix, then there will be names 
+        an example, if `A` is a 2x2 matrix, then there will be names
         'A[0,0]', 'A[0,1]', 'A[1,0]', and 'A[1,1]'.
     vals : 2D Numpy array
         Each row has the samples for a given variable. If combined is

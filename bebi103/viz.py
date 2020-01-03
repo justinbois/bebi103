@@ -826,26 +826,19 @@ def sbc_rank_ecdf(
     sbc_output=None,
     parameters=None,
     diff=True,
-    staircase=False,
     ptile=99.0,
     bootstrap_envelope=False,
     n_bs_reps=None,
     show_envelope=True,
-    p=None,
-    x_axis_label=None,
-    y_axis_label=None,
-    title=None,
-    plot_height=300,
-    plot_width=450,
-    color=None,
-    palette=None,
-    alpha=1,
+    show_envelope_line=True,
     color_by_warning_code=False,
-    fill_color="gray",
-    fill_alpha=0.5,
-    show_line=True,
-    line_color="gray",
-    show_legend=False,
+    staircase=False,
+    p=None,
+    marker_kwargs={},
+    envelope_patch_kwargs={},
+    envelope_line_kwargs={},
+    palette=None,
+    show_legend=True,
     **kwargs,
 ):
     """Make a rank ECDF plot from simulation-based calibration.
@@ -861,10 +854,7 @@ def sbc_rank_ecdf(
     diff : bool, default True
         If True, plot the ECDF minus the ECDF of a Uniform distribution.
         Otherwise, plot the ECDF of the rank statistic from SBC.
-    staircase : bool, default False
-        If True, plot the ECDF as a staircase.
-        Otherwise, plot with dots.
-    ptile : float, default 99.9
+    ptile : float, default 99
         Which precentile to use as the envelope in the plot.
     bootstrap_envelope : bool, default False
         If True, use bootstrapping on the appropriate Uniform
@@ -876,52 +866,38 @@ def sbc_rank_ecdf(
         int(max(n, max(L+1, 100/(100-ptile))) * 100), where n is the
         number of simulations used in the SBC calculation.
     show_envelope : bool, default True
-        If true, display the envelope encompassing the ptile percent
+        If True, display the envelope encompassing the ptile percent
         confidence interval for the SBC ECDF.
-    p : bokeh.plotting.Figure instance, default None
-        Plot to which to add the SBC rank ECDF plot. If None, create a
-        new figure.
-    x_axis_label : str, default None
-        Label for the x-axis. If None, 'rank statistic' is used. Ignored
-        if `p` is not None.
-    y_axis_label : str, default None
-        Label for the y-axis. If None, 'ECDF' is used if `diff` is
-        False and 'ECDF difference' is used if `diff` is True. Ignored
-        if `p` is not None.
-    title : str, default None
-        Title of the plot. Ignored if `p` is not None.
-    plot_height : int, default 300
-        Height of plot, in pixels. Ignored if `p` is not None.
-    plot_width : int, default 450
-        Width of plot, in pixels. Ignored if `p` is not None.
-    color : str, default None
-        Specification of the color of the ECDF plot. All ECDFs are
-        plotted with this color. If None, the ECDFs are colored by
-        parameter or by diagnostics warning code if
-        `color_by_warning_code` is True.
-    palette : list of strings of hex colors, or single hex string
-        If a list, color palette to use if `color` is None. If a single
-        string representing a hex color, all glyphs are colored with
-        that color. Otherwise, a default is chosen based on the number
-        of colors needed.
-    alpha : float, default 1
-        Opacity of the glyphs of the ECDFs.
+    show_envelope_line : bool, default True
+        If True, and `show_envelope` is also True, plot a line around
+        the envelope.
     color_by_warning_code : bool, default False
         If True, color glyphs by diagnostics warning code instead of
         coloring the glyphs by parameter
-    fill_color : str, default 'gray'
-        Color of envelope as a hex string or named CSS color.
-    fill_alpha : float, default 1.0
-        Opacity of the envelope.
-    show_line : bool, default True
-        If True, show the lines on the edges of the envelope.
-    line_color : str, default 'gray'
-        Color of envelope line as a hex string or named CSS color.
-    show_legend : bool, default False
+    staircase : bool, default False
+        If True, plot the ECDF as a staircase. Otherwise, plot with
+        dots.
+    p : bokeh.plotting.Figure instance, default None
+        Plot to which to add the SBC rank ECDF plot. If None, create a
+        new figure.
+    marker_kwargs : dict, default {}
+        Dictionary of kwargs to pass to `p.circle()` or `p.line()` when
+        plotting the SBC ECDF.
+    envelope_patch_kwargs : dict
+        Any kwargs passed into p.patch(), which generates the fill of
+        the envelope.
+    envelope_line_kwargs : dict
+        Any kwargs passed into p.line() in generating the line around
+        the fill of the envelope.
+    palette : list of strings of hex colors, or single hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        colorcet.b_glasbey_category10 from the colorcet package.
+    show_legend : bool, default True
         If True, show legend.
     kwargs : dict
-        And kwargs to pass to the call to p.circle or p.line when making
-        the ECDF plot.
+        Any kwargs passed to `bokeh.plotting.figure()` when creating the
+        plot.
 
     Returns
     -------
@@ -936,18 +912,36 @@ def sbc_rank_ecdf(
     if sbc_output is None:
         raise RuntimeError("Argument `sbc_output` must be specified.")
 
-    if x_axis_label is None:
-        x_axis_label = "rank statistic"
-    if y_axis_label is None:
-        if diff:
-            y_axis_label = "ECDF difference"
-        else:
-            y_axis_label = "ECDF"
+    # Defaults
+    if palette is None:
+        palette = colorcet.b_glasbey_category10
+    elif palette not in [list, tuple]:
+        palette = [palette]
 
+    if "x_axis_label" not in kwargs:
+        kwargs["x_axis_label"] = "rank statistic"
+    if "y_axis_label" not in kwargs:
+        kwargs["y_axis_label"] = "ECDF difference" if diff else "ECDF"
+
+    if "plot_height" not in kwargs and "frame_height" not in kwargs:
+        kwargs["frame_height"] = 275
+    if "plot_width" not in kwargs and "frame_width" not in kwargs:
+        kwargs["frame_width"] = 450
+    toolbar_location = kwargs.pop("toolbar_location", "above")
+
+    if "fill_color" not in envelope_patch_kwargs:
+        envelope_patch_kwargs["fill_color"] = "gray"
+    if "fill_alpha" not in envelope_patch_kwargs:
+        envelope_patch_kwargs["fill_alpha"] = 0.5
+    if "line_color" not in envelope_line_kwargs:
+        envelope_line_kwargs["line_color"] = "gray"
+
+    if "color" in "marker_kwargs" and color_by_warning_code:
+        raise RuntimeError(
+            "Cannot specify marker color when `color_by_warning_code` is True."
+        )
     if staircase and color_by_warning_code:
         raise RuntimeError("Cannot color by warning code for staircase ECDFs.")
-    if color is not None and color_by_warning_code:
-        raise RuntimeError("`color` must be `None` if `color_by_warning_code` is True.")
 
     if parameters is None:
         parameters = list(sbc_output["parameter"].unique())
@@ -975,23 +969,14 @@ def sbc_rank_ecdf(
             x2=x,
             y1=y_high,
             y2=y_low,
-            plot_height=plot_height,
-            plot_width=plot_width,
-            x_axis_label=x_axis_label,
-            y_axis_label=y_axis_label,
-            fill_color=fill_color,
-            fill_alpha=fill_alpha,
-            show_line=show_line,
-            line_color=line_color,
+            patch_kwargs=envelope_patch_kwargs,
+            line_kwargs=envelope_line_kwargs,
+            show_line=show_envelope_line,
             p=p,
+            **kwargs,
         )
     else:
-        p = bokeh.plotting.figure(
-            plot_height=plot_height,
-            plot_width=plot_width,
-            x_axis_label=x_axis_label,
-            y_axis_label=y_axis_label,
-        )
+        p = bokeh.plotting.figure(**kwargs)
 
     if staircase:
         dfs = []
@@ -1018,52 +1003,69 @@ def sbc_rank_ecdf(
         if diff:
             df["__ECDF"] -= (df["rank_statistic"] + 1) / L
 
-    cat = "warning_code" if color_by_warning_code else "parameter"
-    source = _cat_source(df, cat, ["__ECDF", "rank_statistic"], None)
-
-    _, _, color_factors = _get_cat_range(df, df.groupby(cat), None, None, False)
-
-    if palette is None:
-        if len(df[cat].unique()) <= 8:
-            palette = bokeh.palettes.Colorblind8
-        elif len(df[cat].unique()) <= 10:
-            palette = bokeh.palettes.d3.Category10
-        elif len(df[cat].unique()) <= 20:
-            palette = bokeh.palettes.d3.Category20
-        else:
-            palette = bokeh.palettes.Viridis256[::8]
-    elif palette not in [list, tuple]:
-        palette = [palette]
-
     if staircase:
-        if color is None:
-            color = palette
-        else:
+        color = marker_kwargs.pop("color", palette)
+        if type(color) == str:
             color = [color] * len(parameters)
-    elif color is None:
-        color = bokeh.transform.factor_cmap(
-            "cat", palette=palette, factors=color_factors
-        )
+    elif "color" not in marker_kwargs:
+        color = palette
+    else:
+        color = [marker_kwargs.pop("color")] * len(parameters)
+
+    if color_by_warning_code:
+        if len(color) < len(df["warning_code"].unique()):
+            raise RuntimeError(
+                "Not enough colors in palette to cover all warning codes."
+            )
+    elif len(color) < len(parameters):
+        raise RuntimeError("Not enough colors in palette to cover all parameters.")
 
     if staircase:
-        for i, (param, g) in enumerate(df.groupby("parameter")):
-            p.line(
-                source=g,
-                x="rank_statistic",
-                y="__ECDF",
-                color=color[i],
-                legend=param if show_legend else None,
-                **kwargs,
-            )
+        plot_cmd = p.line
     else:
-        p.circle(
-            source=source,
-            x="rank_statistic",
-            y="__ECDF",
-            color=color,
-            legend="__label" if show_legend else None,
-            **kwargs,
-        )
+        plot_cmd = p.circle
+
+    if color_by_warning_code:
+        for i, (warning_code, g) in enumerate(df.groupby("warning_code")):
+            if show_legend:
+                plot_cmd(
+                    source=g,
+                    x="rank_statistic",
+                    y="__ECDF",
+                    color=color[i],
+                    legend_label=warning_code,
+                    **marker_kwargs,
+                )
+            else:
+                plot_cmd(
+                    source=g,
+                    x="rank_statistic",
+                    y="__ECDF",
+                    color=color[i],
+                    **marker_kwargs,
+                )
+    else:
+        for i, (param, g) in enumerate(df.groupby("parameter")):
+            if show_legend:
+                plot_cmd(
+                    source=g,
+                    x="rank_statistic",
+                    y="__ECDF",
+                    color=color[i],
+                    legend_label=param,
+                    **marker_kwargs,
+                )
+            else:
+                plot_cmd(
+                    source=g,
+                    x="rank_statistic",
+                    y="__ECDF",
+                    color=color[i],
+                    **marker_kwargs,
+                )
+
+    if show_legend:
+        p.legend.click_policy = "hide"
 
     return p
 
