@@ -1123,7 +1123,7 @@ def sbc(
 
     # Take a prior sample to infer data types
     if "pystan" in str(type(prior_predictive_model)):
-        with _disable_logging():
+        with disable_logging():
             prior_sample = prior_predictive_model.sampling(
                 data=prior_predictive_model_data,
                 algorithm="Fixed_param",
@@ -1142,7 +1142,7 @@ def sbc(
                 prior_predictive=measured_data,
             )
     elif "cmdstanpy" in str(type(prior_predictive_model)):
-        with _disable_logging():
+        with disable_logging():
             prior_sample = prior_predictive_model.sample(
                 data=prior_predictive_model_data, fixed_param=True, sampling_iters=1
             )
@@ -1275,7 +1275,7 @@ def _perform_sbc(args):
     posterior_model_data = copy.deepcopy(posterior_model_data)
 
     if "pystan" in str(type(prior_predictive_model)):
-        with _disable_logging():
+        with disable_logging():
             prior_sample = prior_predictive_model.sampling(
                 data=prior_predictive_model_data,
                 algorithm="Fixed_param",
@@ -1294,7 +1294,7 @@ def _perform_sbc(args):
                 prior_predictive=measured_data,
             )
     elif "cmdstanpy" in str(type(prior_predictive_model)):
-        with _disable_logging():
+        with disable_logging():
             prior_sample = prior_predictive_model.sample(
                 data=prior_predictive_model_data, fixed_param=True, sampling_iters=1
             )
@@ -1323,7 +1323,7 @@ def _perform_sbc(args):
 
     # Generate posterior samples
     if "pystan" in str(type(posterior_model)):
-        with _disable_logging():
+        with disable_logging():
             posterior_samples = posterior_model.sampling(
                 data=posterior_model_data, n_jobs=1, **sampling_kwargs
             )
@@ -1333,7 +1333,7 @@ def _perform_sbc(args):
         )
 
     elif "cmdstanpy" in str(type(posterior_model)):
-        with _disable_logging():
+        with disable_logging():
             posterior_samples = posterior_model.sample(
                 data=posterior_model_data, cores=1, **sampling_kwargs
             )
@@ -1403,7 +1403,7 @@ def _get_prior_sds(
 ):
     """Compute standard deviations of prior parameters."""
     if "pystan" in str(type(prior_predictive_model)):
-        with _disable_logging():
+        with disable_logging():
             prior_samples = prior_predictive_model.sampling(
                 data=prior_predictive_model_data,
                 algorithm="Fixed_param",
@@ -1422,7 +1422,7 @@ def _get_prior_sds(
                 prior_predictive=measured_data,
             )
     elif "cmdstanpy" in str(type(prior_predictive_model)):
-        with _disable_logging():
+        with disable_logging():
             prior_samples = prior_predictive_model.sample(
                 data=prior_predictive_model_data,
                 fixed_param=True,
@@ -1555,7 +1555,7 @@ def _ebfmi(energy):
 
 
 @contextlib.contextmanager
-def _disable_logging(level=logging.CRITICAL):
+def disable_logging(level=logging.CRITICAL):
     """Context manager for disabling logging."""
     previous_level = logging.root.manager.disable
 
