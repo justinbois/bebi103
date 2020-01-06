@@ -1458,6 +1458,11 @@ def corner(
         df = df.copy()
         df["divergent__"] = 0
 
+    # Add dummy chain column if no divergence information is given
+    if "chain__" not in df.columns:
+        df = df.copy()
+        df["chain__"] = 0
+
     if len(pars) > 6:
         raise RuntimeError("For space purposes, can show only six variables.")
 
