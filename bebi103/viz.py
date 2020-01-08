@@ -1756,7 +1756,6 @@ def contour(
                 frame_width=frame_width,
                 x_axis_label=x_axis_label,
                 y_axis_label=y_axis_label,
-                title=title,
                 x_range=[X.min(), X.max()],
                 y_range=[Y.min(), Y.max()],
                 no_ticks=False,
@@ -1771,7 +1770,6 @@ def contour(
             p = bokeh.plotting.figure(
                 x_axis_label=x_axis_label,
                 y_axis_label=y_axis_label,
-                title=title,
                 **kwargs,
             )
 
