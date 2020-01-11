@@ -622,7 +622,15 @@ def predictive_ecdf(
     if data is not None:
         x_data, y_data = _ecdf_vals(data, staircase=False)
         if diff:
+            # subtracting off median wrecks y-coords for duplicated x-values...
             y_data -= ecdf_data_median
+            #...so take only unique values,...
+            unique_x = np.unique(x_data)
+            #...find the (correct) max y-value for each...
+            unique_inds = np.searchsorted(x_data, unique_x, side='right') - 1
+            #...and use only that going forward
+            y_data = y_data[unique_inds]
+            x_data = unique_x
         if data_staircase:
             x_data, y_data = cdf_to_staircase(x_data, y_data)
             p.line(x_data, y_data, color=data_color, line_width=data_size)
