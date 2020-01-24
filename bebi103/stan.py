@@ -3,7 +3,6 @@ import copy
 import itertools
 import os
 import glob
-import re
 import pickle
 import hashlib
 import logging
@@ -14,8 +13,7 @@ import tqdm
 
 import numpy as np
 import pandas as pd
-import numba
-import scipy.stats as st
+import xarray
 
 import arviz as az
 
@@ -44,6 +42,7 @@ if not pystan_success and not cmdstanpy_success:
 import bokeh.plotting
 
 from . import viz
+from . import az_utils
 
 
 def StanModel(
@@ -423,8 +422,8 @@ def posterior_to_dataframe(data, var_names=None):
 
     Any multi-dimensional parameters are converted to one-dimensional
     equivalents. For example, a 2x2 matrix A is converted to columns
-    in the data frame with headings `'A\n0,0'`, `'A\n0,1'`, `'A\n1,0'`,
-    and `'A\n1,1'`.
+    in the data frame with headings `'A[0,0]'`, `'A[0,1]'`, `'A[1,0]'`,
+    and `'A[1,1]'`.
 
     Only divergence information, chain ID, and draw number (not
     additional sampling stats) are stored in the data frame.
@@ -447,6 +446,10 @@ def posterior_to_dataframe(data, var_names=None):
         DataFrame with samples.
 
     """
+    if type(data) == xarray.Dataset:
+        raise RuntimeError(
+            "You need to pass in an ArviZ InferenceData instance, not an xarray Dataset. Maybe you passed in the posterior attributed of the InferenceData instance?"
+        )
     if hasattr(data, "sample_stats") and hasattr(data.sample_stats, "diverging"):
         diverging = np.ravel(data.sample_stats["diverging"])
     else:
@@ -1522,15 +1525,9 @@ def xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
     vals : 2D Numpy array
         Each row has the samples for a given variable. If combined is
         True, each row is a concatenation of samples from all chains.
-
-    Notes
-    -----
-    .. Currently uses `arviz.plots.plot_utils.xarray_to_ndarray()`. This
-       may change, depending on ArviZ's development.
     """
-    names, vals = az.plots.plot_utils.xarray_to_ndarray(
-        ds, var_names=var_names, combined=True
-    )
+
+    names, vals = az_utils.xarray_to_ndarray(ds, var_names=var_names, combined=True)
 
     names = [
         name.replace("\n", "[").replace(", ", ",") + "]" if "\n" in name else name

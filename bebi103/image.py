@@ -833,8 +833,13 @@ class SimpleImageCollection(object):
     skimage.io.ImageCollection.
     """
 
-    def __init__(self, load_pattern, load_func=skimage.io.imread,
-                 conserve_memory=True, **load_func_kwargs):
+    def __init__(
+        self,
+        load_pattern,
+        load_func=skimage.io.imread,
+        conserve_memory=True,
+        **load_func_kwargs,
+    ):
         if isinstance(load_pattern, str):
             self.fnames = glob.glob(load_pattern)
         else:
@@ -848,8 +853,6 @@ class SimpleImageCollection(object):
         else:
             self.ims = [load_func(f, **load_func_kwargs) for f in self.fnames]
 
-
-
     def __getitem__(self, n):
         """
         Return selected image.
@@ -860,8 +863,9 @@ class SimpleImageCollection(object):
             return self.ims[n]
 
 
-def simple_image_collection(im_glob, load_func=skimage.io.imread,
-                            conserve_memory=True, **load_func_kwargs):
+def simple_image_collection(
+    im_glob, load_func=skimage.io.imread, conserve_memory=True, **load_func_kwargs
+):
     """
     Load a collection of images.
 
@@ -888,9 +892,12 @@ def simple_image_collection(im_glob, load_func=skimage.io.imread,
     .. This is a much simplified (and therefore faster) version of
     skimage.io.ImageCollection.
     """
-    return SimpleImageCollection(im_glob, load_func=load_func,
-                                 conserve_memory=conserve_memory,
-                                 **load_func_kwargs)
+    return SimpleImageCollection(
+        im_glob,
+        load_func=load_func,
+        conserve_memory=conserve_memory,
+        **load_func_kwargs,
+    )
 
 
 def verts_to_roi(verts, size_i, size_j):
@@ -941,7 +948,7 @@ def verts_to_roi(verts, size_i, size_j):
     # Get bounding box of ROI
     regions = skimage.measure.regionprops(roi.astype(np.int))
     bbox = regions[0].bbox
-    roi_bbox = np.s_[bbox[0]:bbox[2] + 1, bbox[1]:bbox[3] + 1]
+    roi_bbox = np.s_[bbox[0] : bbox[2] + 1, bbox[1] : bbox[3] + 1]
 
     # Get ROI mask for just within bounding box
     roi_box = roi[roi_bbox]
@@ -954,12 +961,21 @@ class _CostesColocalization(object):
     """
     Generic class just to store attributes.
     """
+
     def __init__(self, **kw):
         self.__dict__ = kw
 
 
-def costes_coloc(im_1, im_2, psf_width=3, n_scramble=1000, thresh_r=0.0,
-                 roi=None, roi_method='all', do_manders=True):
+def costes_coloc(
+    im_1,
+    im_2,
+    psf_width=3,
+    n_scramble=1000,
+    thresh_r=0.0,
+    roi=None,
+    roi_method="all",
+    do_manders=True,
+):
     """
     Perform Costes colocalization analysis on a pair of images.
 
@@ -1010,7 +1026,7 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=1000, thresh_r=0.0,
 
     # Set up ROI
     if roi is None:
-        roi = np.ones_like(im_1, dtype='bool')
+        roi = np.ones_like(im_1, dtype="bool")
 
     # Rename images to be sliced ROI and convert to float
     im_1 = im_1[roi].astype(float)
@@ -1048,16 +1064,42 @@ def costes_coloc(im_1, im_2, psf_width=3, n_scramble=1000, thresh_r=0.0,
 
         # Toss results into class for returning
         return _CostesColocalization(
-            im_1=im_1, im_2=im_2, roi=roi, roi_method=roi_method,
-            psf_width=psf_width, n_scramble=n_scramble, thresh_r=thresh_r,
-            thresh_1=thresh_1, thresh_2=thresh_2, a=a, b=b, M_1=M_1,
-            M_2=M_2, r_scr=r_scr, pearson_r=pearson_r, p_coloc=p_coloc)
+            im_1=im_1,
+            im_2=im_2,
+            roi=roi,
+            roi_method=roi_method,
+            psf_width=psf_width,
+            n_scramble=n_scramble,
+            thresh_r=thresh_r,
+            thresh_1=thresh_1,
+            thresh_2=thresh_2,
+            a=a,
+            b=b,
+            M_1=M_1,
+            M_2=M_2,
+            r_scr=r_scr,
+            pearson_r=pearson_r,
+            p_coloc=p_coloc,
+        )
     else:
         return _CostesColocalization(
-            im_1=im_1, im_2=im_2, roi=roi, roi_method=roi_method,
-            psf_width=psf_width, n_scramble=n_scramble, thresh_r=None,
-            thresh_1=None, thresh_2=None, a=None, b=None, M_1=None,
-            M_2=None, r_scr=r_scr, pearson_r=pearson_r, p_coloc=p_coloc)
+            im_1=im_1,
+            im_2=im_2,
+            roi=roi,
+            roi_method=roi_method,
+            psf_width=psf_width,
+            n_scramble=n_scramble,
+            thresh_r=None,
+            thresh_1=None,
+            thresh_2=None,
+            a=None,
+            b=None,
+            M_1=None,
+            M_2=None,
+            r_scr=r_scr,
+            pearson_r=pearson_r,
+            p_coloc=p_coloc,
+        )
 
 
 @numba.jit(nopython=True)
@@ -1078,7 +1120,7 @@ def _pearson_r(x, y):
         The Pearson correlation coefficient between `data_1`
         and `data_2`.
     """
-    return (np.mean(x*y) - np.mean(x) * np.mean(y)) / np.std(x) / np.std(y)
+    return (np.mean(x * y) - np.mean(x) * np.mean(y)) / np.std(x) / np.std(y)
 
 
 @numba.jit(nopython=True)
@@ -1115,7 +1157,6 @@ def scrambled_r(blocks_1, blocks_2, n=200):
         r = _pearson_r(blocks_1[block_inds].ravel(), blocks_2_flat)
         r_scr[i] = r
     return r_scr
-
 
 
 def _odr_linear(x, y, intercept=None, beta0=None):
@@ -1165,7 +1206,7 @@ def _odr_linear(x, y, intercept=None, beta0=None):
     try:
         result = odr.run()
     except scipy.odr.odr_error:
-        raise scipy.odr.odr_error('ORD failed.')
+        raise scipy.odr.odr_error("ORD failed.")
 
     return result.beta
 
@@ -1290,11 +1331,10 @@ def mirror_edges(im, psf_width):
     pad_right = pad_j - pad_left
 
     # Do the padding
-    return np.pad(im, ((pad_top, pad_bottom), (pad_left, pad_right)),
-                  mode='reflect')
+    return np.pad(im, ((pad_top, pad_bottom), (pad_left, pad_right)), mode="reflect")
 
 
-def im_to_blocks(im, width, roi=None, roi_method='all'):
+def im_to_blocks(im, width, roi=None, roi_method="all"):
     """
     Converts image to list of square subimages called "blocks."
 
@@ -1324,13 +1364,17 @@ def im_to_blocks(im, width, roi=None, roi_method='all'):
         roi = np.ones_like(im)
 
     # Specify method for determining if in ROI or not
-    if roi_method == 'all':
+    if roi_method == "all":
         roi_test = np.all
     else:
         roi_test = np.any
 
     # Construct list of blocks
-    return np.array([im[i:i + width, j:j + width]
-                        for i in range(0, im.shape[0], width)
-                            for j in range(0, im.shape[1], width)
-                                if roi_test(roi[i:i + width, j:j + width])])
+    return np.array(
+        [
+            im[i : i + width, j : j + width]
+            for i in range(0, im.shape[0], width)
+            for j in range(0, im.shape[1], width)
+            if roi_test(roi[i : i + width, j : j + width])
+        ]
+    )

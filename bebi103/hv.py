@@ -7,13 +7,13 @@ datashader_greys = bokeh.palettes.Greys9[:6][::-1]
 datashader_purples = bokeh.palettes.Purples9[:6][::-1]
 datashader_reds = bokeh.palettes.Reds9[:6][::-1]
 
+
 def no_xgrid_hook(plot, element):
-    plot.handles['plot'].xgrid.grid_line_color = None
+    plot.handles["plot"].xgrid.grid_line_color = None
 
 
 def no_ygrid_hook(plot, element):
-    plot.handles['plot'].ygrid.grid_line_color = None
-
+    plot.handles["plot"].ygrid.grid_line_color = None
 
 
 # default_cmap = [
@@ -32,6 +32,7 @@ def no_ygrid_hook(plot, element):
 default_categorical_cmap = colorcet.b_glasbey_category10
 default_sequential_cmap = bokeh.palettes.Viridis256
 default_diverging_cmap = colorcet.b_diverging_bwr_20_95_c54
+
 
 def set_defaults():
     """
@@ -98,23 +99,13 @@ def set_defaults():
         )
     )
 
-
-    hv.opts.defaults(
-        hv.opts.HeatMap(
-            cmap=default_sequential_cmap
-        )
-    )
-
+    hv.opts.defaults(hv.opts.HeatMap(cmap=default_sequential_cmap))
 
     hv.opts.defaults(
         hv.opts.HexTiles(
-            cmap=default_sequential_cmap,
-            padding=0.05,
-            show_grid=True,
-            toolbar="above",
+            cmap=default_sequential_cmap, padding=0.05, show_grid=True, toolbar="above"
         )
     )
-
 
     hv.opts.defaults(
         hv.opts.Histogram(
@@ -133,13 +124,7 @@ def set_defaults():
         )
     )
 
-
-    hv.opts.defaults(
-        hv.opts.Image(
-            cmap=default_sequential_cmap
-        )
-    )
-
+    hv.opts.defaults(hv.opts.Image(cmap=default_sequential_cmap))
 
     hv.opts.defaults(
         hv.opts.NdOverlay(
@@ -173,7 +158,6 @@ def set_defaults():
         )
     )
 
-
     hv.opts.defaults(
         hv.opts.Path(
             color=hv.Cycle(default_categorical_cmap),
@@ -187,7 +171,6 @@ def set_defaults():
             width=450,
         )
     )
-
 
     hv.opts.defaults(
         hv.opts.Points(
@@ -208,7 +191,6 @@ def set_defaults():
         )
     )
 
-
     hv.opts.defaults(
         hv.opts.Scatter(
             alpha=0.75,
@@ -226,7 +208,6 @@ def set_defaults():
             width=450,
         )
     )
-
 
     hv.opts.defaults(
         hv.opts.Spikes(

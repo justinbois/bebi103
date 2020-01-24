@@ -37,15 +37,15 @@ except ImportError as e:
 Features requiring DataShader will not work and you will get exceptions."""
     )
 
-
 from . import utils
 from . import image
+from . import az_utils
 
 try:
     from . import stan
 except:
     warnings.warn(
-        "Could not import `stan` submodule. Perhaps pystan is not properly installed."
+        "Could not import `stan` submodule. Perhaps pystan or cmdstanpy is not properly installed."
     )
 
 
@@ -1442,7 +1442,8 @@ def corner(
 
     if type(samples) == pd.core.frame.DataFrame:
         df = samples
-        pars = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
+        if pars is None:
+            pars = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
     else:
         pars, df = _sample_pars_to_df(samples, pars)
 
@@ -1768,9 +1769,7 @@ def contour(
             if "plot_width" not in kwargs and "frame_width" not in kwargs:
                 kwargs["frame_width"] = 300
             p = bokeh.plotting.figure(
-                x_axis_label=x_axis_label,
-                y_axis_label=y_axis_label,
-                **kwargs,
+                x_axis_label=x_axis_label, y_axis_label=y_axis_label, **kwargs
             )
 
     # Set default levels
@@ -2708,19 +2707,55 @@ def _sample_pars_to_df(samples, pars):
         raise RuntimeError("`pars` must be a list or tuple.")
 
     if pars is None:
-        pars = list(samples.posterior.data_vars)
+        var_names = None
     else:
+        var_names = az_utils.purge_duplicates([_get_var_name(par) for par in pars])
         sample_pars = list(samples.posterior.data_vars)
-        for par in pars:
-            if par not in sample_pars:
-                raise RuntimeError(f"parameter {par} not in the input.")
+        for var_name in var_names:
+            if var_name not in sample_pars:
+                raise RuntimeError(f"parameter {var_name} not in the input.")
 
-    df = stan.posterior_to_dataframe(samples, var_names=pars)
-    pars = [
-        col for col in df.columns if col not in ["chain__", "draw__", "divergent__"]
-    ]
+    df = stan.posterior_to_dataframe(samples, var_names=var_names)
 
-    return pars, df
+    if pars is None:
+        pars = [
+            col for col in df.columns if col not in ["chain__", "draw__", "divergent__"]
+        ]
+        cols = df.columns
+    else:
+        cols = list(pars) + ["chain__", "draw__", "divergent__"]
+
+    return pars, df[cols].copy()
+
+
+def _get_var_name(name):
+    """Convert a parameter name to a var_name. Example: 'alpha[0,1]'
+    return 'alpha'."""
+    if name[-1] != "]":
+        return name
+
+    ind = name.rfind("[")
+    if ind == 0 or ind == len(name) - 1:
+        return name
+
+    substr = name[ind + 1 : -1]
+    if len(substr) == 0:
+        return name
+
+    if not substr[0].isdigit():
+        return name
+
+    if not substr[-1].isdigit():
+        return name
+
+    for char in substr:
+        if not (char.isdigit() or char == ","):
+            return name
+
+    if ",," in substr:
+        return name
+
+    return name[:ind]
 
 
 def box(**kwargs):
