@@ -624,11 +624,11 @@ def predictive_ecdf(
         if diff:
             # subtracting off median wrecks y-coords for duplicated x-values...
             y_data -= ecdf_data_median
-            #...so take only unique values,...
+            # ...so take only unique values,...
             unique_x = np.unique(x_data)
-            #...find the (correct) max y-value for each...
-            unique_inds = np.searchsorted(x_data, unique_x, side='right') - 1
-            #...and use only that going forward
+            # ...find the (correct) max y-value for each...
+            unique_inds = np.searchsorted(x_data, unique_x, side="right") - 1
+            # ...and use only that going forward
             y_data = y_data[unique_inds]
             x_data = unique_x
         if data_staircase:
@@ -743,6 +743,8 @@ def predictive_regression(
 
     # It's useful to have data as a data frame
     if data is not None:
+        if type(data) == tuple and len(data) == 2 and len(data[0]) == len(data[1]):
+            data = np.vstack(data).transpose()
         df_data = pd.DataFrame(data=data, columns=["__data_x", "__data_y"])
         df_data = df_data.sort_values(by="__data_x")
 
@@ -1273,6 +1275,14 @@ def trace_plot(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
     output : Bokeh gridplot
         Set of chain traces as a Bokeh gridplot.
     """
+    if type(samples) != az.data.inference_data.InferenceData:
+        raise RuntimeError("Input must be an ArviZ InferenceData instance.")
+
+    if not hasattr(samples, "posterior"):
+        raise RuntimeError("Input samples do not have 'posterior' group.")
+
+    pars, df = _sample_pars_to_df(samples, pars)
+
     # Default properties
     if palette is None:
         palette = colorcet.b_glasbey_category10
@@ -1293,14 +1303,8 @@ def trace_plot(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
         raise RuntimeError(
             "`y_axis_label` cannot be specified; it is inferred from samples."
         )
-
-    if type(samples) != az.data.inference_data.InferenceData:
-        raise RuntimeError("Input must be an ArviZ InferenceData instance.")
-
-    if not hasattr(samples, "posterior"):
-        raise RuntimeError("Input samples do not have 'posterior' group.")
-
-    pars, df = _sample_pars_to_df(samples, pars)
+    if "x_range" not in kwargs:
+        kwargs["x_range"] = [df["draw__"].min(), df["draw__"].max()]
 
     plots = []
     grouped = df.groupby("chain__")

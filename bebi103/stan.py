@@ -448,7 +448,7 @@ def posterior_to_dataframe(data, var_names=None):
     """
     if type(data) == xarray.Dataset:
         raise RuntimeError(
-            "You need to pass in an ArviZ InferenceData instance, not an xarray Dataset. Maybe you passed in the posterior attributed of the InferenceData instance?"
+            "You need to pass in an ArviZ InferenceData instance, not an xarray Dataset. Maybe you passed in the posterior attribute of the InferenceData instance?"
         )
     if hasattr(data, "sample_stats") and hasattr(data.sample_stats, "diverging"):
         diverging = np.ravel(data.sample_stats["diverging"])
@@ -683,37 +683,54 @@ def check_ess(
     if var_names is None:
         var_names = [var for var in samples.posterior.data_vars]
     ess = az.ess(samples, var_names=var_names, method="bulk")
+    tail_ess = az.ess(samples, var_names=var_names, method="tail")
 
     # Convert to list of names and numpy arrays
     names, ess = xarray_to_ndarray(ess)
+    _, tail_ess = xarray_to_ndarray(tail_ess)
     ess = ess.squeeze()
+    tail_ess = tail_ess.squeeze()
 
     # Fractional ESS
     frac_ess = ess / M / N
+    frac_tail_ess = tail_ess / M / N
 
-    pass_check = (ess[~np.isnan(ess)] > total_ess_rule_of_thumb).all() and (
-        frac_ess[~np.isnan(ess)] > fractional_ess_rule_of_thumb
-    ).all()
+    pass_check = (
+        (ess[~np.isnan(ess)] > total_ess_rule_of_thumb).all()
+        and (frac_ess[~np.isnan(ess)] > fractional_ess_rule_of_thumb).all()
+        and (tail_ess[~np.isnan(tail_ess)] > total_ess_rule_of_thumb).all()
+        and (frac_tail_ess[~np.isnan(tail_ess)] > fractional_ess_rule_of_thumb).all()
+    )
 
     if not quiet:
         if not pass_check:
             n_e = 0
             n_f = 0
-            for name, e, f in zip(names, ess, frac_ess):
+            for name, e, f, te, tf in zip(
+                names, ess, frac_ess, tail_ess, frac_tail_ess
+            ):
                 if e < total_ess_rule_of_thumb:
                     print("ESS for parameter {} is {}.".format(name, e))
-                    n_f += 1
+                    n_e += 1
                 if f < fractional_ess_rule_of_thumb:
                     print("ESS / iter for parameter {} is {}.".format(name, f))
+                    n_f += 1
+                if te < total_ess_rule_of_thumb:
+                    print("tail-ESS for parameter {} is {}.".format(name, te))
                     n_e += 1
-            if n_f > 0:
-                print(
-                    "  ESS below 100 per chain indicates that expectation values computed from samples are unlikely to be good approximations of the true expectation values."
-                )
+                if tf < fractional_ess_rule_of_thumb:
+                    print("ESS / iter for parameter {} is {}.".format(name, tf))
+                    n_f += 1
             if n_e > 0:
                 print(
-                    "  ESS / iter below 0.001 indicates that the effective"
-                    + " sample size has likely been overestimated."
+                    """  ESS or tail-ESS below 100 per chain indicates that expectation values
+  computed from samples are unlikely to be good approximations of the
+  true expectation values."""
+                )
+            if n_f > 0:
+                print(
+                    """  ESS / iter or tail-ESS / iter below 0.001 indicates that the effective
+  sample size has likely been overestimated."""
                 )
         else:
             print("Effective sample size looks reasonable for all parameters.")
@@ -825,7 +842,7 @@ def check_all_diagnostics(
     samples,
     var_names=None,
     e_bfmi_rule_of_thumb=0.3,
-    total_ess_rule_of_thumb=0.001,
+    total_ess_rule_of_thumb=100,
     fractional_ess_rule_of_thumb=0.001,
     rhat_rule_of_thumb=1.01,
     known_rhat_nans=None,
