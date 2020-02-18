@@ -1527,8 +1527,7 @@ def corner(
                 df[pars[0]],
                 bins=bins,
                 density=True,
-                line_width=2,
-                color=single_param_color,
+                line_kwargs=dict(line_width=2, line_color=single_param_color),
                 x_axis_label=pars[0],
             )
         p.xaxis.major_label_orientation = xtick_label_orientation

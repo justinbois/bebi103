@@ -688,8 +688,12 @@ def check_ess(
     # Convert to list of names and numpy arrays
     names, ess = xarray_to_ndarray(ess)
     _, tail_ess = xarray_to_ndarray(tail_ess)
-    ess = ess.squeeze()
-    tail_ess = tail_ess.squeeze()
+    if ess.shape == (1, 1):
+        ess = np.array([ess[0, 0]])
+        tail_ess = np.array([tail_ess[0, 0]])
+    else:
+        ess = ess.squeeze()
+        tail_ess = tail_ess.squeeze()
 
     # Fractional ESS
     frac_ess = ess / M / N
@@ -807,7 +811,10 @@ def check_rhat(
 
     # Convert to list of names and numpy arrays
     names, rhat = xarray_to_ndarray(rhat)
-    rhat = rhat.squeeze()
+    if rhat.shape == (1, 1):
+        rhat = np.array([rhat[0, 0]])
+    else:
+        rhat = rhat.squeeze()
     names = [name.replace("\n", "[") + "]" if "\n" in name else name for name in names]
 
     known_nan = [True if name in known_rhat_nans else False for name in names]
