@@ -129,7 +129,7 @@ def StanModel(
 
 
 def clean_cmdstan(path="./", prefix=None, delete_sampling_output=False):
-    """Remove all .hpp, .o, and executable files resulting from
+    """Remove all .hpp, .o, .d, and executable files resulting from
     compilation of Stan models using CmdStanPy.
 
     Parameters
@@ -160,11 +160,12 @@ def clean_cmdstan(path="./", prefix=None, delete_sampling_output=False):
 
     hpp_files = glob.glob(os.path.join(path, prefix, "*.hpp"))
     o_files = glob.glob(os.path.join(path, prefix, "*.o"))
+    d_files = glob.glob(os.path.join(path, prefix, "*.d"))
     prefixes = set([fname[:-4] for fname in hpp_files]) & set(
         [fname[:-2] for fname in o_files]
     )
 
-    for fname in hpp_files + o_files:
+    for fname in hpp_files + o_files + d_files:
         if os.path.isfile(fname):
             os.remove(fname)
 
@@ -664,11 +665,11 @@ def check_ess(
     passed : bool
         Return True if test passed. Return False otherwise.
     ess_diagnostics : DataFrame
-        Data frame with information about problematic n_eff.
+        Data frame with information about problematic ESS.
 
     Notes
     -----
-    .. Parameters with n_eff given as NaN are not checked.
+    .. Parameters with ESS given as NaN are not checked.
 
     References
     ----------
@@ -742,7 +743,15 @@ def check_ess(
     if return_diagnostics:
         return (
             pass_check,
-            pd.DataFrame(data={"parameter": names, "ESS": ess, "ESS/iter": frac_ess}),
+            pd.DataFrame(
+                data={
+                    "parameter": names,
+                    "ESS": ess,
+                    "ESS_per_iter": frac_ess,
+                    "tail_ESS": tail_ess,
+                    "tail_ESS_per_iter": frac_tail_ess,
+                }
+            ),
         )
     return pass_check
 
@@ -1003,7 +1012,7 @@ def parse_warning_code(warning_code, quiet=False, return_dict=False):
     if warning_code & (1 << 0):
         passed_tests["neff"] = False
         if not quiet:
-            print("n_eff / iteration warning")
+            print("ESS warning")
     if warning_code & (1 << 1):
         passed_tests["rhat"] = False
         if not quiet:
@@ -1036,8 +1045,9 @@ def sbc(
     measured_data=None,
     parameters=None,
     measured_data_dtypes={},
-    sampling_kwargs={},
     posterior_predictive_var_names=None,
+    log_likelihood_var_name=None,
+    sampling_kwargs={},
     cores=1,
     N=400,
     n_prior_draws_for_sd=1000,
@@ -1072,6 +1082,9 @@ def sbc(
     posterior_predictive_var_names : list of strings, default None
         List of variables that are posterior predictive. These are
         ignored in the SBC analysis.
+    log_likelihood_var_name : string, default None
+        Name of variable in the Stan model that stores the log
+        likelihood. This are ignored in the SBC analysis.
     measured_data_dtypes : dict, default {}
         The key in the dtypes dict is a string representing the data
         name, and the corresponding item is its dtype, almost always
@@ -1235,6 +1248,7 @@ def sbc(
                 measured_data_dtypes,
                 sampling_kwargs,
                 posterior_predictive_var_names,
+                log_likelihood_var_name,
                 prior_sd,
                 known_rhat_nans,
             )
@@ -1295,6 +1309,7 @@ def _perform_sbc(args):
         measured_data_dtypes,
         sampling_kwargs,
         posterior_predictive_var_names,
+        log_likelihood_var_name,
         prior_sd,
         known_rhat_nans,
     ) = args
@@ -1357,6 +1372,7 @@ def _perform_sbc(args):
         posterior_samples = az.from_pystan(
             posterior=posterior_samples,
             posterior_predictive=posterior_predictive_var_names,
+            log_likelihood=log_likelihood_var_name,
         )
 
     elif "cmdstanpy" in str(type(posterior_model)):
@@ -1367,6 +1383,7 @@ def _perform_sbc(args):
         posterior_samples = az.from_cmdstanpy(
             posterior=posterior_samples,
             posterior_predictive=posterior_predictive_var_names,
+            log_likelihood=log_likelihood_var_name,
         )
 
     # Check diagnostics
@@ -1402,9 +1419,19 @@ def _perform_sbc(args):
             .loc[diagnostics["ess"]["parameter"] == name, "ESS"]
             .values[0]
         )
-        output[name + "_ESS/iter"] = (
+        output[name + "_ESS_per_iter"] = (
             diagnostics["ess"]
-            .loc[diagnostics["ess"]["parameter"] == name, "ESS/iter"]
+            .loc[diagnostics["ess"]["parameter"] == name, "ESS_per_iter"]
+            .values[0]
+        )
+        output[name + "_tail_ESS"] = (
+            diagnostics["ess"]
+            .loc[diagnostics["ess"]["parameter"] == name, "tail_ESS"]
+            .values[0]
+        )
+        output[name + "_tail_ESS_per_iter"] = (
+            diagnostics["ess"]
+            .loc[diagnostics["ess"]["parameter"] == name, "tail_ESS_per_iter"]
             .values[0]
         )
         output[name + "_Rhat"] = (
@@ -1499,7 +1526,9 @@ def _tidy_sbc_output(sbc_output):
         "z_score",
         "Rhat",
         "ESS",
-        "ESS/iter",
+        "ESS_per_iter",
+        "tail_ESS",
+        "tail_ESS_per_iter",
     ]
 
     aux_cols = [

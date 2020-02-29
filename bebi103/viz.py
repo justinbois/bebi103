@@ -1076,6 +1076,7 @@ def sbc_rank_ecdf(
 
     if show_legend:
         p.legend.click_policy = "hide"
+        p.legend.location = "bottom_right"
 
     return p
 
