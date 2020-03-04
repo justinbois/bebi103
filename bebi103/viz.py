@@ -575,7 +575,7 @@ def predictive_ecdf(
         df_ecdf[str(ptile)] = np.percentile(
             ecdfs, ptile, axis=0, interpolation="higher"
         )
-
+    print(df_ecdf)
     df_ecdf["x"] = x
 
     if data is not None and diff:
