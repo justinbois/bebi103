@@ -1496,10 +1496,33 @@ def _get_prior_sds(
     # Compute prior sd's
     names, vals = xarray_to_ndarray(prior_samples.prior)
     prior_sd = {
-        name: np.std(val) for name, val in zip(names, vals) if name in parameters
+        name: np.std(val)
+        for name, val in zip(names, vals)
+        if name in parameters or _base_name(name) in parameters
     }
 
     return prior_sd
+
+
+def _base_name(name):
+    if "[" not in name or name[-1] != "]":
+        return name
+
+    ind = name.rfind("[")
+    comma_inds = [ind + i for i, char in enumerate(name[ind:]) if char == ","]
+
+    if len(comma_inds) == 0:
+        if ind == len(name) - 2 or not name[ind + 1 : -1].isnumeric():
+            return name
+        else:
+            return name[:ind]
+    elif comma_inds[0] == ind or comma_inds[-1] == len(name) - 1:
+        return name
+    else:
+        if name[ind + 1 : -1].replace(",", "").isnumeric():
+            return name[:ind]
+        else:
+            return name
 
 
 def _tidy_sbc_output(sbc_output):
@@ -1572,9 +1595,9 @@ def xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
     names : list of strings
         List of names of headings. For a mulitdimensional xarray
         DataArray, each entry in the array is the variable name,
-        followed by a newline character and indexing information. As
-        an example, if `A` is a 2x2 matrix, then there will be names
-        'A[0,0]', 'A[0,1]', 'A[1,0]', and 'A[1,1]'.
+        followed indexing information. As an example, if `A` is a 2x2 
+        matrix, then there will be names 'A[0,0]', 'A[0,1]', 'A[1,0]', 
+        and 'A[1,1]'.
     vals : 2D Numpy array
         Each row has the samples for a given variable. If combined is
         True, each row is a concatenation of samples from all chains.
