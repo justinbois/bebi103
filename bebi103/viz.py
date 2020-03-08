@@ -154,7 +154,7 @@ def fill_between(
         x=np.concatenate((x1, x2[::-1])),
         y=np.concatenate((y1, y2[::-1])),
         line_width=line_width,
-        line_alpha=line_width,
+        line_alpha=line_alpha,
         **patch_kwargs,
     )
 
