@@ -1195,7 +1195,7 @@ def sbc(
     elif "cmdstanpy" in str(type(prior_predictive_model)):
         with disable_logging():
             prior_sample = prior_predictive_model.sample(
-                data=prior_predictive_model_data, fixed_param=True, sampling_iters=1
+                data=prior_predictive_model_data, fixed_param=True, iter_sampling=1
             )
         if az.__version__ > "0.6.1":
             prior_sample = az.from_cmdstanpy(
@@ -1290,20 +1290,20 @@ def sbc(
     if "pystan" in str(type(posterior_model)):
         if "iter" in sampling_kwargs:
             if "warmup" in sampling_kwargs:
-                sampling_iters = sampling_kwargs["iter"] - sampling_kwargs["warmup"]
+                iter_sampling = sampling_kwargs["iter"] - sampling_kwargs["warmup"]
             else:
-                sampling_iters = sampling_kwargs["iter"] - sampling_kwargs["iter"] // 2
+                iter_sampling = sampling_kwargs["iter"] - sampling_kwargs["iter"] // 2
         elif "warmup" in sampling_kwargs:
-            sampling_iters = 2000 - sampling_kwargs["warmup"]
+            iter_sampling = 2000 - sampling_kwargs["warmup"]
         else:
-            sampling_iters = 1000
+            iter_sampling = 1000
     elif "cmdstanpy" in str(type(prior_predictive_model)):
-        if "sampling_iters" in sampling_kwargs:
-            sampling_iters = sampling_kwargs["sampling_iters"]
+        if "iter_sampling" in sampling_kwargs:
+            iter_sampling = sampling_kwargs["iter_sampling"]
         else:
-            sampling_iters = 1000
+            iter_sampling = 1000
 
-    output["L"] = sampling_iters * chains // thin
+    output["L"] = iter_sampling * chains // thin
 
     return _tidy_sbc_output(output)
 
@@ -1352,7 +1352,7 @@ def _perform_sbc(args):
     elif "cmdstanpy" in str(type(prior_predictive_model)):
         with disable_logging():
             prior_sample_cmdstanpy = prior_predictive_model.sample(
-                data=prior_predictive_model_data, fixed_param=True, sampling_iters=1
+                data=prior_predictive_model_data, fixed_param=True, iter_sampling=1
             )
         if az.__version__ > "0.6.1":
             prior_sample = az.from_cmdstanpy(
@@ -1366,8 +1366,6 @@ def _perform_sbc(args):
             )
         if remove_sample_files:
             for fname in prior_sample_cmdstanpy.runset.csv_files:
-                os.remove(fname)
-            for fname in prior_sample_cmdstanpy.runset.console_files:
                 os.remove(fname)
 
     # Extract data generated from the prior predictive calculation
@@ -1408,8 +1406,6 @@ def _perform_sbc(args):
         # Clean out samples to save disk space
         if remove_sample_files:
             for fname in posterior_samples_cmdstanpy.runset.csv_files:
-                os.remove(fname)
-            for fname in posterior_samples_cmdstanpy.runset.console_files:
                 os.remove(fname)
 
     # Check diagnostics
@@ -1507,7 +1503,7 @@ def _get_prior_sds(
             prior_samples_cmdstanpy = prior_predictive_model.sample(
                 data=prior_predictive_model_data,
                 fixed_param=True,
-                sampling_iters=n_prior_draws_for_sd,
+                iter_sampling=n_prior_draws_for_sd,
             )
         if az.__version__ > "0.6.1":
             prior_samples = az.from_cmdstanpy(
@@ -1521,8 +1517,6 @@ def _get_prior_sds(
             )
         if remove_sample_files:
             for fname in prior_samples_cmdstanpy.runset.csv_files:
-                os.remove(fname)
-            for fname in prior_samples_cmdstanpy.runset.console_files:
                 os.remove(fname)
 
     # Compute prior sd's
