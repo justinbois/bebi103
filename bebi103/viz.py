@@ -456,9 +456,12 @@ def predictive_ecdf(
     data_color="orange",
     data_staircase=True,
     data_size=2,
+    data_alpha=1.,
     x=None,
     discrete=False,
+    line_alpha=1.,
     p=None,
+    patch_kwargs={},
     **kwargs,
 ):
     """Plot a predictive ECDF from samples.
@@ -490,14 +493,21 @@ def predictive_ecdf(
     data_size : int, default 2
         Size of marker (if `data_line` if False) or thickness of line
         (if `data_staircase` is True) of plot of data.
+    data_alpha: float, default 1
+        Transpararency of the ECDF of the data.
     x : Numpy array, default None
         Points at which to evaluate the ECDF. If None, points are
         automatically generated based on the data range.
     discrete : bool, default False
         If True, the samples take on discrete values.
+    line_alpha: float, default 1
+        Transpararency of the predictive ECDF.
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
+    patch_kwargs : dict
+        Any kwargs to be passed to p.patch() in making the fill of the
+        histogram.
     kwargs
         All other kwargs are passed to bokeh.plotting.figure().
 
@@ -565,7 +575,7 @@ def predictive_ecdf(
         df_ecdf[str(ptile)] = np.percentile(
             ecdfs, ptile, axis=0, interpolation="higher"
         )
-
+    print(df_ecdf)
     df_ecdf["x"] = x
 
     if data is not None and diff:
@@ -601,6 +611,7 @@ def predictive_ecdf(
             x = df_ecdf["x"]
             y1 = df_ecdf[ptile]
             y2 = df_ecdf[ptiles_str[-i - 1]]
+        patch_kwargs['color'] = colors[color][i]
         fill_between(
             x,
             y1,
@@ -608,7 +619,7 @@ def predictive_ecdf(
             y2,
             p=p,
             show_line=False,
-            patch_kwargs=dict(color=colors[color][i]),
+            patch_kwargs=patch_kwargs
         )
 
     # The median as a solid line
@@ -616,7 +627,7 @@ def predictive_ecdf(
         x, y = cdf_to_staircase(df_ecdf["x"], df_ecdf["50"])
     else:
         x, y = df_ecdf["x"], df_ecdf["50"]
-    p.line(x, y, line_width=2, color=colors[color][-1])
+    p.line(x, y, line_width=2, color=colors[color][-1], alpha=line_alpha)
 
     # Overlay data set
     if data is not None:
@@ -633,9 +644,9 @@ def predictive_ecdf(
             x_data = unique_x
         if data_staircase:
             x_data, y_data = cdf_to_staircase(x_data, y_data)
-            p.line(x_data, y_data, color=data_color, line_width=data_size)
+            p.line(x_data, y_data, color=data_color, line_width=data_size, alpha=data_alpha)
         else:
-            p.circle(x_data, y_data, color=data_color, size=data_size)
+            p.circle(x_data, y_data, color=data_color, size=data_size, alpha=data_alpha)
 
     return p
 
@@ -647,6 +658,8 @@ def predictive_regression(
     diff=False,
     percentiles=[80, 60, 40, 20],
     color="blue",
+    line_alpha=1,
+    patch_kwargs={},
     data_kwargs={},
     p=None,
     **kwargs,
@@ -673,6 +686,11 @@ def predictive_regression(
         One of ['green', 'blue', 'red', 'gray', 'purple', 'orange'].
         There are used to make the color scheme of shading of
         percentiles.
+    line_alpha: float, default 1
+        Transparency of predictive ECDF.
+    patch_kwargs : dict
+        Any kwargs to be passed to p.patch() in making the fill of the
+        histogram.
     data_kwargs : dict
         Any kwargs to be passed to p.circle() when plotting the data
         points.
@@ -783,7 +801,7 @@ def predictive_regression(
         else:
             y1 = df_pred[ptile]
             y2 = df_pred[ptiles_str[-i - 1]]
-
+        patch_kwargs['fill_color']=colors[color][i]
         fill_between(
             x1=df_pred["__x"],
             x2=df_pred["__x"],
@@ -791,7 +809,7 @@ def predictive_regression(
             y2=y2,
             p=p,
             show_line=False,
-            patch_kwargs=dict(fill_color=colors[color][i]),
+            patch_kwargs=patch_kwargs,
         )
 
     # The median as a solid line
@@ -801,9 +819,16 @@ def predictive_regression(
             np.zeros_like(samples_x),
             line_width=2,
             color=colors[color][-1],
+            alpha=line_alpha
         )
     else:
-        p.line(df_pred["__x"], df_pred["50"], line_width=2, color=colors[color][-1])
+        p.line(
+            df_pred["__x"],
+            df_pred["50"],
+            line_width=2,
+            color=colors[color][-1],
+            alpha=line_alpha
+        )
 
     # Overlay data set
     if data is not None:
