@@ -49,48 +49,92 @@ except:
     )
 
 
-def plot_with_error_bars(
-    centers, confs, names, marker_kwargs={}, line_kwargs={}, **kwargs
+def confints(
+    summaries, p=None, marker_kwargs={}, line_kwargs={}, palette=None, **kwargs
 ):
     """Make a horizontal plot of centers/conf ints with error bars.
 
     Parameters
     ----------
-    centers : array_like, shape (n,)
-        Array of center points for error bar plot.
-    confs : array_like, shape (n, 2)
-        Array of low and high values of confidence intervals
-    names : list of strings
-        Names of the variables for the plot. These give the y-ticks.
+    summaries : list of dicts
+        Each entry in `summaries` is a dictionary containing minimally
+        keys 'estimate', 'conf_int', and 'label'.  The 'estimate' value
+        is the point estimate, a single scalar. The 'conf_int' value is
+        a two-tuple, two-list, or two-numpy array containing the low and
+        high end of the confidence interval for the estimate. The
+        'label' value is the name of the variable. This gives the label
+        of the y-ticks.
+    p : bokeh.plotting.Figure instance or None, default None
+        If not None, a figure to be populated with confidence interval
+        plot. If specified, it is important that `p.y_range` be set to
+        contain all of the values in the labels provided in the
+        `summaries` input. If `p` is None, then a new figure is created.
     marker_kwargs : dict, default {}
-        Kwargs to be passed to p.circle() for plotting centers.
+        Kwargs to be passed to p.circle() for plotting estimates.
     line_kwargs : dict, default {}
         Kwargs passsed to p.line() to plot the confidence interval.
+    palette : list, str, or None
+        If None, default colors (or those given in `marker_kwargs` and
+        `line_kwargs` are used). If a str, all glyphs are colored
+        accordingly, e.g., 'black'. Otherwise a list of colors is used.
     kwargs : dict
-        Any addition kwargs are passed to bokeh.plotting.figure().
+        Any additional kwargs are passed to bokeh.plotting.figure().
 
     Returns
     -------
     output : Bokeh figure
         Plot of error bars.
     """
-    n = len(names)
-    if len(centers) != n:
-        raise ValueError("len(centers) ≠ len(names)")
-    if confs.shape != (n, 2):
-        raise ValueError("Shape of `confs` must be (len(names), 2).")
+    n = len(summaries)
 
-    if "plot_height" not in kwargs and "frame_height" not in kwargs:
-        kwargs["frame_height"] = 50 * n
-    if "plot_width" not in kwargs and "frame_width" not in kwargs:
-        kwargs["frame_width"] = 450
-    line_width = kwargs.pop("line_width", 2)
+    labels = [summary["label"] for summary in summaries]
+    estimates = [summary["estimate"] for summary in summaries]
+    conf_intervals = [summary["conf_int"] for summary in summaries]
 
-    p = bokeh.plotting.figure(y_range=names[::-1], **kwargs)
+    if palette is None:
+        use_palette = False
+    else:
+        if (
+            "color" in marker_kwargs
+            or "line_color" in marker_kwargs
+            or "fill_color" in marker_kwargs
+            or "color" in line_kwargs
+            or "line_color" in line_kwargs
+        ):
+            raise RuntimeError(
+                "`palette` must be None if color is specified in "
+                "`marker_kwargs` or `line_kwargs`"
+            )
 
-    p.circle(x=centers, y=names, **marker_kwargs)
-    for conf, name in zip(confs, names):
-        p.line(x=conf, y=[name, name], line_width=2)
+    if type(palette) == str:
+        marker_kwargs["color"] = palette
+        line_kwargs["color"] = palette
+        use_palette = False
+    elif type(palette) == list or type(palette) == tuple:
+        palette[:n][::-1]
+        use_palette = True
+
+    line_width = kwargs.pop("line_width", 3)
+
+    size = marker_kwargs.pop("size", 5)
+
+    if p is None:
+        if "plot_height" not in kwargs and "frame_height" not in kwargs:
+            kwargs["frame_height"] = 50 * n
+        if "plot_width" not in kwargs and "frame_width" not in kwargs:
+            kwargs["frame_width"] = 450
+        toolbar_location = kwargs.pop("toolbar_location", "above")
+
+        p = bokeh.plotting.figure(
+            y_range=labels[::-1], toolbar_location=toolbar_location, **kwargs
+        )
+
+    for i, (estimate, conf, label) in enumerate(zip(estimates, conf_intervals, labels)):
+        if use_palette:
+            marker_kwargs["color"] = palette[i % len(palette)]
+            line_kwargs["color"] = palette[i % len(palette)]
+        p.circle(x=[estimate], y=[label], size=size, **marker_kwargs)
+        p.line(x=conf, y=[label, label], line_width=line_width, **line_kwargs)
 
     return p
 
@@ -178,6 +222,8 @@ def qqplot(
     **kwargs,
 ):
     """
+    Generate a Q-Q plot.
+
     Parameters
     ----------
     data : array_like, shape (N,)
@@ -246,7 +292,7 @@ def qqplot(
     return p
 
 
-def ecdf(
+def _ecdf(
     data=None,
     p=None,
     x_axis_label=None,
@@ -348,7 +394,7 @@ def ecdf(
     return p
 
 
-def histogram(
+def _histogram(
     data=None,
     bins=10,
     p=None,
@@ -467,7 +513,7 @@ def predictive_ecdf(
     ----------
     samples : Numpy array or xarray, shape (n_samples, n) or xarray DataArray
         A Numpy array containing predictive samples.
-    data : Numpy array, shape (n,) or xarray DataArray
+    data : Numpy array, shape (n,) or xarray DataArray, or None
         If not None, ECDF of measured data is overlaid with predictive
         ECDF.
     diff : bool, default True
@@ -513,7 +559,20 @@ def predictive_ecdf(
         if type(samples) == xarray.core.dataarray.DataArray:
             samples = samples.squeeze().values
         else:
-            raise RuntimeError("Samples can only be Numpy arrays and xarrays.")
+            raise RuntimeError("`samples` can only be a Numpy array or xarray.")
+
+    if samples.ndim != 2:
+        raise RuntimeError(
+            "`samples` must be a 2D array, with each row being a sample."
+        )
+
+    if len(samples) < 100:
+        warnings.warn(
+            "`samples` has very few samples. Predictive percentiles may be poor."
+        )
+
+    if data is not None and len(data) != samples.shape[1]:
+        raise RuntimeError("Mismatch in shape of `data` and `samples`.")
 
     if len(percentiles) > 4:
         raise RuntimeError("Can specify maximally four percentiles.")
@@ -550,38 +609,30 @@ def predictive_ecdf(
         ],
     }
 
-    data_range = samples.max() - samples.min()
-    if discrete and x is None:
-        x = np.arange(samples.min(), samples.max() + 1)
-    elif x is None:
-        x = np.linspace(
-            samples.min() - 0.05 * data_range, samples.max() + 0.05 * data_range, 400
-        )
+    samples = np.sort(samples)
+    n = samples.shape[1]
 
-    ecdfs = np.array([_ecdf_arbitrary_points(sample, x) for sample in samples])
+    if data is not None:
+        data_plot = np.sort(np.array(data))
 
-    df_ecdf = pd.DataFrame()
+    # y-values for ECDFs
+    y = np.arange(1, n + 1) / n
+
+    df_ecdf = pd.DataFrame(dict(y=y))
     for ptile in ptiles:
-        df_ecdf[str(ptile)] = np.percentile(
-            ecdfs, ptile, axis=0, interpolation="higher"
-        )
-
-    df_ecdf["x"] = x
-
-    if data is not None and diff:
-        ecdfs = np.array(
-            [_ecdf_arbitrary_points(sample, np.sort(data)) for sample in samples]
-        )
-        ecdf_data_median = np.percentile(ecdfs, 50, axis=0, interpolation="higher")
+        df_ecdf[str(ptile)] = np.percentile(samples, ptile, axis=0)
 
     if diff:
+        if data is not None:
+            data_plot = data_plot - df_ecdf["50"]
+
         for ptile in filter(lambda item: item != "50", ptiles_str):
             df_ecdf[ptile] -= df_ecdf["50"]
         df_ecdf["50"] = 0.0
 
     if p is None:
-        x_axis_label = kwargs.pop("x_axis_label", "x")
-        y_axis_label = kwargs.pop("y_axis_label", "ECDF difference" if diff else "ECDF")
+        x_axis_label = kwargs.pop("x_axis_label", "x difference" if diff else "x")
+        y_axis_label = kwargs.pop("y_axis_label", "ECDF")
 
         if "plot_height" not in kwargs and "frame_height" not in kwargs:
             kwargs["frame_height"] = 325
@@ -592,19 +643,13 @@ def predictive_ecdf(
         )
 
     for i, ptile in enumerate(ptiles_str[: len(ptiles_str) // 2]):
-        if discrete:
-            x, y1 = cdf_to_staircase(df_ecdf["x"].values, df_ecdf[ptile].values)
-            _, y2 = cdf_to_staircase(
-                df_ecdf["x"].values, df_ecdf[ptiles_str[-i - 1]].values
-            )
-        else:
-            x = df_ecdf["x"]
-            y1 = df_ecdf[ptile]
-            y2 = df_ecdf[ptiles_str[-i - 1]]
+        x1, y1 = cdf_to_staircase(df_ecdf[ptile].values, y)
+        x2, y2 = cdf_to_staircase(df_ecdf[ptiles_str[-i - 1]].values, y)
+
         fill_between(
-            x,
+            x1,
             y1,
-            x,
+            x2,
             y2,
             p=p,
             show_line=False,
@@ -612,30 +657,40 @@ def predictive_ecdf(
         )
 
     # The median as a solid line
-    if discrete:
-        x, y = cdf_to_staircase(df_ecdf["x"], df_ecdf["50"])
-    else:
-        x, y = df_ecdf["x"], df_ecdf["50"]
-    p.line(x, y, line_width=2, color=colors[color][-1])
+    x, y_median = cdf_to_staircase(df_ecdf["50"], y)
+    p.line(x, y_median, line_width=2, color=colors[color][-1])
+
+    # Extend to infinity
+    if not diff:
+        p.ray(x.min(), 0.0, None, np.pi, line_width=2, color=colors[color][-1])
+        p.ray(x.max(), diff == False, None, 0, line_width=2, color=colors[color][-1])
 
     # Overlay data set
     if data is not None:
-        x_data, y_data = _ecdf_vals(data, staircase=False)
-        if diff:
-            # subtracting off median wrecks y-coords for duplicated x-values...
-            y_data -= ecdf_data_median
-            # ...so take only unique values,...
-            unique_x = np.unique(x_data)
-            # ...find the (correct) max y-value for each...
-            unique_inds = np.searchsorted(x_data, unique_x, side="right") - 1
-            # ...and use only that going forward
-            y_data = y_data[unique_inds]
-            x_data = unique_x
         if data_staircase:
-            x_data, y_data = cdf_to_staircase(x_data, y_data)
+            x_data, y_data = cdf_to_staircase(data_plot, y)
             p.line(x_data, y_data, color=data_color, line_width=data_size)
+
+            # Extend to infinity
+            if not diff:
+                p.ray(
+                    data_plot.min(),
+                    0.0,
+                    None,
+                    np.pi,
+                    line_width=data_size,
+                    color=data_color,
+                )
+                p.ray(
+                    data_plot.max(),
+                    diff == False,
+                    None,
+                    0,
+                    line_width=data_size,
+                    color=data_color,
+                )
         else:
-            p.circle(x_data, y_data, color=data_color, size=data_size)
+            p.circle(data_plot, y, color=data_color, size=data_size)
 
     return p
 
@@ -916,8 +971,8 @@ def sbc_rank_ecdf(
 
     Notes
     -----
-    .. You can see example SBC ECDF plots in Fig. 14 b and c in this
-       paper: https://arxiv.org/abs/1804.06788
+    You can see example SBC ECDF plots in Fig. 14 b and c in this
+    paper: https://arxiv.org/abs/1804.06788
     """
     if sbc_output is None:
         raise RuntimeError("Argument `sbc_output` must be specified.")
@@ -1081,7 +1136,7 @@ def sbc_rank_ecdf(
     return p
 
 
-def parcoord_plot(
+def parcoord(
     samples=None,
     pars=None,
     transformation=None,
@@ -1251,7 +1306,7 @@ def parcoord_plot(
     return p
 
 
-def trace_plot(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
+def trace(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
     """
     Make a trace plot of MCMC samples.
 
@@ -1517,14 +1572,14 @@ def corner(
                     cmap=single_param_color,
                 )
             else:
-                p = ecdf(
+                p = _ecdf(
                     df[pars[0]],
                     staircase=True,
                     line_width=2,
                     line_color=single_param_color,
                 )
         else:
-            p = histogram(
+            p = _histogram(
                 df[pars[0]],
                 bins=bins,
                 density=True,
@@ -1620,7 +1675,7 @@ def corner(
                         cmap=single_param_color,
                     )
                 else:
-                    plots[i][i] = ecdf(
+                    plots[i][i] = _ecdf(
                         df[x],
                         p=plots[i][i],
                         staircase=True,
@@ -1830,7 +1885,7 @@ def contour(
     return p
 
 
-def ds_line_plot(
+def _ds_line_plot(
     df,
     x,
     y,
@@ -1905,7 +1960,7 @@ def ds_line_plot(
     )
 
 
-def ds_point_plot(
+def _ds_point_plot(
     df,
     x,
     y,
@@ -1997,8 +2052,8 @@ def mpl_cmap_to_color_mapper(cmap):
 
     Notes
     -----
-    .. See https://matplotlib.org/examples/color/colormaps_reference.html
-       for available Matplotlib colormaps.
+    See https://matplotlib.org/examples/color/colormaps_reference.html
+    for available Matplotlib colormaps.
     """
     cm = mpl_get_cmap(cmap)
     palette = [rgb_frac_to_hex(cm(i)[:3]) for i in range(256)]
@@ -2069,7 +2124,7 @@ def cdf_to_staircase(x, y):
     x : array_like, shape (n,)
         x-values for concave corners of CDF
     y : array_like, shape (n,)
-        y-values of the concave corvners of the CDF
+        y-values of the concave corners of the CDF
 
     Returns
     -------
@@ -2397,8 +2452,8 @@ def _ecdf_y(data, complementary=False):
 
     Notes
     -----
-    .. This only works for plotting an ECDF with points, not for staircase
-       ECDFs
+    This only works for plotting an ECDF with points, not for staircase
+    ECDFs
     """
     if complementary:
         return 1 - data.rank(method="first") / len(data) + 1 / len(data)
@@ -2470,7 +2525,7 @@ def _ecdf_collection_staircase(
         if color_not_in_kwargs:
             kwargs["color"] = palette[i % len(palette)]
 
-        ecdf(
+        _ecdf(
             g[1][val],
             staircase=True,
             p=p,
@@ -2606,14 +2661,14 @@ def contour_lines_from_samples(
 
     Notes
     -----
-    .. The method proceeds as follows: the samples are binned. The
-       counts of samples landing in bins are thought of as values of a
-       function f(xb, yb), where (xb, yb) denotes the center of the
-       respective bins. This function is then optionally smoothed using
-       a Gaussian blur, and then the result is used to construct a
-       contour plot.
-    .. Based heavily on code from the corner package by Dan
-       Forman-Mackey.
+    The method proceeds as follows: the samples are binned. The
+    counts of samples landing in bins are thought of as values of a
+    function f(xb, yb), where (xb, yb) denotes the center of the
+    respective bins. This function is then optionally smoothed using
+    a Gaussian blur, and then the result is used to construct a
+    contour plot.
+
+    Based heavily on code from the corner package by Dan Forman-Mackey.
     """
     # The code in this function is based on the corner package by Dan Forman-Mackey.
     # Following is the copyright notice from that pacakge.
