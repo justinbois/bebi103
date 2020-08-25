@@ -496,7 +496,7 @@ def _histogram(
 def predictive_ecdf(
     samples,
     data=None,
-    diff=False,
+    diff=None,
     percentiles=[80, 60, 40, 20],
     color="blue",
     data_color="orange",
@@ -516,9 +516,11 @@ def predictive_ecdf(
     data : Numpy array, shape (n,) or xarray DataArray, or None
         If not None, ECDF of measured data is overlaid with predictive
         ECDF.
-    diff : bool, default True
-        If True, the ECDFs minus median of the predictive ECDF are
-        plotted.
+    diff : 'x', 'y', or None, default None
+        Referring to the variable as x, if `diff` is 'x', for each value
+        of the ECDF, plot the value of x minus the median x. If 'y',
+        plot the value of the ECDF minus the median ECDF value. If None,
+        just plot the ECDFs.
     percentiles : list, default [80, 60, 40, 20]
         Percentiles for making colored envelopes for confidence
         intervals for the predictive ECDFs. Maximally four can be
@@ -622,17 +624,14 @@ def predictive_ecdf(
     for ptile in ptiles:
         df_ecdf[str(ptile)] = np.percentile(samples, ptile, axis=0)
 
-    if diff:
-        if data is not None:
-            data_plot = data_plot - df_ecdf["50"]
-
-        for ptile in filter(lambda item: item != "50", ptiles_str):
-            df_ecdf[ptile] -= df_ecdf["50"]
-        df_ecdf["50"] = 0.0
-
+    # Set up plot
     if p is None:
-        x_axis_label = kwargs.pop("x_axis_label", "x difference" if diff else "x")
-        y_axis_label = kwargs.pop("y_axis_label", "ECDF")
+        x_axis_label = kwargs.pop(
+            "x_axis_label", "x difference" if diff == "x" else "x"
+        )
+        y_axis_label = kwargs.pop(
+            "y_axis_label", "ECDF difference" if diff == "y" else "ECDF"
+        )
 
         if "plot_height" not in kwargs and "frame_height" not in kwargs:
             kwargs["frame_height"] = 325
@@ -642,9 +641,32 @@ def predictive_ecdf(
             x_axis_label=x_axis_label, y_axis_label=y_axis_label, **kwargs
         )
 
+    # Plot the predictive intervals
     for i, ptile in enumerate(ptiles_str[: len(ptiles_str) // 2]):
-        x1, y1 = cdf_to_staircase(df_ecdf[ptile].values, y)
-        x2, y2 = cdf_to_staircase(df_ecdf[ptiles_str[-i - 1]].values, y)
+        if diff == "y":
+            med = df_ecdf["50"].values
+            x1_val = df_ecdf[ptile].values
+            x1_post = med[med > x1_val.max()]
+            x2_val = df_ecdf[ptiles_str[-i - 1]].values
+            x2_pre = med[med < x2_val.min()]
+
+            x1 = np.concatenate((x1_val, x1_post))
+            y1 = np.concatenate((y, np.ones_like(x1_post)))
+            y1 -= _ecdf_arbitrary_points(df_ecdf["50"].values, x1)
+
+            x2 = np.concatenate((x2_pre, x2_val))
+            y2 = np.concatenate((np.zeros_like(x2_pre), y))
+            y2 -= _ecdf_arbitrary_points(df_ecdf["50"].values, x2)
+
+            x1, y1 = cdf_to_staircase(x1, y1)
+            x2, y2 = cdf_to_staircase(x2, y2)
+        else:
+            if diff == "x":
+                df_ecdf[ptile] -= df_ecdf["50"]
+                df_ecdf[ptiles_str[-i - 1]] -= df_ecdf["50"]
+
+            x1, y1 = cdf_to_staircase(df_ecdf[ptile].values, y)
+            x2, y2 = cdf_to_staircase(df_ecdf[ptiles_str[-i - 1]].values, y)
 
         fill_between(
             x1,
@@ -653,28 +675,42 @@ def predictive_ecdf(
             y2,
             p=p,
             show_line=False,
-            patch_kwargs=dict(color=colors[color][i]),
+            patch_kwargs=dict(color=colors[color][i], alpha=0.5),
         )
 
     # The median as a solid line
-    x, y_median = cdf_to_staircase(df_ecdf["50"], y)
-    p.line(x, y_median, line_width=2, color=colors[color][-1])
-
-    # Extend to infinity
-    if not diff:
+    if diff == "y":
+        p.ray(df_ecdf["50"].min(), 0.0, None, np.pi, line_width=2, color=colors[color][-1])
+        p.ray(df_ecdf["50"].min(), 0.0, None, 0, line_width=2, color=colors[color][-1])
+    elif diff == "x":
+        p.line([0.0, 0.0], [0.0, 1.0], line_width=2, color=colors[color][-1])
+    else:
+        x, y_median = cdf_to_staircase(df_ecdf["50"], y)
+        p.line(x, y_median, line_width=2, color=colors[color][-1])
         p.ray(x.min(), 0.0, None, np.pi, line_width=2, color=colors[color][-1])
-        p.ray(x.max(), diff == False, None, 0, line_width=2, color=colors[color][-1])
+        p.ray(x.max(), diff is None, None, 0, line_width=2, color=colors[color][-1])
 
     # Overlay data set
     if data is not None:
         if data_staircase:
-            x_data, y_data = cdf_to_staircase(data_plot, y)
+            if diff == "x":
+                data_plot -= df_ecdf["50"]
+                x_data, y_data = cdf_to_staircase(data_plot, y)
+            elif diff == "y":
+                med = df_ecdf["50"].values
+                x_data = np.sort(np.unique(np.concatenate((data_plot, med))))
+                data_ecdf = _ecdf_arbitrary_points(data_plot, x_data)
+                med_ecdf = _ecdf_arbitrary_points(med, x_data)
+                x_data, y_data = cdf_to_staircase(x_data, data_ecdf - med_ecdf)
+            else:
+                x_data, y_data = cdf_to_staircase(data_plot, y)
+
             p.line(x_data, y_data, color=data_color, line_width=data_size)
 
             # Extend to infinity
-            if not diff:
+            if diff != "x":
                 p.ray(
-                    data_plot.min(),
+                    x_data.min(),
                     0.0,
                     None,
                     np.pi,
@@ -682,15 +718,22 @@ def predictive_ecdf(
                     color=data_color,
                 )
                 p.ray(
-                    data_plot.max(),
-                    diff == False,
+                    x_data.max(),
+                    diff is None,
                     None,
                     0,
                     line_width=data_size,
                     color=data_color,
                 )
         else:
-            p.circle(data_plot, y, color=data_color, size=data_size)
+            if diff == "x":
+                p.circle(data_plot - df_ecdf["50"], y, color=data_color, size=data_size)
+            elif diff == "y":
+                p.circle(data_plot, y - _ecdf_arbitrary_points(
+                    df_ecdf["50"].values, data_plot
+                ), color=data_color, size=data_size)
+            else:
+                p.circle(data_plot, y, color=data_color, size=data_size)
 
     return p
 
