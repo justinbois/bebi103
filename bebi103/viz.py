@@ -28,9 +28,12 @@ import bokeh.plotting
 
 import colorcet
 
+
 try:
-    import datashader as ds
-    import datashader.bokeh_ext
+    import holoviews as hv
+    import holoviews.operation.datashader
+
+    hv.extension("bokeh")
 except ImportError as e:
     warnings.warn(
         f"""DataShader import failed with error "{e}".
@@ -497,7 +500,7 @@ def predictive_ecdf(
     samples,
     data=None,
     diff=None,
-    percentiles=[80, 60, 40, 20],
+    percentiles=(95, 68),
     color="blue",
     data_color="orange",
     data_staircase=True,
@@ -516,12 +519,12 @@ def predictive_ecdf(
     data : Numpy array, shape (n,) or xarray DataArray, or None
         If not None, ECDF of measured data is overlaid with predictive
         ECDF.
-    diff : 'x', 'y', or None, default None
-        Referring to the variable as x, if `diff` is 'x', for each value
-        of the ECDF, plot the value of x minus the median x. If 'y',
-        plot the value of the ECDF minus the median ECDF value. If None,
-        just plot the ECDFs.
-    percentiles : list, default [80, 60, 40, 20]
+    diff : 'ecdf', 'iecdf', or None, default None
+        Referring to the variable as x, if `diff` is 'iecdf', for each
+        value of the ECDF, plot the value of x minus the median x. If
+        'ecdf', plot the value of the ECDF minus the median ECDF value.
+        If None, just plot the ECDFs.
+    percentiles : list or tuple, default (95, 68)
         Percentiles for making colored envelopes for confidence
         intervals for the predictive ECDFs. Maximally four can be
         specified.
@@ -557,6 +560,24 @@ def predictive_ecdf(
         of samples of the ECDF, with the median ECDF plotted as line in
         the middle.
     """
+    if diff == True:
+        diff = "ecdf"
+        warnings.warn(
+            "`diff` as a Boolean is deprecated. Use 'ecdf', 'iecdf', or None."
+            " Using `diff = 'ecdf'`.",
+            DeprecationWarning,
+        )
+    elif diff == False:
+        diff = None
+        warnings.warn(
+            "`diff` as a Boolean is deprecated. Use 'ecdf', 'iecdf', or None."
+            " Using `diff = None`.",
+            DeprecationWarning,
+        )
+
+    if diff is not None:
+        diff = diff.lower()
+
     if type(samples) != np.ndarray:
         if type(samples) == xarray.core.dataarray.DataArray:
             samples = samples.squeeze().values
@@ -627,10 +648,10 @@ def predictive_ecdf(
     # Set up plot
     if p is None:
         x_axis_label = kwargs.pop(
-            "x_axis_label", "x difference" if diff == "x" else "x"
+            "x_axis_label", "x difference" if diff == "iecdf" else "x"
         )
         y_axis_label = kwargs.pop(
-            "y_axis_label", "ECDF difference" if diff == "y" else "ECDF"
+            "y_axis_label", "ECDF difference" if diff == "ecdf" else "ECDF"
         )
 
         if "plot_height" not in kwargs and "frame_height" not in kwargs:
@@ -643,7 +664,7 @@ def predictive_ecdf(
 
     # Plot the predictive intervals
     for i, ptile in enumerate(ptiles_str[: len(ptiles_str) // 2]):
-        if diff == "y":
+        if diff == "ecdf":
             med = df_ecdf["50"].values
             x1_val = df_ecdf[ptile].values
             x1_post = med[med > x1_val.max()]
@@ -661,7 +682,7 @@ def predictive_ecdf(
             x1, y1 = cdf_to_staircase(x1, y1)
             x2, y2 = cdf_to_staircase(x2, y2)
         else:
-            if diff == "x":
+            if diff == "iecdf":
                 df_ecdf[ptile] -= df_ecdf["50"]
                 df_ecdf[ptiles_str[-i - 1]] -= df_ecdf["50"]
 
@@ -679,10 +700,12 @@ def predictive_ecdf(
         )
 
     # The median as a solid line
-    if diff == "y":
-        p.ray(df_ecdf["50"].min(), 0.0, None, np.pi, line_width=2, color=colors[color][-1])
+    if diff == "ecdf":
+        p.ray(
+            df_ecdf["50"].min(), 0.0, None, np.pi, line_width=2, color=colors[color][-1]
+        )
         p.ray(df_ecdf["50"].min(), 0.0, None, 0, line_width=2, color=colors[color][-1])
-    elif diff == "x":
+    elif diff == "iecdf":
         p.line([0.0, 0.0], [0.0, 1.0], line_width=2, color=colors[color][-1])
     else:
         x, y_median = cdf_to_staircase(df_ecdf["50"], y)
@@ -693,10 +716,10 @@ def predictive_ecdf(
     # Overlay data set
     if data is not None:
         if data_staircase:
-            if diff == "x":
+            if diff == "iecdf":
                 data_plot -= df_ecdf["50"]
                 x_data, y_data = cdf_to_staircase(data_plot, y)
-            elif diff == "y":
+            elif diff == "ecdf":
                 med = df_ecdf["50"].values
                 x_data = np.sort(np.unique(np.concatenate((data_plot, med))))
                 data_ecdf = _ecdf_arbitrary_points(data_plot, x_data)
@@ -708,7 +731,7 @@ def predictive_ecdf(
             p.line(x_data, y_data, color=data_color, line_width=data_size)
 
             # Extend to infinity
-            if diff != "x":
+            if diff != "iecdf":
                 p.ray(
                     x_data.min(),
                     0.0,
@@ -726,12 +749,15 @@ def predictive_ecdf(
                     color=data_color,
                 )
         else:
-            if diff == "x":
+            if diff == "iecdf":
                 p.circle(data_plot - df_ecdf["50"], y, color=data_color, size=data_size)
-            elif diff == "y":
-                p.circle(data_plot, y - _ecdf_arbitrary_points(
-                    df_ecdf["50"].values, data_plot
-                ), color=data_color, size=data_size)
+            elif diff == "ecdf":
+                p.circle(
+                    data_plot,
+                    y - _ecdf_arbitrary_points(df_ecdf["50"].values, data_plot),
+                    color=data_color,
+                    size=data_size,
+                )
             else:
                 p.circle(data_plot, y, color=data_color, size=data_size)
 
@@ -743,7 +769,7 @@ def predictive_regression(
     samples_x,
     data=None,
     diff=False,
-    percentiles=[80, 60, 40, 20],
+    percentiles=[95, 68],
     color="blue",
     data_kwargs={},
     p=None,
@@ -763,7 +789,7 @@ def predictive_regression(
     diff : bool, default True
         If True, the predictive y-values minus the median of the
         predictive y-values are plotted.
-    percentiles : list, default [80, 60, 40, 20]
+    percentiles : list, default [95, 68]
         Percentiles for making colored envelopes for confidence
         intervals for the predictive ECDFs. Maximally four can be
         specified.
@@ -1435,14 +1461,16 @@ def corner(
     samples=None,
     pars=None,
     labels=None,
+    max_plotted=10000,
     datashade=False,
     plot_width=150,
     plot_ecdf=False,
+    ecdf_staircase=False,
     cmap="black",
     color_by_chain=False,
     palette=None,
     divergence_color="orange",
-    alpha=0.02,
+    alpha=None,
     single_param_color="black",
     bins=20,
     show_contours=False,
@@ -1457,19 +1485,25 @@ def corner(
     xtick_label_orientation="horizontal",
 ):
     """
-    Make a corner plot of MCMC results. Heavily influenced by the corner
-    package by Dan Foreman-Mackey.
+    Make a corner plot of sampling results. Heavily influenced by the
+    corner package by Dan Foreman-Mackey.
 
     Parameters
     ----------
-    samples : Pandas DataFrame or ArviZ InferenceData instance
-        Results of sampling.
+    samples : Numpy array, Pandas DataFrame, or ArviZ InferenceData
+        Results of sampling. If a Numpy array or Pandas DataFrame, each
+        row is a sample and each column corresponds to a variable.
     pars : list
         List of variables as strings included in `samples` to construct
-        corner plot.
+        corner plot. The variables correspond to column headings if
+        `samples` is in a Pandas DataFrame or to data_vars for an ArviZ
+        InferenceData instance. If the input is a Numpy array, `pars` is
+        a list of indices of columns to use in the plot.
     labels : list, default None
         List of labels for the respective variables given in `pars`. If
         None, the variable names from `pars` are used.
+    max_plotted : int, default 10000
+        Maximum number of points to be plotted.
     datashade : bool, default False
         Whether or not to convert sampled points to a raster image using
         Datashader.
@@ -1479,6 +1513,9 @@ def corner(
     plot_ecdf : bool, default False
         If True, plot ECDFs of samples on the diagonal of the corner
         plot. If False, histograms are plotted.
+    ecdf_staircase : bool, default False
+        If True, plot the ECDF in "staircase" style. Otherwise, plot as
+        dots. Ignored if `plot_ecdf` is False.
     cmap : str, default 'black'
         Valid colormap string for DataShader or for coloring Bokeh
         glyphs.
@@ -1492,8 +1529,8 @@ def corner(
     divergence_color : str, default 'orange'
         Color to use for showing points where the sampler experienced a
         divergence.
-    alpha : float, default 1.0
-        Opacity of glyphs. Ignored if `datashade` is True.
+    alpha : float or None, default None
+        Opacity of glyphs. If None, inferred.
     single_param_color : str, default 'black'
         Color of histogram or ECDF lines.
     bins : int, default 20
@@ -1514,9 +1551,7 @@ def corner(
         Value to pass as `weights` kwarg to np.histogram2d(), used in
         constructing contours.
     smooth : int or None, default 1
-        Width of smoothing kernel for making contours.    plot_width_correction : int, default 50
-        Correction for width of plot taking into account tick and axis
-        labels.
+        Width of smoothing kernel for making contours.
     extend_contour_domain : bool, default False
         If True, extend the domain of the contours a little bit beyond
         the extend of the samples. This is done in the corner package,
@@ -1536,15 +1571,18 @@ def corner(
     output : Bokeh gridplot
         Corner plot as a Bokeh gridplot.
     """
+    # Datashading not implemented
+    if datashade:
+        raise NotImplementedError("Datashading is not yet implemented.")
+
+    # Tools, also allowing linked brushing
+    tools = "pan,box_zoom,wheel_zoom,box_select,lasso_select,save,reset"
+
     # Default properties
     if palette is None:
         palette = colorcet.b_glasbey_category10
 
     if color_by_chain:
-        if datashade:
-            raise NotImplementedError(
-                "Can only color by chain if `datashade` is False."
-            )
         if cmap not in ["black", None]:
             warnings.warn("Ignoring cmap values to color by chain.")
 
@@ -1555,8 +1593,23 @@ def corner(
         df = samples
         if pars is None:
             pars = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
+    elif type(samples) == np.ndarray:
+        if pars is None:
+            pars = list(range(samples.shape[1]))
+        for par in pars:
+            if type(par) != int:
+                raise RuntimeError(
+                    "When `samples` is inputted as a Numpy array, `pars` must be a list"
+                    " of indices."
+                )
+        par_names = [str(par) for par in pars]
+        df = pd.DataFrame(samples[:, pars], columns=par_names)
+        pars = par_names
     else:
         pars, df = _sample_pars_to_df(samples, pars)
+
+    if len(pars) > 6:
+        raise RuntimeError("For space purposes, can show only six variables.")
 
     if color_by_chain:
         # Have to convert datatype to string to play nice with Bokeh
@@ -1575,9 +1628,6 @@ def corner(
         df = df.copy()
         df["chain__"] = 0
 
-    if len(pars) > 6:
-        raise RuntimeError("For space purposes, can show only six variables.")
-
     for col in pars:
         if col not in df.columns:
             raise RuntimeError("Column " + col + " not in the columns of DataFrame.")
@@ -1587,58 +1637,67 @@ def corner(
     elif len(labels) != len(pars):
         raise RuntimeError("len(pars) must equal len(labels)")
 
+    if plot_ecdf and not ecdf_staircase:
+        for par in pars:
+            df[f"__ECDF_{par}"] = df[par].rank(method="first") / len(df)
+
+    n_nondivergent = np.sum(df["divergent__"] == 0)
+    if n_nondivergent > max_plotted:
+        inds = np.random.choice(
+            np.arange(n_nondivergent), replace=False, size=max_plotted
+        )
+    else:
+        inds = np.arange(np.sum(df["divergent__"] == 0))
+
+    if alpha is None:
+        if len(inds) < 100:
+            alpha = 1
+        elif len(inds) > 10000:
+            alpha = 0.02
+        else:
+            alpha = np.exp(-(np.log10(len(inds)) - 2) / (-2 / np.log(0.02)))
+
+    # Set up column data sources to allow linked brushing
+    cds = bokeh.models.ColumnDataSource(df.loc[df["divergent__"] == 0, :].iloc[inds, :])
+    cds_div = bokeh.models.ColumnDataSource(df.loc[df["divergent__"] == 1, :])
+
+    # Just make a single plot if only one parameter
     if len(pars) == 1:
         x = pars[0]
         if plot_ecdf:
-            if datashade:
-                if plot_width == 150:
-                    plot_height = 200
-                    plot_width = 300
-                else:
-                    plot_width = 200
-                    plot_height = 200
-                x_range, _ = _data_range(df, pars[0], pars[0])
-                p = bokeh.plotting.figure(
-                    x_range=x_range,
-                    y_range=[-0.02, 1.02],
-                    plot_width=plot_width,
-                    plot_height=plot_height,
-                )
-                x_ecdf, y_ecdf = _ecdf_vals(df[pars[0]], staircase=True)
-                df_ecdf = pd.DataFrame(data={pars[0]: x_ecdf, "ECDF": y_ecdf})
-                _ = datashader.bokeh_ext.InteractiveImage(
-                    p,
-                    _create_line_image,
-                    df=df_ecdf,
-                    x=x,
-                    y="ECDF",
-                    cmap=single_param_color,
-                )
-            else:
+            if ecdf_staircase:
                 p = _ecdf(
-                    df[pars[0]],
+                    df[x].iloc[inds],
                     staircase=True,
                     line_width=2,
                     line_color=single_param_color,
+                    plot_width=plot_width + plot_width_correction,
+                    plot_height=plot_width + plot_height_correction,
+                    x_axis_label=labels[0],
+                    y_axis_label="ECDF",
                 )
+            else:
+                p = bokeh.plotting.figure(
+                    plot_width=plot_width + plot_width_correction,
+                    plot_height=plot_width + plot_height_correction,
+                    x_axis_label=labels[0],
+                    y_axis_label="ECDF",
+                )
+                p.circle(source=cds, x=x, y=f"__ECDF_{x}", color=single_param_color)
+                p.circle(source=cds_div, x=x, y=f"__ECDF_{x}", color=divergence_color)
         else:
             p = _histogram(
-                df[pars[0]],
+                df[x],
                 bins=bins,
                 density=True,
                 line_kwargs=dict(line_width=2, line_color=single_param_color),
-                x_axis_label=pars[0],
+                x_axis_label=labels[0],
+                plot_width=plot_width + plot_width_correction,
+                plot_height=plot_width + plot_height_correction,
             )
+        p.toolbar_location = "above"
         p.xaxis.major_label_orientation = xtick_label_orientation
         return p
-
-    if not datashade:
-        if len(df) > 10000:
-            raise RuntimeError(
-                "Cannot render more than 10,000 samples without DataShader."
-            )
-        elif len(df) > 5000:
-            warnings.warn("Rendering so many points without DataShader is ill-advised.")
 
     plots = [[None for _ in range(len(pars))] for _ in range(len(pars))]
 
@@ -1655,36 +1714,34 @@ def corner(
             y = pars[i]
             x_range, y_range = _data_range(df, x, y)
             plots[i][j] = bokeh.plotting.figure(
-                x_range=x_range, y_range=y_range, plot_width=pw, plot_height=ph
+                x_range=x_range,
+                y_range=y_range,
+                plot_width=pw,
+                plot_height=ph,
+                tools=tools,
             )
-            if datashade:
-                _ = datashader.bokeh_ext.InteractiveImage(
-                    plots[i][j], _create_points_image, df=df, x=x, y=y, cmap=cmap
-                )
+
+            plots[i][j].circle(
+                source=cds,
+                x=x,
+                y=y,
+                size=2,
+                alpha=alpha,
+                color=cmap,
+                nonselection_fill_alpha=0,
+                nonselection_line_alpha=0,
+            )
+
+            if divergence_color is not None:
                 plots[i][j].circle(
-                    df.loc[df["divergent__"] == 1, x],
-                    df.loc[df["divergent__"] == 1, y],
+                    source=cds_div,
+                    x=x,
+                    y=y,
                     size=2,
                     color=divergence_color,
+                    nonselection_fill_alpha=0,
+                    nonselection_line_alpha=0,
                 )
-            else:
-                if divergence_color is None:
-                    plots[i][j].circle(df[x], df[y], size=2, alpha=alpha, color=cmap)
-                else:
-                    plots[i][j].circle(
-                        source=df.loc[df["divergent__"] == 0, [x, y, "chain__"]],
-                        x=x,
-                        y=y,
-                        size=2,
-                        alpha=alpha,
-                        color=cmap,
-                    )
-                    plots[i][j].circle(
-                        df.loc[df["divergent__"] == 1, x],
-                        df.loc[df["divergent__"] == 1, y],
-                        size=2,
-                        color=divergence_color,
-                    )
 
             if show_contours:
                 xs, ys = contour_lines_from_samples(
@@ -1705,25 +1762,34 @@ def corner(
                     y_range=[-0.02, 1.02],
                     plot_width=pw,
                     plot_height=ph,
+                    tools=tools,
                 )
-                if datashade:
-                    x_ecdf, y_ecdf = _ecdf_vals(df[x], staircase=True)
-                    df_ecdf = pd.DataFrame(data={x: x_ecdf, "ECDF": y_ecdf})
-                    _ = datashader.bokeh_ext.InteractiveImage(
-                        plots[i][i],
-                        _create_line_image,
-                        df=df_ecdf,
-                        x=x,
-                        y="ECDF",
-                        cmap=single_param_color,
-                    )
-                else:
+                if ecdf_staircase:
                     plots[i][i] = _ecdf(
                         df[x],
                         p=plots[i][i],
                         staircase=True,
                         line_width=2,
                         line_color=single_param_color,
+                    )
+                else:
+                    plots[i][i].circle(
+                        source=cds,
+                        x=x,
+                        y=f"__ECDF_{x}",
+                        size=2,
+                        color=cmap,
+                        nonselection_fill_alpha=0,
+                        nonselection_line_alpha=0,
+                    )
+                    plots[i][i].circle(
+                        source=cds_div,
+                        x=x,
+                        y=f"__ECDF_{x}",
+                        size=2,
+                        color=divergence_color,
+                        nonselection_fill_alpha=0,
+                        nonselection_line_alpha=0,
                     )
             else:
                 x_range, _ = _data_range(df, x, x)
@@ -1732,6 +1798,7 @@ def corner(
                     y_range=bokeh.models.DataRange1d(start=0.0),
                     plot_width=pw,
                     plot_height=ph,
+                    tools=tools,
                 )
                 f, e = np.histogram(df[x], bins=bins, density=True)
                 e0 = np.empty(2 * len(e))
