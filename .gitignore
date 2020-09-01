@@ -1,13 +1,9 @@
-old_websites/
-live_tutorials/
-student_homeworks/
-student_homeworks_2014/
-data/
-data_for_notebooks/
 .ipynb_checkpoints/
 .DS_Store
 *~
 *.html
 __pycache__
 .cache
-
+bebi103.egg-info/
+build/
+dist/

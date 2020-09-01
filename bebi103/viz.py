@@ -1463,7 +1463,8 @@ def corner(
     labels=None,
     max_plotted=10000,
     datashade=False,
-    plot_width=150,
+    frame_width=150,
+    frame_height=150,
     plot_ecdf=False,
     ecdf_staircase=False,
     cmap="black",
@@ -1507,9 +1508,10 @@ def corner(
     datashade : bool, default False
         Whether or not to convert sampled points to a raster image using
         Datashader.
-    plot_width : int, default 150
-        Width of each plot in the corner plot in pixels. The height is
-        computed from the width to make the plots roughly square.
+    frame_width : int, default 150
+        Width of each plot in the corner plot in pixels.
+    frame_height : int, default 150
+        Height of each plot in the corner plot in pixels.
     plot_ecdf : bool, default False
         If True, plot ECDFs of samples on the diagonal of the corner
         plot. If False, histograms are plotted.
@@ -1665,35 +1667,36 @@ def corner(
     if len(pars) == 1:
         x = pars[0]
         if plot_ecdf:
+            p = bokeh.plotting.figure(
+                                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    x_axis_label=labels[0],
+                    y_axis_label="ECDF",
+)
             if ecdf_staircase:
                 p = _ecdf(
                     df[x].iloc[inds],
                     staircase=True,
                     line_width=2,
                     line_color=single_param_color,
-                    plot_width=plot_width + plot_width_correction,
-                    plot_height=plot_width + plot_height_correction,
-                    x_axis_label=labels[0],
-                    y_axis_label="ECDF",
+                    p=p,
                 )
             else:
-                p = bokeh.plotting.figure(
-                    plot_width=plot_width + plot_width_correction,
-                    plot_height=plot_width + plot_height_correction,
-                    x_axis_label=labels[0],
-                    y_axis_label="ECDF",
-                )
                 p.circle(source=cds, x=x, y=f"__ECDF_{x}", color=single_param_color)
                 p.circle(source=cds_div, x=x, y=f"__ECDF_{x}", color=divergence_color)
         else:
+            p = bokeh.plotting.figure(
+                                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    x_axis_label=labels[0],
+                    y_axis_label="density",
+)
             p = _histogram(
                 df[x],
                 bins=bins,
                 density=True,
                 line_kwargs=dict(line_width=2, line_color=single_param_color),
-                x_axis_label=labels[0],
-                plot_width=plot_width + plot_width_correction,
-                plot_height=plot_width + plot_height_correction,
+                p=p
             )
         p.toolbar_location = "above"
         p.xaxis.major_label_orientation = xtick_label_orientation
@@ -1716,8 +1719,9 @@ def corner(
             plots[i][j] = bokeh.plotting.figure(
                 x_range=x_range,
                 y_range=y_range,
-                plot_width=pw,
-                plot_height=ph,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                align='end',
                 tools=tools,
             )
 
@@ -1760,8 +1764,9 @@ def corner(
                 plots[i][i] = bokeh.plotting.figure(
                     x_range=x_range,
                     y_range=[-0.02, 1.02],
-                    plot_width=pw,
-                    plot_height=ph,
+                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    align='end',
                     tools=tools,
                 )
                 if ecdf_staircase:
@@ -1796,8 +1801,9 @@ def corner(
                 plots[i][i] = bokeh.plotting.figure(
                     x_range=x_range,
                     y_range=bokeh.models.DataRange1d(start=0.0),
-                    plot_width=pw,
-                    plot_height=ph,
+                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    align='end',
                     tools=tools,
                 )
                 f, e = np.histogram(df[x], bins=bins, density=True)
