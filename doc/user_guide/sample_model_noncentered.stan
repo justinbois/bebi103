@@ -17,7 +17,6 @@ data {
 transformed data {
   // Data are two-dimensional, so store in a vector
   vector[2] xy[N];
-
   for (i in 1:N) {
     xy[i, 1] = x[i];
     xy[i, 2] = y[i];
@@ -62,9 +61,7 @@ model {
   tau ~ normal(0, 10);
 
   // Priors
-  for (i in 1:J_1) {
-    theta_1_noncentered[i] ~ multi_normal([0, 0], [[1, 0], [0, 1]]);
-  }
+  theta_1_noncentered ~ multi_normal([0, 0], [[1, 0], [0, 1]]);
   sigma ~ normal(0, 10);
   rho ~ uniform(-1, 1);
 

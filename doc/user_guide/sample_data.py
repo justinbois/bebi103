@@ -19,7 +19,7 @@ def _generate_sample_data():
     sigma_cov = np.array(
         [
             [sigma[0] ** 2, rho * sigma[0] * sigma[1]],
-            [rho * sigma[0] * sigma[1], sigma[0] ** 2],
+            [rho * sigma[0] * sigma[1], sigma[1] ** 2],
         ]
     )
 

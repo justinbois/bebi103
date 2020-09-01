@@ -413,7 +413,7 @@ def _ecdf(
 
 def _histogram(
     data=None,
-    bins=10,
+    bins="freedman-diaconis",
     p=None,
     density=False,
     kind="step",
@@ -428,11 +428,14 @@ def _histogram(
     ----------
     data : array_like
         1D array of data to make a histogram out of
-    bins : int, array_like, or one of 'exact' or 'integer' default 10
-        Setting for `bins` kwarg to be passed to `np.histogram()`. If
-        `'exact'`, then each unique value in the data gets its own bin.
-        If `integer`, then integer data is assumed and each integer gets
-        its own bin.
+    bins : int, array_like, or str, default 'freedman-diaconis'
+        If int or array_like, setting for `bins` kwarg to be passed to
+        `np.histogram()`. If 'exact', then each unique value in the
+        data gets its own bin. If 'integer', then integer data is
+        assumed and each integer gets its own bin. If 'sqrt', uses the
+        square root rule to determine number of bins. If
+        `freedman-diaconis`, uses the Freedman-Diaconis rule for number
+        of bins.
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
         figure `p`.
@@ -471,33 +474,9 @@ def _histogram(
 
         p = bokeh.plotting.figure(y_axis_label=y_axis_label, y_range=y_range, **kwargs)
 
-    if bins == "exact":
-        a = np.unique(data)
-        if len(a) == 1:
-            bins = np.array([a[0] - 0.5, a[0] + 0.5])
-        else:
-            bins = np.concatenate(
-                (
-                    (a[0] - (a[1] - a[0]) / 2,),
-                    (a[1:] + a[:-1]) / 2,
-                    (a[-1] + (a[-1] - a[-2]) / 2,),
-                )
-            )
-    elif bins == "integer":
-        if np.any(data != np.round(data)):
-            raise RuntimeError("'integer' bins chosen, but data are not integer.")
-        bins = np.arange(data.min() - 1, data.max() + 1) + 0.5
-
     # Compute histogram
-    f, e = np.histogram(data, bins=bins, density=density)
-    e0 = np.empty(2 * len(e))
-    f0 = np.empty(2 * len(e))
-    e0[::2] = e
-    e0[1::2] = e
-    f0[0] = 0
-    f0[-1] = 0
-    f0[1:-1:2] = f
-    f0[2:-1:2] = f
+    bins = _bins_to_np(df[x].values, bins)
+    e0, f0 = _compute_histogram(df[x].values, bins, density)
 
     if kind == "step":
         p.line(e0, f0, **line_kwargs)
@@ -509,6 +488,58 @@ def _histogram(
 
     return p
 
+
+def _bins_to_np(data, bins):
+    """Compute a Numpy array to pass to np.histogram() as bins."""
+    if type(bins) == str and bins not in [
+        "integer",
+        "exact",
+        "sqrt",
+        "freedman-diaconis",
+    ]:
+        raise RuntimeError("Invalid bins specification.")
+
+    if type(bins) == str and bins == "exact":
+        a = np.unique(data)
+        if len(a) == 1:
+            bins = np.array([a[0] - 0.5, a[0] + 0.5])
+        else:
+            bins = np.concatenate(
+                (
+                    (a[0] - (a[1] - a[0]) / 2,),
+                    (a[1:] + a[:-1]) / 2,
+                    (a[-1] + (a[-1] - a[-2]) / 2,),
+                )
+            )
+    elif type(bins) == str and bins == "integer":
+        if np.any(data != np.round(data)):
+            raise RuntimeError("'integer' bins chosen, but data are not integer.")
+        bins = np.arange(data.min() - 1, data.max() + 1) + 0.5
+    elif type(bins) == str and bins == "sqrt":
+        bins = int(np.ceil(np.sqrt(len(data))))
+    elif type(bins) == str and bins == "freedman-diaconis":
+        h = 2 * (np.percentile(data, 75) - np.percentile(data, 25)) / np.cbrt(len(data))
+        if h == 0.0:
+            bins = 3
+        else:
+            bins = int(np.ceil((data.max() - data.min()) / h))
+
+    return bins
+
+
+def _compute_histogram(data, bins, density):
+    """Compute values of histogram for plotting."""
+    f, e = np.histogram(data, bins=bins, density=density)
+    e0 = np.empty(2 * len(e))
+    f0 = np.empty(2 * len(e))
+    e0[::2] = e
+    e0[1::2] = e
+    f0[0] = 0
+    f0[-1] = 0
+    f0[1:-1:2] = f
+    f0[2:-1:2] = f
+
+    return e0, f0
 
 def predictive_ecdf(
     samples,
@@ -1522,7 +1553,7 @@ def corner(
     divergence_color="orange",
     alpha=None,
     single_var_color="black",
-    bins=20,
+    bins="freedman-diaconis",
     show_contours=False,
     contour_color="black",
     bins_2d=50,
@@ -1592,9 +1623,14 @@ def corner(
         Opacity of glyphs. If None, inferred.
     single_var_color : str, default 'black'
         Color of histogram or ECDF lines.
-    bins : int, default 20
-        Number of bins to use in constructing histograms. Ignored if
-        `plot_ecdf` is True.
+    bins : int, array_like, or str, default 'freedman-diaconis'
+        If int or array_like, setting for `bins` kwarg to be passed to
+        `np.histogram()`. If 'exact', then each unique value in the
+        data gets its own bin. If 'integer', then integer data is
+        assumed and each integer gets its own bin. If 'sqrt', uses the
+        square root rule to determine number of bins. If
+        `freedman-diaconis`, uses the Freedman-Diaconis rule for number
+        of bins. Ignored if `plot_ecdf` is True.
     show_contours : bool, default False
         If True, show contour plot on top of samples.
     contour_color : str, default 'black'
@@ -1859,15 +1895,8 @@ def corner(
                     align="end",
                     tools=tools,
                 )
-                f, e = np.histogram(df[x], bins=bins, density=True)
-                e0 = np.empty(2 * len(e))
-                f0 = np.empty(2 * len(e))
-                e0[::2] = e
-                e0[1::2] = e
-                f0[0] = 0
-                f0[-1] = 0
-                f0[1:-1:2] = f
-                f0[2:-1:2] = f
+                bins_plot = _bins_to_np(df[x].values, bins)
+                e0, f0 = _compute_histogram(df[x].values, bins=bins_plot, density=True)
 
                 plots[i][i].line(e0, f0, line_width=2, color=single_var_color)
         plots[i][j].xaxis.major_label_orientation = xtick_label_orientation
