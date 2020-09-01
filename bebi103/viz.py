@@ -1,3 +1,4 @@
+import re
 import warnings
 
 import numpy as np
@@ -6,22 +7,14 @@ import xarray
 import scipy.stats as st
 import numba
 
-try:
-    import pymc3 as pm
-except:
-    pass
-
 import arviz as az
 import arviz.plots.plot_utils
 
 import scipy.ndimage
-import skimage
 
 import matplotlib._contour
 from matplotlib.pyplot import get_cmap as mpl_get_cmap
 
-import bokeh.application
-import bokeh.application.handlers
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
@@ -184,7 +177,6 @@ def fill_between(
     -------
     output : bokeh.plotting.Figure instance
         Plot populated with fill-between.
-
     """
 
     if "plot_height" not in kwargs and "frame_height" not in kwargs:
@@ -214,10 +206,9 @@ def fill_between(
 
 
 def qqplot(
+    samples,
     data,
-    gen_fun,
-    n_samples=1000,
-    args=(),
+    percentile=95,
     patch_kwargs={},
     line_kwargs={},
     diag_kwargs={},
@@ -229,21 +220,15 @@ def qqplot(
 
     Parameters
     ----------
-    data : array_like, shape (N,)
-        Array of data to be used in making Q-Q plot.
-    gen_fun : function
-        Function to randomly draw a new data set out of the model
-        distribution parametrized by the MLE. Must have call
-        signature `gen_fun(*args, size)`. `size` is the number of
-        samples to draw.
-    n_samples : int, default 1000
-        Number of samples to draw using gen_fun().
-    args : tuple, default ()
-        Arguments to be passed to gen_fun().
-    show_line : bool, default True
-        If True, show the lines on the edges of the filled region.
+    samples : Numpy array or xarray, shape (n_samples, n) or xarray DataArray
+        A Numpy array containing predictive samples.
+    data : Numpy array, shape (n,) or xarray DataArray
+        One-dimensional data set to use in Q-Q plot.
+    percentile : int or float, default 95
+        Which percentile to use in displaying the Q-Q plot.
     patch_kwargs : dict
-        Any kwargs passed into p.patch(), which generates the fill.
+        Any kwargs passed into p.patch(), which generates the filled
+        region of the Q-Q plot..
     line_kwargs : dict
         Any kwargs passed into p.line() in generating the line around
         the fill.
@@ -256,24 +241,53 @@ def qqplot(
     kwargs
         All other kwargs are passed to bokeh.plotting.figure() in
         creating the figure.
+
+    Returns
+    -------
+    output : bokeh.plotting.Figure instance
+        Plot populated with Q-Q plot.
     """
+    if type(samples) != np.ndarray:
+        if type(samples) == xarray.core.dataarray.DataArray:
+            samples = samples.squeeze().values
+        else:
+            raise RuntimeError("`samples` can only be a Numpy array or xarray.")
+
+    if samples.ndim != 2:
+        raise RuntimeError(
+            "`samples` must be a 2D array, with each row being a sample."
+        )
+
+    if len(samples) < 100:
+        warnings.warn(
+            "`samples` has very few samples. Predictive percentiles may be poor."
+        )
+
+    if data is not None and len(data) != samples.shape[1]:
+        raise RuntimeError("Mismatch in shape of `data` and `samples`.")
+
     if "plot_height" not in kwargs and "frame_height" not in kwargs:
         kwargs["frame_height"] = 275
     if "plot_width" not in kwargs and "frame_width" not in kwargs:
-        kwargs["frame_width"] = 350
+        kwargs["frame_width"] = 275
+    if "fill_alpha" not in patch_kwargs:
+        patch_kwargs["fill_alpha"] = 0.5
 
     x = np.sort(data)
 
-    theor_x = np.array([np.sort(gen_fun(*args, len(x))) for _ in range(n_samples)])
+    samples = np.sort(samples)
 
     # Upper and lower bounds
-    low_theor, up_theor = np.percentile(theor_x, (2.5, 97.5), axis=0)
+    low_theor, up_theor = np.percentile(
+        samples, (50 - percentile / 2, 50 + percentile / 2), axis=0
+    )
+
+    x_range = [data.min(), data.max()]
+    if "x_range" not in kwargs:
+        kwargs["x_range"] = x_range
 
     if p is None:
         p = bokeh.plotting.figure(**kwargs)
-
-    if "fill_alpha" not in patch_kwargs:
-        patch_kwargs["fill_alpha"] = 0.5
 
     p = fill_between(
         x,
@@ -290,7 +304,7 @@ def qqplot(
     color = diag_kwargs.pop("color", "black")
     alpha = diag_kwargs.pop("alpha", 0.5)
     line_width = diag_kwargs.pop("line_width", 4)
-    p.line([0, x.max()], [0, x.max()], line_width=line_width, color=color, alpha=alpha)
+    p.line(x_range, x_range, line_width=line_width, color=color, alpha=alpha)
 
     return p
 
@@ -878,7 +892,7 @@ def predictive_regression(
             np.sort(samples_x), df_data["__data_x"].values
         ):
             raise ValueError(
-                "If `diff=True`, then samples_x must match the x-values of `data`."
+                "If `diff == True`, then samples_x must match the x-values of `data`."
             )
 
     df_pred = pd.DataFrame(
@@ -1207,13 +1221,14 @@ def sbc_rank_ecdf(
 
 def parcoord(
     samples=None,
-    pars=None,
+    var_names=None,
+    palette=None,
+    omit=re.compile("(.*_ppc\[?\d*\]?$)|(log_?lik.*\[?\d*\]?$)"),
     transformation=None,
     color_by_chain=False,
-    palette=None,
     line_kwargs={},
     divergence_kwargs={},
-    xtick_label_orientation="horizontal",
+    xtick_label_orientation=0.7853981633974483,
     **kwargs,
 ):
     """
@@ -1225,8 +1240,22 @@ def parcoord(
     ----------
     samples : ArviZ InferenceData instance or xarray Dataset instance
         Result of MCMC sampling.
-    pars : list of strings
+    var_names : list of strings
         List of variables to include in the plot.
+    palette : list of strings of hex colors, or single hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        colorcet.b_glasbey_category10 from the colorcet package.
+    omit : str, re.Pattern, or list or tuple of str and re.Pattern
+        If `var_names` is not provided, all parameters are used in the
+        parallel coordinate plot. We often want to ignore samples of
+        posterior predictive checks, log likelihoods, and other
+        generated quantities. For each string entry in `omit`, the
+        variable given by the string is omitted. For each entry that is
+        a compiled regular expression patters (`re.Pattern`), any
+        variable name matching the pattern is omitted. By default, any
+        variable that ends in '_ppc' and any variable beginning with
+        'log_lik' or 'loglik' are ignored.
     transformation : function, str, or dict, default None
         A transformation to apply to each set of samples. The function
         must take a single array as input and return an array as the
@@ -1238,17 +1267,13 @@ def parcoord(
         of the each data is used.
     color_by_chain : bool, default False
         If True, color the lines by chain.
-    palette : list of strings of hex colors, or single hex string
-        If a list, color palette to use. If a single string representing
-        a hex color, all glyphs are colored with that color. Default is
-        colorcet.b_glasbey_category10 from the colorcet package.
     line_kwargs: dict
         Dictionary of kwargs to be passed to `p.multi_line()` in making
         the plot of non-divergent samples.
     divergence_kwargs: dict
         Dictionary of kwargs to be passed to `p.multi_line()` in making
         the plot of divergent samples.
-    xtick_label_orientation : str or float, default 'horizontal'
+    xtick_label_orientation : str or float, default π/4.
         Orientation of x tick labels. In some plots, horizontally
         labeled ticks will have label clashes, and this can fix that.
     kwargs
@@ -1261,6 +1286,9 @@ def parcoord(
         Parallel coordinates plot.
 
     """
+    if type(omit) not in [tuple, list]:
+        omit = [omit]
+
     # Default properties
     if palette is None:
         palette = colorcet.b_glasbey_category10
@@ -1300,30 +1328,30 @@ def parcoord(
     ):
         warnings.warn("No divergence information available.")
 
-    pars, df = _sample_pars_to_df(samples, pars)
+    var_names, df = stan._sample_vars_to_df(samples, var_names, omit)
 
     if transformation == "minmax":
         transformation = {
-            par: lambda x: (x - x.min()) / (x.max() - x.min())
+            var: lambda x: (x - x.min()) / (x.max() - x.min())
             if x.min() < x.max()
             else 0.0
-            for par in pars
+            for var in var_names
         }
     elif transformation == "rank":
-        transformation = {par: lambda x: st.rankdata(x) for par in pars}
+        transformation = {var: lambda x: st.rankdata(x) for var in var_names}
 
     if transformation is None:
-        transformation = {par: lambda x: x for par in pars}
+        transformation = {var: lambda x: x for var in var_names}
 
     if callable(transformation) or transformation is None:
-        transformation = {par: transformation for par in pars}
+        transformation = {var: transformation for var in var_names}
 
     for col, trans in transformation.items():
         df[col] = trans(df[col])
     df = df.melt(id_vars=["divergent__", "chain__", "draw__"])
 
     p = bokeh.plotting.figure(
-        x_range=bokeh.models.FactorRange(*pars),
+        x_range=bokeh.models.FactorRange(*var_names),
         toolbar_location=toolbar_location,
         **kwargs,
     )
@@ -1375,7 +1403,14 @@ def parcoord(
     return p
 
 
-def trace(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
+def trace(
+    samples=None,
+    var_names=None,
+    palette=None,
+    omit=re.compile("(.*_ppc\[?\d*\]?$)|(log_?lik.*\[?\d*\]?$)"),
+    line_kwargs={},
+    **kwargs,
+):
     """
     Make a trace plot of MCMC samples.
 
@@ -1383,12 +1418,22 @@ def trace(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
     ----------
     samples : ArviZ InferenceData instance or xarray Dataset instance
         Result of MCMC sampling.
-    pars : list of strings
+    var_names : list of strings
         List of variables to include in the plot.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         colorcet.b_glasbey_category10 from the colorcet package.
+    omit : str, re.Pattern, or list or tuple of str and re.Pattern
+        If `var_names` is not provided, all parameters are used in the
+        trace plot. We often want to ignore samples of posterior
+        predictive checks, log likelihoods, and other generated
+        quantities. For each string entry in `omit`, the variable given
+        by the string is omitted. For each entry that is a compiled
+        regular expression pattern (`re.Pattern`), any variable name
+        matching the pattern is omitted. By default, any variable that
+        ends in '_ppc' and any variable beginning with 'log_lik' or
+        'loglik' are ignored.
     line_kwargs: dict
         Dictionary of kwargs to be passed to `p.multi_line()` in making
         the plot of non-divergent samples.
@@ -1400,13 +1445,16 @@ def trace(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
     output : Bokeh gridplot
         Set of chain traces as a Bokeh gridplot.
     """
+    if type(omit) not in [tuple, list]:
+        omit = [omit]
+
     if type(samples) != az.data.inference_data.InferenceData:
         raise RuntimeError("Input must be an ArviZ InferenceData instance.")
 
     if not hasattr(samples, "posterior"):
         raise RuntimeError("Input samples do not have 'posterior' group.")
 
-    pars, df = _sample_pars_to_df(samples, pars)
+    var_names, df = stan._sample_vars_to_df(samples, var_names, omit)
 
     # Default properties
     if palette is None:
@@ -1433,12 +1481,12 @@ def trace(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
 
     plots = []
     grouped = df.groupby("chain__")
-    for i, par in enumerate(pars):
-        p = bokeh.plotting.figure(x_axis_label=x_axis_label, y_axis_label=par, **kwargs)
+    for i, var in enumerate(var_names):
+        p = bokeh.plotting.figure(x_axis_label=x_axis_label, y_axis_label=var, **kwargs)
         for i, (chain, group) in enumerate(grouped):
             p.line(
                 group["draw__"],
-                group[par],
+                group[var],
                 line_width=line_width,
                 line_join=line_join,
                 color=palette[i],
@@ -1459,7 +1507,9 @@ def trace(samples=None, pars=None, palette=None, line_kwargs={}, **kwargs):
 
 def corner(
     samples=None,
-    pars=None,
+    var_names=None,
+    palette=None,
+    omit=re.compile("(.*_ppc\[?\d*\]?$)|(log_?lik.*\[?\d*\]?$)"),
     labels=None,
     max_plotted=10000,
     datashade=False,
@@ -1469,10 +1519,9 @@ def corner(
     ecdf_staircase=False,
     cmap="black",
     color_by_chain=False,
-    palette=None,
     divergence_color="orange",
     alpha=None,
-    single_param_color="black",
+    single_var_color="black",
     bins=20,
     show_contours=False,
     contour_color="black",
@@ -1481,9 +1530,7 @@ def corner(
     weights=None,
     smooth=0.02,
     extend_contour_domain=False,
-    plot_width_correction=50,
-    plot_height_correction=40,
-    xtick_label_orientation="horizontal",
+    xtick_label_orientation='horizontal',
 ):
     """
     Make a corner plot of sampling results. Heavily influenced by the
@@ -1494,15 +1541,30 @@ def corner(
     samples : Numpy array, Pandas DataFrame, or ArviZ InferenceData
         Results of sampling. If a Numpy array or Pandas DataFrame, each
         row is a sample and each column corresponds to a variable.
-    pars : list
+    var_names : list
         List of variables as strings included in `samples` to construct
         corner plot. The variables correspond to column headings if
         `samples` is in a Pandas DataFrame or to data_vars for an ArviZ
-        InferenceData instance. If the input is a Numpy array, `pars` is
+        InferenceData instance. If the input is a Numpy array, `var_names` is
         a list of indices of columns to use in the plot.
     labels : list, default None
-        List of labels for the respective variables given in `pars`. If
-        None, the variable names from `pars` are used.
+        List of labels for the respective variables given in `var_names`. If
+        None, the variable names from `var_names` are used.
+    palette : list of strings of hex colors, or single hex string
+        If a list, color palette to use. If a single string representing
+        a hex color, all glyphs are colored with that color. Default is
+        the default color cycle employed by Altair. Ignored is
+        `color_by_chain` is False.
+    omit : str, re.Pattern, or list or tuple of str and re.Pattern
+        If `var_names` is not provided, all parameters are used in the
+        corner plot. We often want to ignore samples of posterior
+        predictive checks, log likelihoods, and other generated
+        quantities. For each string entry in `omit`, the variable given
+        by the string is omitted. For each entry that is a compiled
+        regular expression pattern (`re.Pattern`), any variable name
+        matching the pattern is omitted. By default, any variable that
+        ends in '_ppc' and any variable beginning with 'log_lik' or
+        'loglik' are ignored.
     max_plotted : int, default 10000
         Maximum number of points to be plotted.
     datashade : bool, default False
@@ -1523,17 +1585,12 @@ def corner(
         glyphs.
     color_by_chain : bool, default False
         If True, color the glyphs by chain index.
-    palette : list of strings of hex colors, or single hex string
-        If a list, color palette to use. If a single string representing
-        a hex color, all glyphs are colored with that color. Default is
-        the default color cycle employed by Altair. Ignored is
-        `color_by_chain` is False.
     divergence_color : str, default 'orange'
         Color to use for showing points where the sampler experienced a
         divergence.
     alpha : float or None, default None
         Opacity of glyphs. If None, inferred.
-    single_param_color : str, default 'black'
+    single_var_color : str, default 'black'
         Color of histogram or ECDF lines.
     bins : int, default 20
         Number of bins to use in constructing histograms. Ignored if
@@ -1558,21 +1615,21 @@ def corner(
         If True, extend the domain of the contours a little bit beyond
         the extend of the samples. This is done in the corner package,
         but I prefer not to do it.
-    plot_width_correction : int, default 50
-        Correction for width of plot taking into account tick and axis
-        labels.
-    plot_height_correction : int, default 40
-        Correction for height of plot taking into account tick and axis
-        labels.
-    xtick_label_orientation : str or float, default 'horizontal'
+    xtick_label_orientation : str or float, default 'horizontal'.
         Orientation of x tick labels. In some plots, horizontally
         labeled ticks will have label clashes, and this can fix that.
+        A preferred alternative to 'horizontal' is `np.pi/4`. Be aware,
+        though, that non-horizontal tick labels may disrupt alignment
+        of some of the plots in the corner plot.
 
     Returns
     -------
     output : Bokeh gridplot
         Corner plot as a Bokeh gridplot.
     """
+    if type(omit) not in [tuple, list]:
+        omit = [omit]
+
     # Datashading not implemented
     if datashade:
         raise NotImplementedError("Datashading is not yet implemented.")
@@ -1593,24 +1650,24 @@ def corner(
 
     if type(samples) == pd.core.frame.DataFrame:
         df = samples
-        if pars is None:
-            pars = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
+        if var_names is None:
+            var_names = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
     elif type(samples) == np.ndarray:
-        if pars is None:
-            pars = list(range(samples.shape[1]))
-        for par in pars:
-            if type(par) != int:
+        if var_names is None:
+            var_names = list(range(samples.shape[1]))
+        for var in var_names:
+            if type(var) != int:
                 raise RuntimeError(
-                    "When `samples` is inputted as a Numpy array, `pars` must be a list"
+                    "When `samples` is inputted as a Numpy array, `var_names` must be a list"
                     " of indices."
                 )
-        par_names = [str(par) for par in pars]
-        df = pd.DataFrame(samples[:, pars], columns=par_names)
-        pars = par_names
+        new_var_names = [str(var) for var in var_names]
+        df = pd.DataFrame(samples[:, var_names], columns=new_var_names)
+        var_names = new_var_names
     else:
-        pars, df = _sample_pars_to_df(samples, pars)
+        var_names, df = stan._sample_vars_to_df(samples, var_names, omit)
 
-    if len(pars) > 6:
+    if len(var_names) > 6:
         raise RuntimeError("For space purposes, can show only six variables.")
 
     if color_by_chain:
@@ -1630,18 +1687,18 @@ def corner(
         df = df.copy()
         df["chain__"] = 0
 
-    for col in pars:
+    for col in var_names:
         if col not in df.columns:
             raise RuntimeError("Column " + col + " not in the columns of DataFrame.")
 
     if labels is None:
-        labels = pars
-    elif len(labels) != len(pars):
-        raise RuntimeError("len(pars) must equal len(labels)")
+        labels = var_names
+    elif len(labels) != len(var_names):
+        raise RuntimeError("len(var_names) must equal len(labels)")
 
     if plot_ecdf and not ecdf_staircase:
-        for par in pars:
-            df[f"__ECDF_{par}"] = df[par].rank(method="first") / len(df)
+        for var in var_names:
+            df[f"__ECDF_{var}"] = df[var].rank(method="first") / len(df)
 
     n_nondivergent = np.sum(df["divergent__"] == 0)
     if n_nondivergent > max_plotted:
@@ -1664,64 +1721,60 @@ def corner(
     cds_div = bokeh.models.ColumnDataSource(df.loc[df["divergent__"] == 1, :])
 
     # Just make a single plot if only one parameter
-    if len(pars) == 1:
-        x = pars[0]
+    if len(var_names) == 1:
+        x = var_names[0]
         if plot_ecdf:
             p = bokeh.plotting.figure(
-                                    frame_width=frame_width,
-                    frame_height=frame_height,
-                    x_axis_label=labels[0],
-                    y_axis_label="ECDF",
-)
+                frame_width=frame_width,
+                frame_height=frame_height,
+                x_axis_label=labels[0],
+                y_axis_label="ECDF",
+            )
             if ecdf_staircase:
                 p = _ecdf(
                     df[x].iloc[inds],
                     staircase=True,
                     line_width=2,
-                    line_color=single_param_color,
+                    line_color=single_var_color,
                     p=p,
                 )
             else:
-                p.circle(source=cds, x=x, y=f"__ECDF_{x}", color=single_param_color)
+                p.circle(source=cds, x=x, y=f"__ECDF_{x}", color=single_var_color)
                 p.circle(source=cds_div, x=x, y=f"__ECDF_{x}", color=divergence_color)
         else:
             p = bokeh.plotting.figure(
-                                    frame_width=frame_width,
-                    frame_height=frame_height,
-                    x_axis_label=labels[0],
-                    y_axis_label="density",
-)
+                frame_width=frame_width,
+                frame_height=frame_height,
+                x_axis_label=labels[0],
+                y_axis_label="density",
+            )
             p = _histogram(
                 df[x],
                 bins=bins,
                 density=True,
-                line_kwargs=dict(line_width=2, line_color=single_param_color),
-                p=p
+                line_kwargs=dict(line_width=2, line_color=single_var_color),
+                p=p,
             )
-        p.toolbar_location = "above"
+
+        if frame_height < 200:
+            p.toolbar_location = "above"
         p.xaxis.major_label_orientation = xtick_label_orientation
+
         return p
 
-    plots = [[None for _ in range(len(pars))] for _ in range(len(pars))]
+    plots = [[None for _ in range(len(var_names))] for _ in range(len(var_names))]
 
-    for i, j in zip(*np.tril_indices(len(pars))):
-        pw = plot_width
-        ph = plot_width
-        if j == 0:
-            pw += plot_width_correction
-        if i == len(pars) - 1:
-            ph += plot_height_correction
-
-        x = pars[j]
+    for i, j in zip(*np.tril_indices(len(var_names))):
+        x = var_names[j]
         if i != j:
-            y = pars[i]
+            y = var_names[i]
             x_range, y_range = _data_range(df, x, y)
             plots[i][j] = bokeh.plotting.figure(
                 x_range=x_range,
                 y_range=y_range,
                 frame_width=frame_width,
                 frame_height=frame_height,
-                align='end',
+                align="end",
                 tools=tools,
             )
 
@@ -1766,7 +1819,7 @@ def corner(
                     y_range=[-0.02, 1.02],
                     frame_width=frame_width,
                     frame_height=frame_height,
-                    align='end',
+                    align="end",
                     tools=tools,
                 )
                 if ecdf_staircase:
@@ -1775,7 +1828,7 @@ def corner(
                         p=plots[i][i],
                         staircase=True,
                         line_width=2,
-                        line_color=single_param_color,
+                        line_color=single_var_color,
                     )
                 else:
                     plots[i][i].circle(
@@ -1803,7 +1856,7 @@ def corner(
                     y_range=bokeh.models.DataRange1d(start=0.0),
                     frame_width=frame_width,
                     frame_height=frame_height,
-                    align='end',
+                    align="end",
                     tools=tools,
                 )
                 f, e = np.histogram(df[x], bins=bins, density=True)
@@ -1816,11 +1869,11 @@ def corner(
                 f0[1:-1:2] = f
                 f0[2:-1:2] = f
 
-                plots[i][i].line(e0, f0, line_width=2, color=single_param_color)
+                plots[i][i].line(e0, f0, line_width=2, color=single_var_color)
         plots[i][j].xaxis.major_label_orientation = xtick_label_orientation
 
     # Link axis ranges
-    for i in range(1, len(pars)):
+    for i in range(1, len(var_names)):
         for j in range(i):
             plots[i][j].x_range = plots[j][j].x_range
             plots[i][j].y_range = plots[i][i].x_range
@@ -1836,14 +1889,14 @@ def corner(
         plots[0][0].yaxis.axis_label = "ECDF"
 
     # Take off tick labels
-    for i in range(len(pars) - 1):
+    for i in range(len(var_names) - 1):
         for j in range(i + 1):
             plots[i][j].xaxis.major_label_text_font_size = "0pt"
 
     if not plot_ecdf:
         plots[0][0].yaxis.major_label_text_font_size = "0pt"
 
-    for i in range(1, len(pars)):
+    for i in range(1, len(var_names)):
         for j in range(1, i + 1):
             plots[i][j].yaxis.major_label_text_font_size = "0pt"
 
@@ -1999,156 +2052,6 @@ def contour(
         p.grid.grid_line_alpha = 0.2
 
     return p
-
-
-def _ds_line_plot(
-    df,
-    x,
-    y,
-    cmap="#1f77b4",
-    plot_height=300,
-    plot_width=500,
-    x_axis_label=None,
-    y_axis_label=None,
-    title=None,
-    margin=0.02,
-):
-    """
-    Make a datashaded line plot.
-
-    Parameters
-    ----------
-    df : pandas DataFrame
-        DataFrame containing the data
-    x : Valid column name of Pandas DataFrame
-        Column containing the x-data.
-    y : Valid column name of Pandas DataFrame
-        Column containing the y-data.
-    cmap : str, default '#1f77b4'
-        Valid colormap string for DataShader and for coloring Bokeh
-        glyphs.
-    plot_height : int, default 300
-        Height of plot, in pixels.
-    plot_width : int, default 500
-        Width of plot, in pixels.
-    x_axis_label : str, default None
-        Label for the x-axis.
-    y_axis_label : str, default None
-        Label for the y-axis.
-    title : str, default None
-        Title of the plot. Ignored if `p` is not None.
-    margin : float, default 0.02
-        Margin, in units of `plot_width` or `plot_height`, to leave
-        around the plotted line.
-
-    Returns
-    -------
-    output : datashader.bokeh_ext.InteractiveImage
-        Interactive image of plot. Note that you should *not* use
-        bokeh.io.show() to view the image. For most use cases, you
-        should just call this function without variable assignment.
-    """
-
-    if x_axis_label is None:
-        if type(x) == str:
-            x_axis_label = x
-        else:
-            x_axis_label = "x"
-
-    if y_axis_label is None:
-        if type(y) == str:
-            y_axis_label = y
-        else:
-            y_axis_label = "y"
-
-    x_range, y_range = _data_range(df, x, y, margin=margin)
-    p = bokeh.plotting.figure(
-        plot_height=plot_height,
-        plot_width=plot_width,
-        x_range=x_range,
-        y_range=y_range,
-        x_axis_label=x_axis_label,
-        y_axis_label=y_axis_label,
-        title=title,
-    )
-    return datashader.bokeh_ext.InteractiveImage(
-        p, _create_line_image, df=df, x=x, y=y, cmap=cmap
-    )
-
-
-def _ds_point_plot(
-    df,
-    x,
-    y,
-    cmap="#1f77b4",
-    plot_height=300,
-    plot_width=500,
-    x_axis_label=None,
-    y_axis_label=None,
-    title=None,
-    margin=0.02,
-):
-    """
-    Make a datashaded point plot.
-
-    Parameters
-    ----------
-    df : pandas DataFrame
-        DataFrame containing the data
-    x : Valid column name of Pandas DataFrame
-        Column containing the x-data.
-    y : Valid column name of Pandas DataFrame
-        Column containing the y-data.
-    cmap : str, default '#1f77b4'
-        Valid colormap string for DataShader and for coloring Bokeh
-        glyphs.
-    plot_height : int, default 300
-        Height of plot, in pixels.
-    plot_width : int, default 500
-        Width of plot, in pixels.
-    x_axis_label : str, default None
-        Label for the x-axis.
-    y_axis_label : str, default None
-        Label for the y-axis.
-    title : str, default None
-        Title of the plot. Ignored if `p` is not None.
-    margin : float, default 0.02
-        Margin, in units of `plot_width` or `plot_height`, to leave
-        around the plotted line.
-
-    Returns
-    -------
-    output : datashader.bokeh_ext.InteractiveImage
-        Interactive image of plot. Note that you should *not* use
-        bokeh.io.show() to view the image. For most use cases, you
-        should just call this function without variable assignment.
-    """
-
-    if x_axis_label is None:
-        if type(x) == str:
-            x_axis_label = x
-        else:
-            x_axis_label = "x"
-
-    if y_axis_label is None:
-        if type(y) == str:
-            y_axis_label = y
-        else:
-            y_axis_label = "y"
-
-    x_range, y_range = _data_range(df, x, y, margin=margin)
-    p = bokeh.plotting.figure(
-        plot_height=plot_height,
-        plot_width=plot_width,
-        x_range=x_range,
-        y_range=y_range,
-        x_axis_label=x_axis_label,
-        y_axis_label=y_axis_label,
-        title=title,
-    )
-    return datashader.bokeh_ext.InteractiveImage(
-        p, _create_points_image, df=df, x=x, y=y, cmap=cmap
-    )
 
 
 def mpl_cmap_to_color_mapper(cmap):
@@ -2882,108 +2785,3 @@ def contour_lines_from_samples(
         H2 = H
 
     return _contour_lines(X2, Y2, H2.transpose(), levels)
-
-
-def _sample_pars_to_df(samples, pars):
-    """Convert ArviZ InferenceData posterior results to a data frame"""
-    if pars is not None and type(pars) not in (list, tuple):
-        raise RuntimeError("`pars` must be a list or tuple.")
-
-    if pars is None:
-        var_names = None
-    else:
-        var_names = az_utils.purge_duplicates([_get_var_name(par) for par in pars])
-        sample_pars = list(samples.posterior.data_vars)
-        for var_name in var_names:
-            if var_name not in sample_pars:
-                raise RuntimeError(f"parameter {var_name} not in the input.")
-
-    df = stan.posterior_to_dataframe(samples, var_names=var_names)
-
-    if pars is None:
-        pars = [
-            col for col in df.columns if col not in ["chain__", "draw__", "divergent__"]
-        ]
-        cols = df.columns
-    else:
-        cols = list(pars) + ["chain__", "draw__", "divergent__"]
-
-    return pars, df[cols].copy()
-
-
-def _get_var_name(name):
-    """Convert a parameter name to a var_name. Example: 'alpha[0,1]'
-    return 'alpha'."""
-    if name[-1] != "]":
-        return name
-
-    ind = name.rfind("[")
-    if ind == 0 or ind == len(name) - 1:
-        return name
-
-    substr = name[ind + 1 : -1]
-    if len(substr) == 0:
-        return name
-
-    if not substr[0].isdigit():
-        return name
-
-    if not substr[-1].isdigit():
-        return name
-
-    for char in substr:
-        if not (char.isdigit() or char == ","):
-            return name
-
-    if ",," in substr:
-        return name
-
-    return name[:ind]
-
-
-def box(**kwargs):
-    raise RuntimeError(
-        "`bebi103` no longer supports box plots. Instead, use the bokeh-catplot package."
-    )
-
-
-def boxwhisker(**kwargs):
-    raise RuntimeError(
-        "`bebi103` no longer supports box plots. Instead, use the bokeh-catplot package."
-    )
-
-
-def jitter(**kwargs):
-    raise RuntimeError(
-        "`bebi103` no longer supports jitter plots. Instead, use the bokeh-catplot package."
-    )
-
-
-def colored_ecdf(**kwargs):
-    raise RuntimeError(
-        "`bebi103` no longer supports colored ECDFs. Instead, use the bokeh-catplot package."
-    )
-
-
-def ecdf_collection(**kwargs):
-    raise RuntimeError(
-        "`bebi103` no longer supports ECDF collections. Instead, use the bokeh-catplot package."
-    )
-
-
-def colored_scatter(**kwargs):
-    raise RuntimeError(
-        "`bebi103` no longer supports colored scatter plots. Instead, use HoloViews."
-    )
-
-
-def distribution_plot_app(**kwargs):
-    raise RuntimeError(
-        "`bebi103` no longer supports the distribution plot app. Instead, see https://github.com/justinbois/distribution-explorer-app."
-    )
-
-
-def adjust_range(**kwargs):
-    raise RuntimeError(
-        "`bebi103` no longer supports the adjust_range. This feature is not part of HoloViews, available using `padding` kwargs for many plotting elements."
-    )

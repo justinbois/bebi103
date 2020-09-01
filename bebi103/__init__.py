@@ -10,13 +10,28 @@ warnings.filterwarnings(
     "always", category=DeprecationWarning, module="^{}\.".format(re.escape(__name__))
 )
 
+try:
+    import multiprocess
+except:
+    warnings.warn(
+        "Unable to import multiprocess. Using multiprocessing (note the"
+        " ing) instead. Depending on your operating system, Python"
+        " version, and whether or not you are running in Jupyter, "
+        " IPython, the Python REPL, etc., your execution may stall if"
+        " you try to run jobs on more than one core. See discussion"
+        " here: https://github.com/ipython/ipython/issues/12396. As a"
+        " workaround, you can install multiprocess"
+        " (pip install multiprocess) and everything should work as"
+        " expected.", ImportWarning
+    )
+
 from . import hv
 
 from . import viz
 
 from . import image
 
-from .utils import *
+from . import bootstrap
 
 try:
     from . import stan

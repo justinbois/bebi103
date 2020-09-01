@@ -1,3 +1,4 @@
+import re
 import contextlib
 import copy
 import itertools
@@ -6,8 +7,12 @@ import glob
 import pickle
 import hashlib
 import logging
-import multiprocessing
 import warnings
+
+try:
+    import multiprocess
+except:
+    import multiprocessing as multiprocess
 
 import tqdm
 
@@ -78,10 +83,10 @@ def StanModel(
 
     Notes
     -----
-    .. If a Stan model does not exist in the pwd that matches the code
-       provided in either `file` or `model_code`, a new Stan model is
-       built and compiled and then pickled and stored in pwd. If such a
-       model does exist, the pickled model is loaded.
+    If a Stan model does not exist in the pwd that matches the code
+    provided in either `file` or `model_code`, a new Stan model is
+    built and compiled and then pickled and stored in pwd. If such a
+    model does exist, the pickled model is loaded.
     """
 
     logger = logging.getLogger("pystan")
@@ -146,8 +151,8 @@ def clean_cmdstan(path="./", prefix=None, delete_sampling_output=False):
 
     Notes
     -----
-    .. If your files are stored in a temporary directory, as for the
-       CmdStanPy default, use `cmdstanpy.cleanup_tmpdir()` instead.
+    If your files are stored in a temporary directory, as for the
+    CmdStanPy default, use `cmdstanpy.cleanup_tmpdir()` instead.
 
     """
     if path == "/":
@@ -215,20 +220,16 @@ def df_to_datadict_hier(
     data : dict
         A dictionary that can be passed to into a Stan program. The
         dictionary contains keys/entries:
-          'N': Total number of data points
-          'J_1': Number of hyper parameters for hierarchical level 1.
-          'J_2': Number of hyper parameters for hierarchical level 2.
-            ... and so on with 'J_3', 'J_4', ...
-          'index_1': Set of `J_2` indices defining which level 1
-            parameters condition the level 2 parameters.
-          'index_2': Set of `J_3` indices defining which level 2
-            parameters condition the level 3 parameters.
-            ...and so on for 'index_3', etc.
-          'index_k': Set of `N` indices defining which of the level k
-            parameters condition the data, for a k-level hierarchical
-            model.
-          `data_col[0]` : Data from first data_col
-          `data_col[1]` : Data from second data_col ...and so on.
+
+            - `'N'`: Total number of data points
+            - `'J_1'`: Number of hyper parameters for hierarchical level 1.
+            - `'J_2'`: Number of hyper parameters for hierarchical level 2. ... and so on with `'J_3'`, `'J_4'`, ...
+            - `'index_1'`: Set of `J_2` indices defining which level 1 parameters condition the level 2 parameters.
+            - `'index_2'`: Set of `J_3` indices defining which level 2 parameters condition the level 3 parameters. ...and so on for 'index_3', etc.
+            - `'index_k'`: Set of `N` indices defining which of the level k parameters condition the data, for a k-level hierarchical model.
+            - `data_col[0]` : Data from first data_col
+            - `data_col[1]` : Data from second data_col ...and so on.
+
     df : DataFrame
         Updated input data frame with added columnes with names given by
         `level_col[0] + '_stan'`, `level_col[1] + '_stan'`, etc. These
@@ -239,9 +240,10 @@ def df_to_datadict_hier(
 
     Notes
     -----
-    .. Assumes no missing data.
-    .. The ordering of data sets is not guaranteed. So, e.g., if you
-       have time series data, you should use caution.
+    Assumes no missing data.
+
+    The ordering of data sets is not guaranteed. So, e.g., if you
+    have time series data, you should use caution.
 
     Example
     -------
@@ -436,7 +438,6 @@ def posterior_to_dataframe(data, var_names=None):
         have a `posterior` attribute, and it should have a
         `sample_stats` attribute if divergence information is to be
         stored.
-
     var_names : list of strings or None
         List of variables to store in the data frame. If None, all
         variables are stored.
@@ -459,7 +460,7 @@ def posterior_to_dataframe(data, var_names=None):
     if not hasattr(data, "posterior"):
         raise RuntimeError("No posterior contained in `data`.")
 
-    cols, data_as_ndarray = xarray_to_ndarray(data.posterior, var_names=var_names)
+    cols, data_as_ndarray = _xarray_to_ndarray(data.posterior, var_names=var_names)
 
     chain = np.concatenate(
         [[i] * data.posterior.dims["draw"] for i in range(data.posterior.dims["chain"])]
@@ -669,11 +670,11 @@ def check_ess(
 
     Notes
     -----
-    .. Parameters with ESS given as NaN are not checked.
+    Parameters with ESS given as NaN are not checked.
 
     References
     ----------
-    .. Vehtari, et al., 2019, https://arxiv.org/abs/1903.08008.
+    Vehtari, et al., 2019, https://arxiv.org/abs/1903.08008.
     """
     # For convenience
     N = samples.posterior.dims["draw"]
@@ -687,8 +688,8 @@ def check_ess(
     tail_ess = az.ess(samples, var_names=var_names, method="tail")
 
     # Convert to list of names and numpy arrays
-    names, ess = xarray_to_ndarray(ess)
-    _, tail_ess = xarray_to_ndarray(tail_ess)
+    names, ess = _xarray_to_ndarray(ess)
+    _, tail_ess = _xarray_to_ndarray(tail_ess)
     if ess.shape == (1, 1):
         ess = np.array([ess[0, 0]])
         tail_ess = np.array([tail_ess[0, 0]])
@@ -760,7 +761,7 @@ def check_rhat(
     samples,
     var_names=None,
     rhat_rule_of_thumb=1.01,
-    known_rhat_nans=None,
+    omit=(),
     quiet=False,
     return_diagnostics=False,
 ):
@@ -780,21 +781,22 @@ def check_rhat(
     rhat_rule_of_thumb : float, default 1.01
         Rule of thumb value for maximum allowed R-hat, as per Vehtari,
         et al.
-    known_rhat_nans : list, default None
-        List of parameter names which are known to have R-hat be NaN.
-        These are typically parameters that are deterministic. If a
-        parameter is multidimensional, the specific parameter should
-        be listed. For example, if A is a 2x2 symmetric matrix and the
-        entry in the lower left corner has a known NaN for R-hat, then
-        known_rhat_nan = ['A[1,1]']. Parameters in `known_rhat_nans` are
-        ignored.
+    omit : str, re.Pattern, or list or tuple of str and re.Pattern
+        If `var_names` is not provided, all sampled parameters are
+        checked for Rhat. We often want to ignore samples of variables
+        that a transformed parameters, as their Rhats are irrelevant and
+        often NaNs. For each string entry in `omit`, the variable given
+        by the string is omitted. For each entry that is a compiled
+        regular expression patters (`re.Pattern`), any variable name
+        matching the pattern is omitted. By default, no variables are
+        omitted.
     return_diagnostics : bool, default False
         If True, return both a Boolean about whether the diagnostic
         passed and a data frame containing results about the number
         of effective samples tests. Otherwise, only return Boolean if
         the test passed.
 
-    Results
+    Returns
     -------
     passed : bool
         Return True if test passed. Return False otherwise.
@@ -803,54 +805,62 @@ def check_rhat(
 
     References
     ----------
-    .. Vehtari, et al., 2019, https://arxiv.org/abs/1903.08008.
+    Vehtari, et al., 2019, https://arxiv.org/abs/1903.08008.
 
     """
-    if known_rhat_nans is None:
-        known_rhat_nans = []
-    elif type(known_rhat_nans) == str:
-        known_rhat_nans = [known_rhat_nans]
+    if omit is None:
+        omit = []
+    elif type(omit) not in [tuple, list]:
+        omit = [omit]
 
-    if var_names is None:
-        var_names = [var for var in samples.posterior.data_vars]
+    var_names_arviz = _var_names_to_arviz_var_names(samples, var_names)
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        rhat = az.rhat(samples, var_names=var_names, method="rank")
+        rhat = az.rhat(samples, var_names=var_names_arviz, method="rank")
 
     # Convert to list of names and numpy arrays
-    names, rhat = xarray_to_ndarray(rhat)
+    names, rhat = _xarray_to_ndarray(rhat)
+
     if rhat.shape == (1, 1):
         rhat = np.array([rhat[0, 0]])
     else:
         rhat = rhat.squeeze()
-    names = [name.replace("\n", "[") + "]" if "\n" in name else name for name in names]
 
-    known_nan = [True if name in known_rhat_nans else False for name in names]
+    if var_names is None:
+        rhat = np.array([r for name, r in zip(names, rhat) if _screen_var(name, omit)])
+        names = [name for name in names if _screen_var(name, omit)]
+    else:
+        rhat = np.array([r for name, r in zip(names, rhat) if name in var_names])
+        names = [name for name, r in zip(names, rhat) if name in var_names]
 
-    pass_check = np.isnan(rhat[~np.array(known_nan)]).sum() == 0 and np.all(
-        rhat[~np.array(known_nan)] < rhat_rule_of_thumb
-    )
+    nans = np.isnan(rhat)
+    non_nan_pass = np.sum(np.array(rhat[~nans]) > rhat_rule_of_thumb) == 0
+    nan_pass = nans.sum() == 0
+
+    pass_check = non_nan_pass and nan_pass
 
     if not quiet:
         if not pass_check:
-            non_nan_fail = 0
-            for name, r, nan in zip(names, rhat, known_nan):
-                if np.isnan(r) and not nan:
-                    print("Rhat for parameter {} is {}.".format(name, r))
-                elif r > rhat_rule_of_thumb:
-                    non_nan_fail += 1
-                    print("Rhat for parameter {} is {}.".format(name, r))
-            if non_nan_fail > 0:
+            if not nan_pass:
+                for name, nan in zip(names, nans):
+                    if nan:
+                        print("Rhat for parameter {} is NaN.".format(name))
+
+            if not non_nan_pass:
+                for name, r in zip(names, rhat):
+                    if r > rhat_rule_of_thumb:
+                        print("Rhat for parameter {} is {}.".format(name, r))
                 print(
-                    "  Rank-normalized Rhat above 1.01 indicates that the chains very likely"
-                    + " have not mixed"
+                    "  Rank-normalized Rhat above 1.01 indicates that the chains very"
+                    " likely have not mixed."
                 )
         else:
             print("Rhat looks reasonable for all parameters.")
 
     if return_diagnostics:
         return pass_check, pd.DataFrame(data={"parameter": names, "Rhat": rhat})
+
     return pass_check
 
 
@@ -861,7 +871,7 @@ def check_all_diagnostics(
     total_ess_rule_of_thumb=100,
     fractional_ess_rule_of_thumb=0.001,
     rhat_rule_of_thumb=1.01,
-    known_rhat_nans=None,
+    omit=(),
     max_treedepth=10,
     quiet=False,
     return_diagnostics=False,
@@ -888,10 +898,15 @@ def check_all_diagnostics(
         The default of 0.001 is based on CmdStan's defaults.
     rhat_rule_of_thumb : float, default 1.1
         Rule of thumb value for maximum allowed R-hat.
-    known_rhat_nans : list, default []
-        List of parameter names which are known to have R-hat be NaN.
-        These are typically parameters that are deterministic.
-        Parameters in this list are ignored.
+    omit : str, re.Pattern, or list or tuple of str and re.Pattern
+        If `var_names` is not provided, all sampled parameters are
+        checked for Rhat. We often want to ignore samples of variables
+        that a transformed parameters, as their Rhats are irrelevant and
+        often NaNs. For each string entry in `omit`, the variable given
+        by the string is omitted. For each entry that is a compiled
+        regular expression patters (`re.Pattern`), any variable name
+        matching the pattern is omitted. By default, no variables are
+        omitted.
     max_treedepth: int, default 'infer'
         If int, specification of maximum treedepth allowed. If 'infer',
         inferred from `fit`.
@@ -900,17 +915,19 @@ def check_all_diagnostics(
     return_diagnostics : bool, default False
         If True, return a dictionary containing the results of each test.
 
-    Results
+    Returns
     -------
     warning_code : int
         When converted to binary, each digit in the code stands for
         whether or not a test passed. A digit of zero indicates the test
         passed. The ordering of the tests goes:
-            ess
-            r_hat
-            divergences
-            tree depth
-            E-BFMI
+
+        - ess
+        - r_hat
+        - divergences
+        - tree depth
+        - E-BFMI
+
         For example, a warning code of 12 has a binary representation
         of 01100, which means that R-hat and divergences tests failed.
     return_dict : dict
@@ -931,16 +948,22 @@ def check_all_diagnostics(
     if not pass_check:
         warning_code = warning_code | (1 << 0)
 
+    if not quiet:
+        print("")
+
     pass_check, diag_results["rhat"] = check_rhat(
         samples,
         var_names=var_names,
         rhat_rule_of_thumb=rhat_rule_of_thumb,
-        known_rhat_nans=known_rhat_nans,
+        omit=omit,
         quiet=quiet,
         return_diagnostics=True,
     )
     if not pass_check:
         warning_code = warning_code | (1 << 1)
+
+    if not quiet:
+        print("")
 
     pass_check, diag_results["n_divergences"] = check_divergences(
         samples, quiet=quiet, return_diagnostics=True
@@ -948,11 +971,17 @@ def check_all_diagnostics(
     if not pass_check:
         warning_code = warning_code | (1 << 2)
 
+    if not quiet:
+        print("")
+
     pass_check, diag_results["n_max_treedepth"] = check_treedepth(
         samples, max_treedepth=max_treedepth, quiet=quiet, return_diagnostics=True
     )
     if not pass_check:
         warning_code = warning_code | (1 << 3)
+
+    if not quiet:
+        print("")
 
     pass_check, diag_results["e_bfmi"] = check_energy(
         samples,
@@ -979,11 +1008,13 @@ def parse_warning_code(warning_code, quiet=False, return_dict=False):
         When converted to binary, each digit in the code stands for
         whether or not a test passed. A digit of zero indicates the test
         passed. The ordering of the tests goes:
-            ESS
-            r_hat
-            divergences
-            tree depth
-            E-BFMI
+
+        - ESS
+        - r_hat
+        - divergences
+        - tree depth
+        - E-BFMI
+
         For example, a warning code of 12 has a binary representation
         of 01100, which means that R-hat and divergences tests failed.
     quiet : bool, default False
@@ -1048,10 +1079,10 @@ def sbc(
     posterior_predictive_var_names=None,
     log_likelihood_var_name=None,
     sampling_kwargs={},
+    diagnostic_check_kwargs={},
     cores=1,
     N=400,
     n_prior_draws_for_sd=1000,
-    known_rhat_nans=None,
     remove_sample_files=True,
     progress_bar=False,
 ):
@@ -1079,7 +1110,9 @@ def sbc(
         A list of strings containing parameter names to be considered
         in the SBC analysis. Not all parameters of the model need be
         considered; only those in `parameters` have rank statistics
-        calculated.
+        calculated. Note that these are *not* separate parameters for
+        mutldimensional parameters. E.g., you would include 'theta', not
+        'theta[0]', 'theta[1]', etc.
     posterior_predictive_var_names : list of strings, default None
         List of variables that are posterior predictive. These are
         ignored in the SBC analysis.
@@ -1096,6 +1129,10 @@ def sbc(
         CmdStanPy, the 'output_dir' kwarg is not allowed because
         unambiguous naming is not possible if new sampling is done
         more than once per minute, given CmdStanPy's naming convention.
+    diagnostic_check_kwargs : dict, default {}
+        kwargs to pass to `check_all_diagnostics()`. If `quiet` and/or
+        `return_diagnostics` are given, they are ignored.
+        `max_treedepth` is inferred from `sampling_kwargs`.
     cores : int, default 1
         Number of cores to use in the SBC calculation.
     N : int, 400
@@ -1104,10 +1141,6 @@ def sbc(
         Number of prior draws to compute the prior standard deviation
         for a parameter in the prior distribution. This standard
         deviation is used in the shrinkage calculation.
-    known_rhat_nans : list, default []
-        List of parameter names which are known to have R-hat be NaN.
-        These are typically parameters that are deterministic.
-        Parameters in this list are ignored.
     remove_sample_files : bool, default True
         If True, remove .csv and .txt files generated by CmdStan. If
         the Stan models are made using PyStan, this is ignored; it is
@@ -1120,36 +1153,27 @@ def sbc(
     output : Pandas DataFrame
         A Pandas DataFrame with the output of the SBC analysis. It has
         the following columns.
-        - trial : Unique trial number for the simulation.
-        - warning_code : Warning code based on diagnostic checks
-            outputted by `check_all_diagnostics()`.
-        - parameter: The name of the scalar parameter.
-        - prior: Value of the parameter used in the simulation. This
-            value was drawn out of the prior distribution.
-        - mean : mean parameter value based on sampling out of the
-            posterior in the simulation.
-        - sd : standard deviation of the parameter value based on
-            sampling out of the posterior in the simulation.
-        - L : The number of bins used in computing the rank statistic.
-            The rank statistic should be uniform on the integers [0, L].
-        - rank_statistic : Value of the rank statistic for the parameter
-            for the trial.
-        - shrinkage : The shrinkage for the parameter for the given
-            trial. This is computed as 1 - sd / sd_prior, where sd_prior
-            is the standard deviation of the parameters as determined
-            from drawing out of the prior.
-        - z_score : The z-score for the parameter for the given trial.
-            This is computed as |mean - prior| / sd.
+
+            - trial : Unique trial number for the simulation.
+            - warning_code : Warning code based on diagnostic checks outputted by `check_all_diagnostics()`.
+            - parameter: The name of the scalar parameter.
+            - prior: Value of the parameter used in the simulation. This value was drawn out of the prior distribution.
+            - mean : mean parameter value based on sampling out of the posterior in the simulation.
+            - sd : standard deviation of the parameter value based on sampling out of the posterior in the simulation.
+            - L : The number of bins used in computing the rank statistic. The rank statistic should be uniform on the integers [0, L].
+            - rank_statistic : Value of the rank statistic for the parameter for the trial.
+            - shrinkage : The shrinkage for the parameter for the given trial. This is computed as 1 - sd / sd_prior, where sd_prior is the standard deviation of the parameters as determined from drawing out of the prior.
+            - z_score : The z-score for the parameter for the given trial. This is computed as abs(mean - prior) / sd.
 
     Notes
     -----
-    .. Each simulation is done by sampling a parameter set out of the
-       prior distribution, using those parameters to generate data from
-       the likelihood, and then performing posterior sampling based on
-       the generated data. A rank statistic for each simulation is
-       computed. This rank statistic should be uniformly distributed
-       over its L possible values. See https://arxiv.org/abs/1804.06788,
-       by Talts, et al., for details.
+    Each simulation is done by sampling a parameter set out of the
+    prior distribution, using those parameters to generate data from
+    the likelihood, and then performing posterior sampling based on
+    the generated data. A rank statistic for each simulation is
+    computed. This rank statistic should be uniformly distributed
+    over its L possible values. See https://arxiv.org/abs/1804.06788,
+    by Talts, et al., for details.
 
     """
     if prior_predictive_model is None:
@@ -1164,13 +1188,21 @@ def sbc(
         raise RuntimeError("`measured_data` must be specified.")
 
     if "output_dir" in sampling_kwargs:
-        raise RuntimeError("The 'output_dir' kwarg is not allowed because unambiguous naming is not possible if new sampling is done more than once per minute, given CmdStanPy's naming convention.")
+        raise RuntimeError(
+            "The 'output_dir' kwarg is not allowed because unambiguous naming is not possible if new sampling is done more than once per minute, given CmdStanPy's naming convention."
+        )
+
+    # Defaults for diagnostic checks
+    diagnostic_check_kwargs['quiet'] = True
+    diagnostic_check_kwargs['return_diagnostics'] = True
+    if 'max_treedepth' not in diagnostic_check_kwargs and 'max_treedepth' in sampling_kwargs:
+            diagnostic_check_kwargs['max_treedepth'] = sampling_kwargs['max_treedepth']
 
     # We parallelize simulations, not chains within each simulation
     if "n_jobs" in sampling_kwargs:
         del sampling_kwargs["n_jobs"]
-    if "cores" in sampling_kwargs:
-        del sampling_kwargs["cores"]
+    if "parallel_chains" in sampling_kwargs:
+        del sampling_kwargs["parallel_chains"]
 
     # Take a prior sample to infer data types
     if "pystan" in str(type(prior_predictive_model)):
@@ -1195,7 +1227,7 @@ def sbc(
     elif "cmdstanpy" in str(type(prior_predictive_model)):
         with disable_logging():
             prior_sample = prior_predictive_model.sample(
-                data=prior_predictive_model_data, fixed_param=True, sampling_iters=1
+                data=prior_predictive_model_data, fixed_param=True, iter_sampling=1
             )
         if az.__version__ > "0.6.1":
             prior_sample = az.from_cmdstanpy(
@@ -1259,14 +1291,14 @@ def sbc(
                 parameters,
                 measured_data_dtypes,
                 sampling_kwargs,
+                diagnostic_check_kwargs,
                 posterior_predictive_var_names,
                 log_likelihood_var_name,
                 prior_sd,
                 remove_sample_files,
-                known_rhat_nans,
             )
 
-    with multiprocessing.Pool(cores) as pool:
+    with multiprocess.Pool(cores) as pool:
         if progress_bar == "notebook":
             output = list(
                 tqdm.tqdm_notebook(
@@ -1298,12 +1330,12 @@ def sbc(
         else:
             sampling_iters = 1000
     elif "cmdstanpy" in str(type(prior_predictive_model)):
-        if "sampling_iters" in sampling_kwargs:
-            sampling_iters = sampling_kwargs["sampling_iters"]
+        if "iter_sampling" in sampling_kwargs:
+            iter_sampling = sampling_kwargs["iter_sampling"]
         else:
-            sampling_iters = 1000
+            iter_sampling = 1000
 
-    output["L"] = sampling_iters * chains // thin
+    output["L"] = iter_sampling * chains // thin
 
     return _tidy_sbc_output(output)
 
@@ -1321,11 +1353,11 @@ def _perform_sbc(args):
         parameters,
         measured_data_dtypes,
         sampling_kwargs,
+        diagnostic_check_kwargs,
         posterior_predictive_var_names,
         log_likelihood_var_name,
         prior_sd,
         remove_sample_files,
-        known_rhat_nans,
     ) = args
 
     posterior_model_data = copy.deepcopy(posterior_model_data)
@@ -1352,7 +1384,7 @@ def _perform_sbc(args):
     elif "cmdstanpy" in str(type(prior_predictive_model)):
         with disable_logging():
             prior_sample_cmdstanpy = prior_predictive_model.sample(
-                data=prior_predictive_model_data, fixed_param=True, sampling_iters=1
+                data=prior_predictive_model_data, fixed_param=True, iter_sampling=1
             )
         if az.__version__ > "0.6.1":
             prior_sample = az.from_cmdstanpy(
@@ -1365,10 +1397,17 @@ def _perform_sbc(args):
                 prior_predictive=measured_data,
             )
         if remove_sample_files:
-            for fname in prior_sample_cmdstanpy.runset.csv_files:
-                os.remove(fname)
-            for fname in prior_sample_cmdstanpy.runset.console_files:
-                os.remove(fname)
+            for flist in [
+                prior_sample_cmdstanpy.runset._csv_files,
+                prior_sample_cmdstanpy.runset._stdout_files,
+                prior_sample_cmdstanpy.runset._stderr_files,
+                prior_sample_cmdstanpy.runset._diagnostic_files,
+            ]:
+                for fname in flist:
+                    try:
+                        os.remove(fname)
+                    except:
+                        pass
 
     # Extract data generated from the prior predictive calculation
     for data in measured_data:
@@ -1379,7 +1418,7 @@ def _perform_sbc(args):
             posterior_model_data[data] = ar.astype(measured_data_dtypes[data])
 
     # Store what the parameters were to generate prior predictive data
-    names, vals = xarray_to_ndarray(prior_sample.prior)
+    names, vals = _xarray_to_ndarray(prior_sample.prior)
     param_priors = {name: val.item() for name, val in zip(names, vals)}
 
     # Generate posterior samples
@@ -1397,7 +1436,7 @@ def _perform_sbc(args):
     elif "cmdstanpy" in str(type(posterior_model)):
         with disable_logging():
             posterior_samples_cmdstanpy = posterior_model.sample(
-                data=posterior_model_data, cores=1, **sampling_kwargs
+                data=posterior_model_data, parallel_chains=1, **sampling_kwargs
             )
         posterior_samples = az.from_cmdstanpy(
             posterior=posterior_samples_cmdstanpy,
@@ -1407,22 +1446,26 @@ def _perform_sbc(args):
 
         # Clean out samples to save disk space
         if remove_sample_files:
-            for fname in posterior_samples_cmdstanpy.runset.csv_files:
-                os.remove(fname)
-            for fname in posterior_samples_cmdstanpy.runset.console_files:
-                os.remove(fname)
+            for flist in [
+                posterior_samples_cmdstanpy.runset._csv_files,
+                posterior_samples_cmdstanpy.runset._stdout_files,
+                posterior_samples_cmdstanpy.runset._stderr_files,
+                posterior_samples_cmdstanpy.runset._diagnostic_files,
+            ]:
+                for fname in flist:
+                    try:
+                        os.remove(fname)
+                    except:
+                        pass
 
     # Check diagnostics
     warning_code, diagnostics = check_all_diagnostics(
         posterior_samples,
-        var_names=parameters,
-        quiet=True,
-        known_rhat_nans=known_rhat_nans,
-        return_diagnostics=True,
+        **diagnostic_check_kwargs
     )
 
     # Convert output to Numpy array
-    names, vals = xarray_to_ndarray(posterior_samples.posterior, var_names=parameters)
+    names, vals = _xarray_to_ndarray(posterior_samples.posterior, var_names=parameters)
 
     # Generate output dictionary
     output = {
@@ -1507,7 +1550,7 @@ def _get_prior_sds(
             prior_samples_cmdstanpy = prior_predictive_model.sample(
                 data=prior_predictive_model_data,
                 fixed_param=True,
-                sampling_iters=n_prior_draws_for_sd,
+                iter_sampling=n_prior_draws_for_sd,
             )
         if az.__version__ > "0.6.1":
             prior_samples = az.from_cmdstanpy(
@@ -1519,14 +1562,22 @@ def _get_prior_sds(
                 prior=prior_samples_cmdstanpy,
                 prior_predictive=measured_data,
             )
+
         if remove_sample_files:
-            for fname in prior_samples_cmdstanpy.runset.csv_files:
-                os.remove(fname)
-            for fname in prior_samples_cmdstanpy.runset.console_files:
-                os.remove(fname)
+            for flist in [
+                prior_samples_cmdstanpy.runset._csv_files,
+                prior_samples_cmdstanpy.runset._stdout_files,
+                prior_samples_cmdstanpy.runset._stderr_files,
+                prior_samples_cmdstanpy.runset._diagnostic_files,
+            ]:
+                for fname in flist:
+                    try:
+                        os.remove(fname)
+                    except:
+                        pass
 
     # Compute prior sd's
-    names, vals = xarray_to_ndarray(prior_samples.prior)
+    names, vals = _xarray_to_ndarray(prior_samples.prior)
     prior_sd = {
         name: np.std(val)
         for name, val in zip(names, vals)
@@ -1564,6 +1615,7 @@ def _tidy_sbc_output(sbc_output):
     -------
     output : DataFrame
         Tidy data frame with SBC results.
+
     """
     df = sbc_output.copy()
     df["trial"] = df.index.values
@@ -1605,7 +1657,7 @@ def _tidy_sbc_output(sbc_output):
     return pd.concat(dfs, ignore_index=True)
 
 
-def xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
+def _xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
     """Convert xarray data set with coordinates `chain` and `draw` to a
     Numpy array and a list of row labels for the Numpy array.
 
@@ -1633,6 +1685,7 @@ def xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
     vals : 2D Numpy array
         Each row has the samples for a given variable. If combined is
         True, each row is a concatenation of samples from all chains.
+
     """
 
     names, vals = az_utils.xarray_to_ndarray(ds, var_names=var_names, combined=True)
@@ -1659,9 +1712,88 @@ def _ebfmi(energy):
     return np.sum(np.diff(energy) ** 2) / (len(energy) - 1) / np.var(energy)
 
 
+def _get_var_name(name):
+    """Convert a parameter name to a var_name. Example: 'alpha[0,1]'
+    returns 'alpha'."""
+    if name[-1] != "]":
+        return name
+
+    ind = name.rfind("[")
+    if ind == 0 or ind == len(name) - 1:
+        return name
+
+    substr = name[ind + 1 : -1]
+    if len(substr) == 0:
+        return name
+
+    if not substr[0].isdigit():
+        return name
+
+    if not substr[-1].isdigit():
+        return name
+
+    for char in substr:
+        if not (char.isdigit() or char == ","):
+            return name
+
+    if ",," in substr:
+        return name
+
+    return name[:ind]
+
+
+def _var_names_to_arviz_var_names(samples, var_names):
+    """Convert ArviZ InferenceData posterior results to a data frame"""
+    if var_names is not None and type(var_names) not in (list, tuple):
+        raise RuntimeError("`var_names` must be a list or tuple.")
+
+    if var_names is not None:
+        var_names = az_utils.purge_duplicates([_get_var_name(var) for var in var_names])
+        sample_vars = list(samples.posterior.data_vars)
+        for var_name in var_names:
+            if var_name not in sample_vars:
+                raise RuntimeError(f"variable {var_name} not in the input.")
+
+    return var_names
+
+
+def _sample_vars_to_df(samples, var_names, omit=[]):
+    """Convert ArviZ InferenceData posterior results to a data frame"""
+    var_names_arviz = _var_names_to_arviz_var_names(samples, var_names)
+
+    df = posterior_to_dataframe(samples, var_names=var_names_arviz)
+
+    if var_names is None:
+        var_names = [col for col in df.columns if _screen_var(col, omit)]
+
+    cols = list(var_names) + ["chain__", "draw__", "divergent__"]
+
+    return var_names, df[cols].copy()
+
+
+def _screen_var(var, omit):
+    if var in ["chain__", "draw__", "divergent__"]:
+        return False
+
+    for pattern in omit:
+        if type(pattern) == re.Pattern:
+            if bool(pattern.match(var)):
+                return False
+        elif pattern == var:
+            return False
+
+    return True
+
+
 @contextlib.contextmanager
 def disable_logging(level=logging.CRITICAL):
-    """Context manager for disabling logging."""
+    """Context manager for disabling logging when doing MCMC sampling.
+
+    Parameters
+    ----------
+    level : int, default logging.CRITICAL
+
+    """
     previous_level = logging.root.manager.disable
 
     logging.disable(level)

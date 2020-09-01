@@ -1,0 +1,5 @@
+generated/
+*.hpp
+sample_model
+sample_model_noncentered
+sample_model_prior_predictive

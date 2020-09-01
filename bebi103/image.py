@@ -521,10 +521,10 @@ def draw_rois(
 
     Notes
     -----
-    .. The displayed table is not particularly useful because it
-       displays a list of points. It helps to make sure your clicks are
-       getting registered and to select which ROI number is which
-       polygon.
+    The displayed table is not particularly useful because it
+    displays a list of points. It helps to make sure your clicks are
+    getting registered and to select which ROI number is which
+    polygon.
     """
 
     poly_source = bokeh.models.ColumnDataSource({"xs": [], "ys": []})
@@ -590,8 +590,8 @@ def roicds_to_df(cds):
     """Convert a ColumnDataSource outputted by `draw_rois()` to a Pandas
     DataFrame.
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     cds : Bokeh ColumnDataSource
         ColumnDataSource outputted by `draw_rois()`
 
@@ -827,9 +827,10 @@ class SimpleImageCollection(object):
 
     Notes
     -----
-    .. Any keyword arguments except those listed above are passed into
+    Any keyword arguments except those listed above are passed into
     load_func as kwargs.
-    .. This is a much simplified (and therefore faster) version of
+
+    This is a much simplified (and therefore faster) version of
     skimage.io.ImageCollection.
     """
 
@@ -887,9 +888,10 @@ def simple_image_collection(
 
     Notes
     -----
-    .. Any keyword arguments except those listed above are passed into
+    Any keyword arguments except those listed above are passed into
     load_func as kwargs.
-    .. This is a much simplified (and therefore faster) version of
+
+    This is a much simplified (and therefore faster) version of
     skimage.io.ImageCollection.
     """
     return SimpleImageCollection(
@@ -1018,11 +1020,12 @@ def costes_coloc(
                 in the two images.
             p_coloc: The probability of colocalization being present
                 in the two images.
+
     """
 
     # Make float mirrored boundaries in preparation for scrambling
-    im_1_mirror = mirror_edges(im_1, psf_width).astype(float)
-    im_2_mirror = mirror_edges(im_2, psf_width).astype(float)
+    im_1_mirror = _mirror_edges(im_1, psf_width).astype(float)
+    im_2_mirror = _mirror_edges(im_2, psf_width).astype(float)
 
     # Set up ROI
     if roi is None:
@@ -1033,17 +1036,17 @@ def costes_coloc(
     im_2 = im_2[roi].astype(float)
 
     # Mirror ROI at edges
-    roi_mirror = mirror_edges(roi, psf_width)
+    roi_mirror = _mirror_edges(roi, psf_width)
 
     # Compute the blocks that we'll scramble
-    blocks_1 = im_to_blocks(im_1_mirror, psf_width, roi_mirror, roi_method)
-    blocks_2 = im_to_blocks(im_2_mirror, psf_width, roi_mirror, roi_method)
+    blocks_1 = _im_to_blocks(im_1_mirror, psf_width, roi_mirror, roi_method)
+    blocks_2 = _im_to_blocks(im_2_mirror, psf_width, roi_mirror, roi_method)
 
     # Compute the Pearson coefficient
-    pearson_r = _pearson_r(blocks_1.ravel(), blocks_2.ravel())
+    pearson_r = utils._pearson_r(blocks_1.ravel(), blocks_2.ravel())
 
     # Do image scrambling and r calculations
-    r_scr = scrambled_r(blocks_1, blocks_2, n=n_scramble)
+    r_scr = _scrambled_r(blocks_1, blocks_2, n=n_scramble)
 
     # Compute percent chance of coloc
     p_coloc = (r_scr < pearson_r).sum() / n_scramble
@@ -1103,28 +1106,7 @@ def costes_coloc(
 
 
 @numba.jit(nopython=True)
-def _pearson_r(x, y):
-    """
-    Compute the Pearson correlation coefficient between two samples.
-
-    Parameters
-    ----------
-    data_1 : array_like
-        One-dimensional array of data.
-    data_2 : array_like
-        One-dimensional array of data.
-
-    Returns
-    -------
-    output : float
-        The Pearson correlation coefficient between `data_1`
-        and `data_2`.
-    """
-    return (np.mean(x * y) - np.mean(x) * np.mean(y)) / np.std(x) / np.std(y)
-
-
-@numba.jit(nopython=True)
-def scrambled_r(blocks_1, blocks_2, n=200):
+def _scrambled_r(blocks_1, blocks_2, n=200):
     """
     Scrambles blocks_1 n_scramble times and returns the Pearson r values.
 
@@ -1154,7 +1136,7 @@ def scrambled_r(blocks_1, blocks_2, n=200):
     r_scr = np.empty(n)
     for i in range(n):
         np.random.shuffle(block_inds)
-        r = _pearson_r(blocks_1[block_inds].ravel(), blocks_2_flat)
+        r = utils._pearson_r(blocks_1[block_inds].ravel(), blocks_2_flat)
         r_scr[i] = r
     return r_scr
 
@@ -1239,17 +1221,15 @@ def _find_thresh(im_1, im_2, a, b, thresh_r=0.0):
 
     Notes
     -----
-    ..  To determine which pixels are colocalized in two images, we
-        do the following:
-            1. Perform a regression based on all points of to give
-               I_2 = a * I_1 + b.
-            2. Define T = I_1.max().
-            3. Compute the Pearson r value considering all pixels with
-               I_1 < T and I_2 < a * T + b.
-            4. If r <= thresh_r decrement T and goto 3.  Otherwise,
-               save $T_1 = T$ and $T_2 = a * T + b.
-            5. Pixels with I_2 > T_2 and I_1 > T_1 are colocalized.
-        This function returns T.
+    To determine which pixels are colocalized in two images, we
+    do the following:
+        1. Perform a regression based on all points of to give I_2 = a * I_1 + b.
+        2. Define T = I_1.max().
+        3. Compute the Pearson r value considering all pixels with I_1 < T and I_2 < a * T + b.
+        4. If r <= thresh_r decrement T and goto 3.  Otherwise, save $T_1 = T$ and $T_2 = a * T + b.
+        5. Pixels with I_2 > T_2 and I_1 > T_1 are colocalized.
+
+    This function returns T.
     """
     if im_1.dtype not in [np.uint16, np.uint8]:
         incr = (im_1.max() - im_1.min()) / 256.0
@@ -1297,11 +1277,11 @@ def _pearsonr_below_thresh(thresh, im_1, im_2, a, b):
         Intercept of the ORD regression of `im_2` vs. `im_1`.
     """
     inds = (im_1 <= thresh) | (im_2 <= a * thresh + b)
-    r = _pearson_r(im_1[inds], im_2[inds])
+    r = utils._pearson_r(im_1[inds], im_2[inds])
     return r
 
 
-def mirror_edges(im, psf_width):
+def _mirror_edges(im, psf_width):
     """
     Given a 2D image pads the boundaries by mirroring so that the
     dimensions of the image are multiples for the width of the
@@ -1334,7 +1314,7 @@ def mirror_edges(im, psf_width):
     return np.pad(im, ((pad_top, pad_bottom), (pad_left, pad_right)), mode="reflect")
 
 
-def im_to_blocks(im, width, roi=None, roi_method="all"):
+def _im_to_blocks(im, width, roi=None, roi_method="all"):
     """
     Converts image to list of square subimages called "blocks."
 
