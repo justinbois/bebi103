@@ -1322,13 +1322,13 @@ def sbc(
     if "pystan" in str(type(posterior_model)):
         if "iter" in sampling_kwargs:
             if "warmup" in sampling_kwargs:
-                sampling_iters = sampling_kwargs["iter"] - sampling_kwargs["warmup"]
+                iter_sampling = sampling_kwargs["iter"] - sampling_kwargs["warmup"]
             else:
-                sampling_iters = sampling_kwargs["iter"] - sampling_kwargs["iter"] // 2
+                iter_sampling = sampling_kwargs["iter"] - sampling_kwargs["iter"] // 2
         elif "warmup" in sampling_kwargs:
-            sampling_iters = 2000 - sampling_kwargs["warmup"]
+            iter_sampling = 2000 - sampling_kwargs["warmup"]
         else:
-            sampling_iters = 1000
+            iter_sampling = 1000
     elif "cmdstanpy" in str(type(prior_predictive_model)):
         if "iter_sampling" in sampling_kwargs:
             iter_sampling = sampling_kwargs["iter_sampling"]
