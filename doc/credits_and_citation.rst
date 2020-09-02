@@ -7,7 +7,7 @@ This package is primarily written by `Justin Bois <http://bois.caltech.edu>`_ fo
 Citing bebi103
 ==================
 
-Because this package evolves according to the needs of the BE/Bi 103 ab courses, it has at best a stable-ish API. It is therefore very important to include a version number when citing the package. It is best to cite the package using its DOI. Here is a citation for version 0.0.54.
+Because this package evolves according to the needs of the BE/Bi 103 ab courses, it has at best a stable-ish API. It is therefore very important to include a version number when citing the package. It is best to cite the package using its DOI. Here is a citation for version 0.1.0.
 
 .. code-block:: bibtex
 
@@ -16,7 +16,7 @@ Because this package evolves according to the needs of the BE/Bi 103 ab courses,
       url = {URL},
       author = {Bois, Justin S.},
       keywords = {Github},
-      title = {justinbois/bebi103: Version 0.0.54},
+      title = {justinbois/bebi103: Version 0.1.0},
       publisher = {CaltechDATA},
       year = {2020}
     }

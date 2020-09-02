@@ -84,7 +84,7 @@ Image processing utilities
 .. currentmodule:: bebi103.image
 
 .. autosummary::
-   :toctree: generated/hv
+   :toctree: generated/image
    :nosignatures:
 
    imshow

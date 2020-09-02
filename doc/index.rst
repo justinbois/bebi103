@@ -19,6 +19,8 @@ The bebi103 package provides convenience functions for use in the `BE/Bi 103 ab 
    user_guide/using_user_guide.ipynb
    user_guide/hv.ipynb
    user_guide/bootstrap.ipynb
+   user_guide/stan.ipynb
+   user_guide/image.ipynb
    user_guide/api
 
 
