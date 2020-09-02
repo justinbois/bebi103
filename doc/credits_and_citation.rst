@@ -11,9 +11,9 @@ Because this package evolves according to the needs of the BE/Bi 103 ab courses,
 
 .. code-block:: bibtex
 
-    @misc{#CALTECHDATA DOI HERE,
-      doi = {DOI},
-      url = {URL},
+    @misc{#10.22002/D1.1615,
+      doi = {10.22002/D1.1615},
+      url = {https://doi.org/10.22002/D1.1615},
       author = {Bois, Justin S.},
       keywords = {Github},
       title = {justinbois/bebi103: Version 0.1.0},
