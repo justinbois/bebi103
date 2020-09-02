@@ -20,7 +20,10 @@ import numpy as np
 import pandas as pd
 import xarray
 
-import arviz as az
+try:
+    import arviz as az
+except:
+    raise RuntimeError("Could not import ArviZ. Perhaps it is not installed.")
 
 try:
     import pystan
@@ -38,7 +41,8 @@ except:
 
 if pystan_success and cmdstanpy_success:
     warnings.warn(
-        "Both pystan and cmdstanpy are importable in this environment. As per the cmdstanpy documentation, this is not advised."
+        "Both pystan and cmdstanpy are importable in this environment. As per the"
+        " cmdstanpy documentation, this is not advised."
     )
 
 if not pystan_success and not cmdstanpy_success:
@@ -440,7 +444,10 @@ def posterior_to_dataframe(data, var_names=None):
         stored.
     var_names : list of strings or None
         List of variables to store in the data frame. If None, all
-        variables are stored.
+        variables are stored. Note that for multidimensional variables,
+        `var_names` only has the root name. E.g.,
+        `var_names=['x', 'y']`, *not* something like
+        `var_names=['x[0]', 'x[1]', 'y[0,0]']`.
 
     Returns
     -------
@@ -630,7 +637,7 @@ def check_energy(
 
 def check_ess(
     samples,
-    var_names=None,
+    parameters=None,
     total_ess_rule_of_thumb=100,
     fractional_ess_rule_of_thumb=0.001,
     quiet=False,
@@ -643,9 +650,10 @@ def check_ess(
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
         and `samples_stats`.
-    var_names : list of str, or None (default)
-        Names of parameters to use in doing check for ESS. If None,
-        use all parameters.
+    parameters : list of str, or None (default)
+        Names of parameters to use. If None, use all parameters. For
+        multidimensional parameters, each entry must be given
+        separately, e.g., `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
     quiet : bool, default False
         If True, do not print diagnostic result to the screen.
     total_ess_rule_of_thumb : int, default 100
@@ -681,11 +689,10 @@ def check_ess(
     M = samples.posterior.dims["chain"]
     total_ess_rule_of_thumb *= M
 
-    # Compute ESS
-    if var_names is None:
-        var_names = [var for var in samples.posterior.data_vars]
-    ess = az.ess(samples, var_names=var_names, method="bulk")
-    tail_ess = az.ess(samples, var_names=var_names, method="tail")
+    var_names_arviz = _parameters_to_arviz_var_names(samples, parameters)
+
+    ess = az.ess(samples, var_names=var_names_arviz, method="bulk")
+    tail_ess = az.ess(samples, var_names=var_names_arviz, method="tail")
 
     # Convert to list of names and numpy arrays
     names, ess = _xarray_to_ndarray(ess)
@@ -759,7 +766,7 @@ def check_ess(
 
 def check_rhat(
     samples,
-    var_names=None,
+    parameters=None,
     rhat_rule_of_thumb=1.01,
     omit=(),
     quiet=False,
@@ -773,16 +780,17 @@ def check_rhat(
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
         and `samples_stats`.
-    var_names : list of str, or None (default)
-        Names of parameters to use in doing diagnostic checks. If None,
-        use all parameters.
+    parameters : list of str, or None (default)
+        Names of parameters to use. If None, use all parameters. For
+        multidimensional parameters, each entry must be given
+        separately, e.g., `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
     quiet : bool, default False
         If True, do no print diagnostic result to the screen.
     rhat_rule_of_thumb : float, default 1.01
         Rule of thumb value for maximum allowed R-hat, as per Vehtari,
         et al.
     omit : str, re.Pattern, or list or tuple of str and re.Pattern
-        If `var_names` is not provided, all sampled parameters are
+        If `parameters` is not provided, all sampled parameters are
         checked for Rhat. We often want to ignore samples of variables
         that a transformed parameters, as their Rhats are irrelevant and
         often NaNs. For each string entry in `omit`, the variable given
@@ -813,7 +821,7 @@ def check_rhat(
     elif type(omit) not in [tuple, list]:
         omit = [omit]
 
-    var_names_arviz = _var_names_to_arviz_var_names(samples, var_names)
+    var_names_arviz = _parameters_to_arviz_var_names(samples, parameters)
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -827,12 +835,14 @@ def check_rhat(
     else:
         rhat = rhat.squeeze()
 
-    if var_names is None:
-        rhat = np.array([r for name, r in zip(names, rhat) if _screen_var(name, omit)])
-        names = [name for name in names if _screen_var(name, omit)]
+    if parameters is None:
+        rhat = np.array(
+            [r for name, r in zip(names, rhat) if _screen_param(name, omit)]
+        )
+        names = [name for name in names if _screen_param(name, omit)]
     else:
-        rhat = np.array([r for name, r in zip(names, rhat) if name in var_names])
-        names = [name for name, r in zip(names, rhat) if name in var_names]
+        rhat = np.array([r for name, r in zip(names, rhat) if name in parameters])
+        names = [name for name, r in zip(names, rhat) if name in parameters]
 
     nans = np.isnan(rhat)
     non_nan_pass = np.sum(np.array(rhat[~nans]) > rhat_rule_of_thumb) == 0
@@ -866,7 +876,7 @@ def check_rhat(
 
 def check_all_diagnostics(
     samples,
-    var_names=None,
+    parameters=None,
     e_bfmi_rule_of_thumb=0.3,
     total_ess_rule_of_thumb=100,
     fractional_ess_rule_of_thumb=0.001,
@@ -883,9 +893,11 @@ def check_all_diagnostics(
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
         and `samples_stats`.
-    var_names : list of str, or None (default)
-        Names of parameters to use in doing diagnostic checks. If None,
-        use all parameters.
+    parameters : list of str, or None (default)
+        Names of parameters to use in checking Rhat and ESS. If None,
+        use all parameters. For multidimensional parameters, each entry
+        must be given separately, e.g.,
+        `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
     e_bfmi_rule_of_thumb : float, default 0.3
         Rule of thumb value for E-BFMI. If below this value, there may
         be cause for concern.
@@ -899,7 +911,7 @@ def check_all_diagnostics(
     rhat_rule_of_thumb : float, default 1.1
         Rule of thumb value for maximum allowed R-hat.
     omit : str, re.Pattern, or list or tuple of str and re.Pattern
-        If `var_names` is not provided, all sampled parameters are
+        If `parameters` is not provided, all sampled parameters are
         checked for Rhat. We often want to ignore samples of variables
         that a transformed parameters, as their Rhats are irrelevant and
         often NaNs. For each string entry in `omit`, the variable given
@@ -939,7 +951,7 @@ def check_all_diagnostics(
 
     pass_check, diag_results["ess"] = check_ess(
         samples,
-        var_names=var_names,
+        parameters=parameters,
         total_ess_rule_of_thumb=total_ess_rule_of_thumb,
         fractional_ess_rule_of_thumb=fractional_ess_rule_of_thumb,
         quiet=quiet,
@@ -953,7 +965,7 @@ def check_all_diagnostics(
 
     pass_check, diag_results["rhat"] = check_rhat(
         samples,
-        var_names=var_names,
+        parameters=parameters,
         rhat_rule_of_thumb=rhat_rule_of_thumb,
         omit=omit,
         quiet=quiet,
@@ -1074,7 +1086,7 @@ def sbc(
     prior_predictive_model_data=None,
     posterior_model_data=None,
     measured_data=None,
-    parameters=None,
+    var_names=None,
     measured_data_dtypes={},
     posterior_predictive_var_names=None,
     log_likelihood_var_name=None,
@@ -1106,19 +1118,23 @@ def sbc(
         A list of strings containing the variable names of measured
         data. Each entry in `measured_data` must be a key in
         `posterior_model_data`.
-    parameters : list of strings
+    var_names : list of strings
         A list of strings containing parameter names to be considered
         in the SBC analysis. Not all parameters of the model need be
-        considered; only those in `parameters` have rank statistics
-        calculated. Note that these are *not* separate parameters for
-        mutldimensional parameters. E.g., you would include 'theta', not
-        'theta[0]', 'theta[1]', etc.
+        considered; only those in `var_names` have rank statistics
+        calculated. Note that for multidimensional
+        variables, `var_names` only has the root name. E.g.,
+        `var_names=['x', 'y']`, *not* something like
+        `var_names=['x[0]', 'x[1]', 'y[0,0]']`.
     posterior_predictive_var_names : list of strings, default None
         List of variables that are posterior predictive. These are
-        ignored in the SBC analysis.
+        ignored in the SBC analysis. Note that for multidimensional
+        variables, `var_names` only has the root name. E.g.,
+        `var_names=['x_ppc', 'y_ppc']`, *not* something like
+        `var_names=['x_ppc[0]', 'x_ppc[1]', 'y_ppc[0,0]']`.
     log_likelihood_var_name : string, default None
         Name of variable in the Stan model that stores the log
-        likelihood. This are ignored in the SBC analysis.
+        likelihood. This is ignored in the SBC analysis.
     measured_data_dtypes : dict, default {}
         The key in the dtypes dict is a string representing the data
         name, and the corresponding item is its dtype, almost always
@@ -1193,10 +1209,13 @@ def sbc(
         )
 
     # Defaults for diagnostic checks
-    diagnostic_check_kwargs['quiet'] = True
-    diagnostic_check_kwargs['return_diagnostics'] = True
-    if 'max_treedepth' not in diagnostic_check_kwargs and 'max_treedepth' in sampling_kwargs:
-            diagnostic_check_kwargs['max_treedepth'] = sampling_kwargs['max_treedepth']
+    diagnostic_check_kwargs["quiet"] = True
+    diagnostic_check_kwargs["return_diagnostics"] = True
+    if (
+        "max_treedepth" not in diagnostic_check_kwargs
+        and "max_treedepth" in sampling_kwargs
+    ):
+        diagnostic_check_kwargs["max_treedepth"] = sampling_kwargs["max_treedepth"]
 
     # We parallelize simulations, not chains within each simulation
     if "n_jobs" in sampling_kwargs:
@@ -1214,31 +1233,17 @@ def sbc(
                 chains=1,
                 warmup=0,
             )
-        if az.__version__ > "0.6.1":
-            prior_sample = az.from_pystan(
-                prior=prior_sample, prior_predictive=measured_data
-            )
-        else:
-            prior_sample = az.from_pystan(
-                posterior=prior_sample,
-                prior=prior_sample,
-                prior_predictive=measured_data,
-            )
+        prior_sample = az.from_pystan(
+            prior=prior_sample, prior_predictive=measured_data
+        )
     elif "cmdstanpy" in str(type(prior_predictive_model)):
         with disable_logging():
             prior_sample = prior_predictive_model.sample(
                 data=prior_predictive_model_data, fixed_param=True, iter_sampling=1
             )
-        if az.__version__ > "0.6.1":
-            prior_sample = az.from_cmdstanpy(
-                prior=prior_sample, prior_predictive=measured_data
-            )
-        else:
-            prior_sample = az.from_cmdstanpy(
-                posterior=prior_sample,
-                prior=prior_sample,
-                prior_predictive=measured_data,
-            )
+        prior_sample = az.from_cmdstanpy(
+            prior=prior_sample, prior_predictive=measured_data
+        )
     elif callable(prior_predictive_model):
         raise NotImplementedError("Python-based prior models not yet supported.")
     else:
@@ -1255,14 +1260,14 @@ def sbc(
                 measured_data_dtypes[data] = float
 
     # Check parameters
-    if parameters is None:
-        parameters = [
+    if var_names is None:
+        var_names = [
             param
             for param in prior_sample.prior.data_vars
             if len(param) < 2 or param[-2:] != "__"
         ]
     else:
-        for param in parameters:
+        for param in var_names:
             if param not in prior_sample.prior.data_vars:
                 raise RuntimeError(
                     f"parameter `{param}` not in prior sample generated from `prior_predictive_model`."
@@ -1272,7 +1277,7 @@ def sbc(
     prior_sd = _get_prior_sds(
         prior_predictive_model,
         prior_predictive_model_data,
-        parameters,
+        var_names,
         measured_data,
         n_prior_draws_for_sd,
         remove_sample_files,
@@ -1288,7 +1293,7 @@ def sbc(
                 prior_predictive_model_data,
                 posterior_model_data,
                 measured_data,
-                parameters,
+                var_names,
                 measured_data_dtypes,
                 sampling_kwargs,
                 diagnostic_check_kwargs,
@@ -1350,7 +1355,7 @@ def _perform_sbc(args):
         prior_predictive_model_data,
         posterior_model_data,
         measured_data,
-        parameters,
+        var_names,
         measured_data_dtypes,
         sampling_kwargs,
         diagnostic_check_kwargs,
@@ -1371,31 +1376,17 @@ def _perform_sbc(args):
                 chains=1,
                 warmup=0,
             )
-        if az.__version__ > "0.6.1":
-            prior_sample = az.from_pystan(
-                prior=prior_sample, prior_predictive=measured_data
-            )
-        else:
-            prior_sample = az.from_pystan(
-                posterior=prior_sample,
-                prior=prior_sample,
-                prior_predictive=measured_data,
-            )
+        prior_sample = az.from_pystan(
+            prior=prior_sample, prior_predictive=measured_data
+        )
     elif "cmdstanpy" in str(type(prior_predictive_model)):
         with disable_logging():
             prior_sample_cmdstanpy = prior_predictive_model.sample(
                 data=prior_predictive_model_data, fixed_param=True, iter_sampling=1
             )
-        if az.__version__ > "0.6.1":
-            prior_sample = az.from_cmdstanpy(
-                prior=prior_sample_cmdstanpy, prior_predictive=measured_data
-            )
-        else:
-            prior_sample = az.from_cmdstanpy(
-                posterior=prior_sample_cmdstanpy,
-                prior=prior_sample_cmdstanpy,
-                prior_predictive=measured_data,
-            )
+        prior_sample = az.from_cmdstanpy(
+            prior=prior_sample_cmdstanpy, prior_predictive=measured_data
+        )
         if remove_sample_files:
             for flist in [
                 prior_sample_cmdstanpy.runset._csv_files,
@@ -1460,12 +1451,11 @@ def _perform_sbc(args):
 
     # Check diagnostics
     warning_code, diagnostics = check_all_diagnostics(
-        posterior_samples,
-        **diagnostic_check_kwargs
+        posterior_samples, **diagnostic_check_kwargs
     )
 
     # Convert output to Numpy array
-    names, vals = _xarray_to_ndarray(posterior_samples.posterior, var_names=parameters)
+    names, vals = _xarray_to_ndarray(posterior_samples.posterior, var_names=var_names)
 
     # Generate output dictionary
     output = {
@@ -1520,7 +1510,7 @@ def _perform_sbc(args):
 def _get_prior_sds(
     prior_predictive_model,
     prior_predictive_model_data,
-    parameters,
+    var_names,
     measured_data,
     n_prior_draws_for_sd,
     remove_sample_files,
@@ -1535,16 +1525,9 @@ def _get_prior_sds(
                 chains=1,
                 warmup=0,
             )
-        if az.__version__ > "0.6.1":
-            prior_samples = az.from_pystan(
-                prior=prior_samples, prior_predictive=measured_data
-            )
-        else:
-            prior_samples = az.from_pystan(
-                posterior=prior_samples,
-                prior=prior_samples,
-                prior_predictive=measured_data,
-            )
+        prior_samples = az.from_pystan(
+            prior=prior_samples, prior_predictive=measured_data
+        )
     elif "cmdstanpy" in str(type(prior_predictive_model)):
         with disable_logging():
             prior_samples_cmdstanpy = prior_predictive_model.sample(
@@ -1552,16 +1535,9 @@ def _get_prior_sds(
                 fixed_param=True,
                 iter_sampling=n_prior_draws_for_sd,
             )
-        if az.__version__ > "0.6.1":
-            prior_samples = az.from_cmdstanpy(
-                prior=prior_samples_cmdstanpy, prior_predictive=measured_data
-            )
-        else:
-            prior_samples = az.from_cmdstanpy(
-                posterior=prior_samples_cmdstanpy,
-                prior=prior_samples_cmdstanpy,
-                prior_predictive=measured_data,
-            )
+        prior_samples = az.from_cmdstanpy(
+            prior=prior_samples_cmdstanpy, prior_predictive=measured_data
+        )
 
         if remove_sample_files:
             for flist in [
@@ -1581,7 +1557,7 @@ def _get_prior_sds(
     prior_sd = {
         name: np.std(val)
         for name, val in zip(names, vals)
-        if name in parameters or _base_name(name) in parameters
+        if name in var_names or _base_name(name) in var_names
     }
 
     return prior_sd
@@ -1668,7 +1644,10 @@ def _xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
         usually contained in the `prior` or `posterior` fields of the
         InferenceData instance.
     var_names : list of strings, default None
-        Names of variables to include. If None, include all.
+        Names of variables to include. If None, include all. Note that
+        for multidimensional variables, `var_names` only has the root
+        name. E.g., `var_names=['x', 'y']`, *not* something like
+        `var_names=['x[0]', 'x[1]', 'y[0,0]']`.
     omit_dunders : bool, default True
         If True, omit any variable that ends in '__' unless it is
         explicitly included in `var_names`. These are not variables, but
@@ -1712,74 +1691,82 @@ def _ebfmi(energy):
     return np.sum(np.diff(energy) ** 2) / (len(energy) - 1) / np.var(energy)
 
 
-def _get_var_name(name):
+def _get_var_name(parameter):
     """Convert a parameter name to a var_name. Example: 'alpha[0,1]'
     returns 'alpha'."""
-    if name[-1] != "]":
-        return name
+    if parameter[-1] != "]":
+        return parameter
 
-    ind = name.rfind("[")
-    if ind == 0 or ind == len(name) - 1:
-        return name
+    ind = parameter.rfind("[")
+    if ind == 0 or ind == len(parameter) - 1:
+        return parameter
 
-    substr = name[ind + 1 : -1]
+    substr = parameter[ind + 1 : -1]
     if len(substr) == 0:
-        return name
+        return parameter
 
     if not substr[0].isdigit():
-        return name
+        return parameter
 
     if not substr[-1].isdigit():
-        return name
+        return parameter
 
     for char in substr:
         if not (char.isdigit() or char == ","):
-            return name
+            return parameter
 
     if ",," in substr:
-        return name
+        return parameter
 
-    return name[:ind]
+    return parameter[:ind]
 
 
-def _var_names_to_arviz_var_names(samples, var_names):
-    """Convert ArviZ InferenceData posterior results to a data frame"""
-    if var_names is not None and type(var_names) not in (list, tuple):
-        raise RuntimeError("`var_names` must be a list or tuple.")
+def _parameters_to_arviz_var_names(samples, parameters):
+    """Convert individual parameter names to ArviZ var_names.
+    E.g., 'alpha[1]' becomes 'alpha'.
+    """
+    if parameters is not None:
+        if type(parameters) not in (list, tuple):
+            raise RuntimeError("`parameters` must be a list or tuple.")
 
-    if var_names is not None:
-        var_names = az_utils.purge_duplicates([_get_var_name(var) for var in var_names])
+        var_names = az_utils.purge_duplicates(
+            [_get_var_name(param) for param in parameters]
+        )
+
         sample_vars = list(samples.posterior.data_vars)
+
         for var_name in var_names:
             if var_name not in sample_vars:
                 raise RuntimeError(f"variable {var_name} not in the input.")
+    else:
+        var_names = None
 
     return var_names
 
 
-def _sample_vars_to_df(samples, var_names, omit=[]):
+def _samples_parameters_to_df(samples, parameters, omit=[]):
     """Convert ArviZ InferenceData posterior results to a data frame"""
-    var_names_arviz = _var_names_to_arviz_var_names(samples, var_names)
+    var_names_arviz = _parameters_to_arviz_var_names(samples, parameters)
 
     df = posterior_to_dataframe(samples, var_names=var_names_arviz)
 
-    if var_names is None:
-        var_names = [col for col in df.columns if _screen_var(col, omit)]
+    if parameters is None:
+        parameters = [col for col in df.columns if _screen_param(col, omit)]
 
-    cols = list(var_names) + ["chain__", "draw__", "divergent__"]
+    cols = list(parameters) + ["chain__", "draw__", "divergent__"]
 
-    return var_names, df[cols].copy()
+    return parameters, df[cols].copy()
 
 
-def _screen_var(var, omit):
-    if var in ["chain__", "draw__", "divergent__"]:
+def _screen_param(param, omit):
+    if param in ["chain__", "draw__", "divergent__"]:
         return False
 
     for pattern in omit:
         if type(pattern) == re.Pattern:
-            if bool(pattern.match(var)):
+            if bool(pattern.match(param)):
                 return False
-        elif pattern == var:
+        elif pattern == param:
             return False
 
     return True

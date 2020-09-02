@@ -9,6 +9,7 @@ import numba
 
 def _dummy_jit(*args, **kwargs):
     """Dummy wrapper for jitting if numba not applicable."""
+
     def wrapper(f):
         return f
 
@@ -260,10 +261,11 @@ def _make_one_arg_numba_func(func, func_args):
             return func_numba(x, *args)
 
         # Attempt function call
-        _ = f(np.array([1., 2.]), func_args)
+        _ = f(np.array([1.0, 2.0]), func_args)
 
         return f, True
     except:
+
         def f(x, args=()):
             return func(x, *args)
 
@@ -298,10 +300,11 @@ def _make_two_arg_numba_func(func, func_args):
             return func_numba(x, *args)
 
         # Attempt function call
-        _ = f(np.array([1., 2.]), np.array([1., 2.]), func_args)
+        _ = f(np.array([1.0, 2.0]), np.array([1.0, 2.0]), func_args)
 
         return f, True
     except:
+
         def f(x, y, args=()):
             return func(x, y, *args)
 

@@ -7,8 +7,14 @@ import xarray
 import scipy.stats as st
 import numba
 
-import arviz as az
-import arviz.plots.plot_utils
+try:
+    import arviz as az
+    import arviz.plots.plot_utils
+except:
+    warnings.warn(
+        "Could not import ArviZ. Perhaps it is not installed."
+        " Some functionality in the viz submodule will not be available."
+    )
 
 import scipy.ndimage
 
@@ -541,6 +547,7 @@ def _compute_histogram(data, bins, density):
 
     return e0, f0
 
+
 def predictive_ecdf(
     samples,
     data=None,
@@ -1027,9 +1034,11 @@ def sbc_rank_ecdf(
     sbc_output : DataFrame
         Output of bebi103.stan.sbc() containing results from an SBC
         calculation.
-    parameters : list, default None
+    parameters : list of str, or None (default)
         List of parameters to include in the SBC rank ECDF plot. If
-        None, use all parameters.
+        None, use all parameters. For multidimensional parameters, each
+        entry must be given separately, e.g.,
+        `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
     diff : bool, default True
         If True, plot the ECDF minus the ECDF of a Uniform distribution.
         Otherwise, plot the ECDF of the rank statistic from SBC.
@@ -1152,10 +1161,11 @@ def sbc_rank_ecdf(
             line_kwargs=envelope_line_kwargs,
             show_line=show_envelope_line,
             p=p,
+            toolbar_location=toolbar_location,
             **kwargs,
         )
     else:
-        p = bokeh.plotting.figure(**kwargs)
+        p = bokeh.plotting.figure(toolbar_location=toolbar_location, **kwargs)
 
     if staircase:
         dfs = []
@@ -1178,7 +1188,6 @@ def sbc_rank_ecdf(
         df = pd.concat(dfs, ignore_index=True)
     else:
         df["__ECDF"] = df.groupby("parameter")["rank_statistic"].transform(_ecdf_y)
-        df["warning_code"] = df["warning_code"].astype(str)
         if diff:
             df["__ECDF"] -= (df["rank_statistic"] + 1) / L
 
@@ -1204,16 +1213,25 @@ def sbc_rank_ecdf(
     else:
         plot_cmd = p.circle
 
+    if show_legend:
+        legend_items = []
+
     if color_by_warning_code:
         for i, (warning_code, g) in enumerate(df.groupby("warning_code")):
             if show_legend:
-                plot_cmd(
-                    source=g,
-                    x="rank_statistic",
-                    y="__ECDF",
-                    color=color[i],
-                    legend_label=warning_code,
-                    **marker_kwargs,
+                legend_items.append(
+                    (
+                        str(warning_code),
+                        [
+                            plot_cmd(
+                                source=g,
+                                x="rank_statistic",
+                                y="__ECDF",
+                                color=color[i],
+                                **marker_kwargs,
+                            )
+                        ],
+                    )
                 )
             else:
                 plot_cmd(
@@ -1226,13 +1244,19 @@ def sbc_rank_ecdf(
     else:
         for i, (param, g) in enumerate(df.groupby("parameter")):
             if show_legend:
-                plot_cmd(
-                    source=g,
-                    x="rank_statistic",
-                    y="__ECDF",
-                    color=color[i],
-                    legend_label=param,
-                    **marker_kwargs,
+                legend_items.append(
+                    (
+                        param,
+                        [
+                            plot_cmd(
+                                source=g,
+                                x="rank_statistic",
+                                y="__ECDF",
+                                color=color[i],
+                                **marker_kwargs,
+                            )
+                        ],
+                    )
                 )
             else:
                 plot_cmd(
@@ -1244,15 +1268,16 @@ def sbc_rank_ecdf(
                 )
 
     if show_legend:
+        legend = bokeh.models.Legend(items=legend_items)
+        p.add_layout(legend, "right")
         p.legend.click_policy = "hide"
-        p.legend.location = "bottom_right"
 
     return p
 
 
 def parcoord(
     samples=None,
-    var_names=None,
+    parameters=None,
     palette=None,
     omit=re.compile("(.*_ppc\[?\d*\]?$)|(log_?lik.*\[?\d*\]?$)"),
     transformation=None,
@@ -1271,14 +1296,16 @@ def parcoord(
     ----------
     samples : ArviZ InferenceData instance or xarray Dataset instance
         Result of MCMC sampling.
-    var_names : list of strings
-        List of variables to include in the plot.
+    parameters : list of str, or None (default)
+        Names of parameters to include in the plot. If None, use all
+        parameters. For multidimensional parameters, each entry must be
+        given separately, e.g., `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         colorcet.b_glasbey_category10 from the colorcet package.
     omit : str, re.Pattern, or list or tuple of str and re.Pattern
-        If `var_names` is not provided, all parameters are used in the
+        If `parameters` is not provided, all parameters are used in the
         parallel coordinate plot. We often want to ignore samples of
         posterior predictive checks, log likelihoods, and other
         generated quantities. For each string entry in `omit`, the
@@ -1359,30 +1386,30 @@ def parcoord(
     ):
         warnings.warn("No divergence information available.")
 
-    var_names, df = stan._sample_vars_to_df(samples, var_names, omit)
+    parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
 
     if transformation == "minmax":
         transformation = {
-            var: lambda x: (x - x.min()) / (x.max() - x.min())
+            param: lambda x: (x - x.min()) / (x.max() - x.min())
             if x.min() < x.max()
             else 0.0
-            for var in var_names
+            for param in parameters
         }
     elif transformation == "rank":
-        transformation = {var: lambda x: st.rankdata(x) for var in var_names}
+        transformation = {param: lambda x: st.rankdata(x) for param in parameters}
 
     if transformation is None:
-        transformation = {var: lambda x: x for var in var_names}
+        transformation = {param: lambda x: x for param in parameters}
 
     if callable(transformation) or transformation is None:
-        transformation = {var: transformation for var in var_names}
+        transformation = {param: transformation for param in parameters}
 
     for col, trans in transformation.items():
         df[col] = trans(df[col])
     df = df.melt(id_vars=["divergent__", "chain__", "draw__"])
 
     p = bokeh.plotting.figure(
-        x_range=bokeh.models.FactorRange(*var_names),
+        x_range=bokeh.models.FactorRange(*parameters),
         toolbar_location=toolbar_location,
         **kwargs,
     )
@@ -1436,7 +1463,7 @@ def parcoord(
 
 def trace(
     samples=None,
-    var_names=None,
+    parameters=None,
     palette=None,
     omit=re.compile("(.*_ppc\[?\d*\]?$)|(log_?lik.*\[?\d*\]?$)"),
     line_kwargs={},
@@ -1449,14 +1476,16 @@ def trace(
     ----------
     samples : ArviZ InferenceData instance or xarray Dataset instance
         Result of MCMC sampling.
-    var_names : list of strings
-        List of variables to include in the plot.
+    parameters : list of str, or None (default)
+        Names of parameters to include in the plot. If None, use all
+        parameters. For multidimensional parameters, each entry must be
+        given separately, e.g., `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         colorcet.b_glasbey_category10 from the colorcet package.
     omit : str, re.Pattern, or list or tuple of str and re.Pattern
-        If `var_names` is not provided, all parameters are used in the
+        If `parameters` is not provided, all parameters are used in the
         trace plot. We often want to ignore samples of posterior
         predictive checks, log likelihoods, and other generated
         quantities. For each string entry in `omit`, the variable given
@@ -1485,7 +1514,7 @@ def trace(
     if not hasattr(samples, "posterior"):
         raise RuntimeError("Input samples do not have 'posterior' group.")
 
-    var_names, df = stan._sample_vars_to_df(samples, var_names, omit)
+    parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
 
     # Default properties
     if palette is None:
@@ -1512,7 +1541,7 @@ def trace(
 
     plots = []
     grouped = df.groupby("chain__")
-    for i, var in enumerate(var_names):
+    for i, var in enumerate(parameters):
         p = bokeh.plotting.figure(x_axis_label=x_axis_label, y_axis_label=var, **kwargs)
         for i, (chain, group) in enumerate(grouped):
             p.line(
@@ -1538,7 +1567,7 @@ def trace(
 
 def corner(
     samples=None,
-    var_names=None,
+    parameters=None,
     palette=None,
     omit=re.compile("(.*_ppc\[?\d*\]?$)|(log_?lik.*\[?\d*\]?$)"),
     labels=None,
@@ -1561,7 +1590,7 @@ def corner(
     weights=None,
     smooth=0.02,
     extend_contour_domain=False,
-    xtick_label_orientation='horizontal',
+    xtick_label_orientation="horizontal",
 ):
     """
     Make a corner plot of sampling results. Heavily influenced by the
@@ -1572,22 +1601,27 @@ def corner(
     samples : Numpy array, Pandas DataFrame, or ArviZ InferenceData
         Results of sampling. If a Numpy array or Pandas DataFrame, each
         row is a sample and each column corresponds to a variable.
-    var_names : list
+    parameters : list
         List of variables as strings included in `samples` to construct
-        corner plot. The variables correspond to column headings if
-        `samples` is in a Pandas DataFrame or to data_vars for an ArviZ
-        InferenceData instance. If the input is a Numpy array, `var_names` is
-        a list of indices of columns to use in the plot.
+        corner plot. If None, use all parameters. The entries correspond
+        to column headings if `samples` is in a Pandas DataFrame. If the
+        input is a Numpy array, `parameters` is a list of indices of
+        columns to use in the plot. If `samples` is an ArviZ
+        InferenceData instance, `parameters` contains the names of
+        parameters to include in the  plot. For multidimensional
+        parameters, each entry must be given separately, e.g.,
+        `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
     labels : list, default None
-        List of labels for the respective variables given in `var_names`. If
-        None, the variable names from `var_names` are used.
+        List of labels for the respective variables given in
+        `parameters`. If None, the variable names from `parameters` are
+        used.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         the default color cycle employed by Altair. Ignored is
         `color_by_chain` is False.
     omit : str, re.Pattern, or list or tuple of str and re.Pattern
-        If `var_names` is not provided, all parameters are used in the
+        If `parameters` is not provided, all parameters are used in the
         corner plot. We often want to ignore samples of posterior
         predictive checks, log likelihoods, and other generated
         quantities. For each string entry in `omit`, the variable given
@@ -1686,25 +1720,25 @@ def corner(
 
     if type(samples) == pd.core.frame.DataFrame:
         df = samples
-        if var_names is None:
-            var_names = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
+        if parameters is None:
+            parameters = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
     elif type(samples) == np.ndarray:
-        if var_names is None:
-            var_names = list(range(samples.shape[1]))
-        for var in var_names:
-            if type(var) != int:
+        if parameters is None:
+            parameters = list(range(samples.shape[1]))
+        for param in parameters:
+            if type(param) != int:
                 raise RuntimeError(
-                    "When `samples` is inputted as a Numpy array, `var_names` must be a list"
-                    " of indices."
+                    "When `samples` is inputted as a Numpy array, `parameters` must be"
+                    " a list of indices."
                 )
-        new_var_names = [str(var) for var in var_names]
-        df = pd.DataFrame(samples[:, var_names], columns=new_var_names)
-        var_names = new_var_names
+        new_parameters = [str(param) for param in parameters]
+        df = pd.DataFrame(samples[:, parameters], columns=new_parameters)
+        parameters = new_parameters
     else:
-        var_names, df = stan._sample_vars_to_df(samples, var_names, omit)
+        parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
 
-    if len(var_names) > 6:
-        raise RuntimeError("For space purposes, can show only six variables.")
+    if len(parameters) > 6:
+        raise RuntimeError("For space purposes, can show only six parameters.")
 
     if color_by_chain:
         # Have to convert datatype to string to play nice with Bokeh
@@ -1723,18 +1757,18 @@ def corner(
         df = df.copy()
         df["chain__"] = 0
 
-    for col in var_names:
+    for col in parameters:
         if col not in df.columns:
             raise RuntimeError("Column " + col + " not in the columns of DataFrame.")
 
     if labels is None:
-        labels = var_names
-    elif len(labels) != len(var_names):
-        raise RuntimeError("len(var_names) must equal len(labels)")
+        labels = parameters
+    elif len(labels) != len(parameters):
+        raise RuntimeError("len(parameters) must equal len(labels)")
 
     if plot_ecdf and not ecdf_staircase:
-        for var in var_names:
-            df[f"__ECDF_{var}"] = df[var].rank(method="first") / len(df)
+        for param in parameters:
+            df[f"__ECDF_{param}"] = df[param].rank(method="first") / len(df)
 
     n_nondivergent = np.sum(df["divergent__"] == 0)
     if n_nondivergent > max_plotted:
@@ -1757,8 +1791,8 @@ def corner(
     cds_div = bokeh.models.ColumnDataSource(df.loc[df["divergent__"] == 1, :])
 
     # Just make a single plot if only one parameter
-    if len(var_names) == 1:
-        x = var_names[0]
+    if len(parameters) == 1:
+        x = parameters[0]
         if plot_ecdf:
             p = bokeh.plotting.figure(
                 frame_width=frame_width,
@@ -1798,12 +1832,12 @@ def corner(
 
         return p
 
-    plots = [[None for _ in range(len(var_names))] for _ in range(len(var_names))]
+    plots = [[None for _ in range(len(parameters))] for _ in range(len(parameters))]
 
-    for i, j in zip(*np.tril_indices(len(var_names))):
-        x = var_names[j]
+    for i, j in zip(*np.tril_indices(len(parameters))):
+        x = parameters[j]
         if i != j:
-            y = var_names[i]
+            y = parameters[i]
             x_range, y_range = _data_range(df, x, y)
             plots[i][j] = bokeh.plotting.figure(
                 x_range=x_range,
@@ -1902,7 +1936,7 @@ def corner(
         plots[i][j].xaxis.major_label_orientation = xtick_label_orientation
 
     # Link axis ranges
-    for i in range(1, len(var_names)):
+    for i in range(1, len(parameters)):
         for j in range(i):
             plots[i][j].x_range = plots[j][j].x_range
             plots[i][j].y_range = plots[i][i].x_range
@@ -1918,14 +1952,14 @@ def corner(
         plots[0][0].yaxis.axis_label = "ECDF"
 
     # Take off tick labels
-    for i in range(len(var_names) - 1):
+    for i in range(len(parameters) - 1):
         for j in range(i + 1):
             plots[i][j].xaxis.major_label_text_font_size = "0pt"
 
     if not plot_ecdf:
         plots[0][0].yaxis.major_label_text_font_size = "0pt"
 
-    for i in range(1, len(var_names)):
+    for i in range(1, len(parameters)):
         for j in range(1, i + 1):
             plots[i][j].yaxis.major_label_text_font_size = "0pt"
 

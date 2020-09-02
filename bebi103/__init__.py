@@ -22,7 +22,8 @@ except:
         " here: https://github.com/ipython/ipython/issues/12396. As a"
         " workaround, you can install multiprocess"
         " (pip install multiprocess) and everything should work as"
-        " expected.", ImportWarning
+        " expected.",
+        ImportWarning,
     )
 
 from . import hv
@@ -37,10 +38,11 @@ try:
     from . import stan
 except:
     warnings.warn(
-        "Could not import `stan` submodule. Perhaps PyStan or CmdStanPy is not properly installed."
+        "Could not import `stan` submodule. Perhaps ArviZ or PyStan or CmdStanPy is/are"
+        " not properly installed."
     )
 
 
 __author__ = """Justin Bois"""
 __email__ = "bois@caltech.edu"
-__version__ = "0.0.55"
+__version__ = "0.1.0"
