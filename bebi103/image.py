@@ -19,7 +19,7 @@ import bokeh.plotting
 from matplotlib import path
 
 from . import viz
-
+from . import utils
 
 def imshow(
     im,
