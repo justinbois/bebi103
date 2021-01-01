@@ -176,7 +176,7 @@ def set_defaults():
             padding=0.05,
             show_grid=True,
             show_legend=True,
-            size=5,
+            size=3,
             toolbar="above",
         )
     )
@@ -194,7 +194,7 @@ def set_defaults():
             muted_line_alpha=0.1,
             padding=0.05,
             show_grid=True,
-            size=5,
+            size=3,
             toolbar="above",
         )
     )
