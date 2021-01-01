@@ -66,6 +66,7 @@ Stan utilities
    :nosignatures:
 
    clean_cmdstan
+   cmdstan_version
    df_to_datadict_hier
    posterior_to_dataframe
    check_divergences
