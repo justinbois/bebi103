@@ -280,6 +280,304 @@ def bokeh_boxplot(df, value, label, ylabel=None, sort=True, plot_width=650,
     return p
 
 
+def _outliers(data):
+    bottom, middle, top = np.percentile(data, [25, 50, 75])
+    iqr = top - bottom
+    outliers = data[(data > top + 1.5 * iqr) | (data < bottom - 1.5 * iqr)]
+    return outliers
+
+
+def _box_and_whisker(data):
+    middle = data.median()
+    bottom = data.quantile(0.25)
+    top = data.quantile(0.75)
+    iqr = top - bottom
+    top_whisker = data[data <= top + 1.5 * iqr].max()
+    bottom_whisker = data[data >= bottom - 1.5 * iqr].min()
+    return pd.Series(
+        {
+            "middle": middle,
+            "bottom": bottom,
+            "top": top,
+            "top_whisker": top_whisker,
+            "bottom_whisker": bottom_whisker,
+        }
+    )
+
+
+def _box_source(df, cats, val, cols):
+    """Construct a data frame for making box plot."""
+
+    # Need to reset index for use in slicing outliers
+    df_source = df.reset_index(drop=True)
+
+    if type(cats) in [list, tuple]:
+        level = list(range(len(cats)))
+    else:
+        level = 0
+
+    if cats is None:
+        grouped = df_source
+    else:
+        grouped = df_source.groupby(cats)
+
+    # Data frame for boxes and whiskers
+    df_box = grouped[val].apply(_box_and_whisker).unstack().reset_index()
+    source_box = _cat_source(
+        df_box, cats, ["middle", "bottom", "top", "top_whisker", "bottom_whisker"], None
+    )
+
+    # Data frame for outliers
+    df_outliers = grouped[val].apply(_outliers).reset_index(level=level)
+    df_outliers[cols] = df_source.loc[df_outliers.index, cols]
+    source_outliers = _cat_source(df_outliers, cats, cols, None)
+
+    return source_box, source_outliers
+
+
+def _check_cat_input(df, cats, val, color_column, tooltips, palette, kwargs):
+    if df is None:
+        raise RuntimeError("`df` argument must be provided.")
+    if cats is None:
+        raise RuntimeError("`cats` argument must be provided.")
+    if val is None:
+        raise RuntimeError("`val` argument must be provided.")
+
+    if type(palette) not in [list, tuple]:
+        raise RuntimeError("`palette` must be a list or tuple.")
+
+    if val not in df.columns:
+        raise RuntimeError(f"{val} is not a column in the inputted data frame")
+
+    cats_array = type(cats) in [list, tuple]
+
+    if cats_array:
+        for cat in cats:
+            if cat not in df.columns:
+                raise RuntimeError(f"{cat} is not a column in the inputted data frame")
+    else:
+        if cats not in df.columns:
+            raise RuntimeError(f"{cats} is not a column in the inputted data frame")
+
+    if color_column is not None and color_column not in df.columns:
+        raise RuntimeError(f"{color_column} is not a column in the inputted data frame")
+
+    cols = _cols_to_keep(cats, val, color_column, tooltips)
+
+    for col in cols:
+        if col not in df.columns:
+            raise RuntimeError(f"{col} is not a column in the inputted data frame")
+
+    bad_kwargs = ["x", "y", "source", "cat", "legend"]
+    if kwargs is not None and any([key in kwargs for key in bad_kwargs]):
+        raise RuntimeError(", ".join(bad_kwargs) + " are not allowed kwargs.")
+
+    if val == "cat":
+        raise RuntimeError("`'cat'` cannot be used as `val`.")
+
+    if val == "__label" or (cats == "__label" or (cats_array and "__label" in cats)):
+        raise RuntimeError("'__label' cannot be used for `val` or `cats`.")
+
+    return cols
+
+def _get_cat_range(df, grouped, order, color_column, horizontal):
+    if order is None:
+        if isinstance(list(grouped.groups.keys())[0], tuple):
+            factors = tuple(
+                [tuple([str(k) for k in key]) for key in grouped.groups.keys()]
+            )
+        else:
+            factors = tuple([str(key) for key in grouped.groups.keys()])
+    else:
+        if type(order[0]) in [list, tuple]:
+            factors = tuple([tuple([str(k) for k in key]) for key in order])
+        else:
+            factors = tuple([str(entry) for entry in order])
+
+    if horizontal:
+        cat_range = bokeh.models.FactorRange(*(factors[::-1]))
+    else:
+        cat_range = bokeh.models.FactorRange(*factors)
+
+    if color_column is None:
+        color_factors = factors
+    else:
+        color_factors = tuple(sorted(list(df[color_column].unique().astype(str))))
+
+    return cat_range, factors, color_factors
+
+
+def _cat_figure(
+    df,
+    grouped,
+    plot_height,
+    plot_width,
+    x_axis_label,
+    y_axis_label,
+    title,
+    order,
+    color_column,
+    tooltips,
+    horizontal,
+    val_axis_type,
+):
+    fig_kwargs = dict(
+        plot_height=plot_height,
+        plot_width=plot_width,
+        x_axis_label=x_axis_label,
+        y_axis_label=y_axis_label,
+        title=title,
+        tooltips=tooltips,
+    )
+
+    cat_range, factors, color_factors = _get_cat_range(
+        df, grouped, order, color_column, horizontal
+    )
+
+    if horizontal:
+        fig_kwargs["y_range"] = cat_range
+        fig_kwargs["x_axis_type"] = val_axis_type
+    else:
+        fig_kwargs["x_range"] = cat_range
+        fig_kwargs["y_axis_type"] = val_axis_type
+
+    return bokeh.plotting.figure(**fig_kwargs), factors, color_factors
+
+
+def _cat_source(df, cats, cols, color_column):
+    if type(cats) in [list, tuple]:
+        cat_source = list(zip(*tuple([df[cat].astype(str) for cat in cats])))
+        labels = [", ".join(cat) for cat in cat_source]
+    else:
+        cat_source = list(df[cats].astype(str).values)
+        labels = cat_source
+
+    if type(cols) in [list, tuple, pd.core.indexes.base.Index]:
+        source_dict = {col: list(df[col].values) for col in cols}
+    else:
+        source_dict = {cols: list(df[cols].values)}
+
+    source_dict["cat"] = cat_source
+    if color_column in [None, "cat"]:
+        source_dict["__label"] = labels
+    else:
+        source_dict["__label"] = list(df[color_column].astype(str).values)
+        source_dict[color_column] = list(df[color_column].astype(str).values)
+
+    return bokeh.models.ColumnDataSource(source_dict)
+
+
+def _tooltip_cols(tooltips):
+    if tooltips is None:
+        return []
+    if type(tooltips) not in [list, tuple]:
+        raise RuntimeError("`tooltips` must be a list or tuple of two-tuples.")
+
+    cols = []
+    for tip in tooltips:
+        if type(tip) not in [list, tuple] or len(tip) != 2:
+            raise RuntimeError("Invalid tooltip.")
+        if tip[1][0] == "@":
+            if tip[1][1] == "{":
+                cols.append(tip[1][2 : tip[1].find("}")])
+            elif "{" in tip[1]:
+                cols.append(tip[1][1 : tip[1].find("{")])
+            else:
+                cols.append(tip[1][1:])
+
+    return cols
+
+
+def _cols_to_keep(cats, val, color_column, tooltips):
+    cols = _tooltip_cols(tooltips)
+    cols += [val]
+
+    if type(cats) in [list, tuple]:
+        cols += list(cats)
+    else:
+        cols += [cats]
+
+    if color_column is not None:
+        cols += [color_column]
+
+    return list(set(cols))
+
+def _point_ecdf_source(data, val, cats, cols, complementary, colored):
+    """DataFrame for making point-wise ECDF."""
+    df = data.copy()
+
+    if complementary:
+        col = "__ECCDF"
+    else:
+        col = "__ECDF"
+
+    if cats is None or colored:
+        df[col] = _ecdf_y(df[val], complementary)
+    else:
+        df[col] = df.groupby(cats)[val].transform(_ecdf_y, complementary)
+
+    cols += [col]
+
+    return _cat_source(df, cats, cols, None)
+
+
+def _ecdf_collection_dots(
+    df, val, cats, cols, complementary, order, palette, show_legend, y, p, **kwargs
+):
+    _, _, color_factors = _get_cat_range(df, df.groupby(cats), order, None, False)
+
+    source = _point_ecdf_source(df, val, cats, cols, complementary, False)
+
+    if "color" not in kwargs:
+        kwargs["color"] = bokeh.transform.factor_cmap(
+            "cat", palette=palette, factors=color_factors
+        )
+
+    if show_legend:
+        kwargs["legend"] = "__label"
+
+    p.circle(source=source, x=val, y=y, **kwargs)
+
+    return p
+
+
+def _ecdf_collection_staircase(
+    df, val, cats, complementary, order, palette, show_legend, p, **kwargs
+):
+    grouped = df.groupby(cats)
+
+    color_not_in_kwargs = "color" not in kwargs
+
+    if order is None:
+        order = list(grouped.groups.keys())
+    grouped_iterator = [
+        (order_val, grouped.get_group(order_val)) for order_val in order
+    ]
+
+    for i, g in enumerate(grouped_iterator):
+        if show_legend:
+            if type(g[0]) == tuple:
+                legend = ", ".join([str(c) for c in g[0]])
+            else:
+                legend = str(g[0])
+        else:
+            legend = None
+
+        if color_not_in_kwargs:
+            kwargs["color"] = palette[i % len(palette)]
+
+        _ecdf(
+            g[1][val],
+            staircase=True,
+            p=p,
+            legend=legend,
+            complementary=complementary,
+            **kwargs,
+        )
+
+    return p
+
+
 def bokeh_imrgb(im, plot_height=400, plot_width=None,
                 tools='pan,box_zoom,wheel_zoom,reset,resize'):
     """

@@ -69,7 +69,7 @@ def to_dataframe(
 
     # Diagnostics to pull out
     diags = [
-        "divergent__",
+        "diverging__",
         "energy__",
         "treedepth__",
         "accept_stat__",

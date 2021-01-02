@@ -22,6 +22,7 @@ import xarray
 
 try:
     import arviz as az
+    import arviz.plots.plot_utils
 except:
     raise RuntimeError("Could not import ArviZ. Perhaps it is not installed.")
 
@@ -51,8 +52,6 @@ if not pystan_success and not cmdstanpy_success:
 import bokeh.plotting
 
 from . import viz
-from . import az_utils
-
 
 def StanModel(
     file=None,
@@ -210,7 +209,7 @@ def cmdstan_version():
     """
     try:
         cmdstan_path = cmdstanpy.cmdstan_path()
-        return cmdstan_path[cmdstan_path.rfind('-')+1:]
+        return cmdstan_path[cmdstan_path.rfind("-") + 1 :]
     except:
         return "Unable to determine CmdStan version."
 
@@ -448,7 +447,7 @@ def df_to_datadict_hier(
     return data, new_df
 
 
-def posterior_to_dataframe(data, var_names=None):
+def arviz_to_dataframe(data, var_names=None, diagnostics=('diverging',)):
     """Convert ArviZ InferenceData to a Pandas data frame.
 
     Any multi-dimensional parameters are converted to one-dimensional
@@ -467,29 +466,48 @@ def posterior_to_dataframe(data, var_names=None):
         `sample_stats` attribute if divergence information is to be
         stored.
     var_names : list of strings or None
-        List of variables to store in the data frame. If None, all
-        variables are stored. Note that for multidimensional variables,
-        `var_names` only has the root name. E.g.,
-        `var_names=['x', 'y']`, *not* something like
-        `var_names=['x[0]', 'x[1]', 'y[0,0]']`.
+        List of variables present in `data.posterior.data_vars` to store
+        in the data frame.  If None, all variables present in
+        `data.posterior.data_vars` are stored. Note that *only*
+        variables in `data.posterior.data_vars` may be stored.
+    diagnostics : list or tuple of strings
+        Diagnostic data to be stored in the data frame. The elements of
+        the list may include: 'lp', 'accept_stat', 'stepsize',
+        'treedepth', 'n_leapfrog', 'diverging', and 'energy'.
 
     Returns
     -------
     output : Pandas DataFrame
-        DataFrame with samples.
+        DataFrame with posterior samples and diagnostics. The column
+        names of all diagnostics, as well as 'chain' and 'draw', are
+        appended with a double-underscore (`__`) to signify that they
+        are not samples out of the posterior, but rather metadata about
+        a sample.
 
     """
     if type(data) == xarray.Dataset:
         raise RuntimeError(
             "You need to pass in an ArviZ InferenceData instance, not an xarray Dataset. Maybe you passed in the posterior attribute of the InferenceData instance?"
         )
-    if hasattr(data, "sample_stats") and hasattr(data.sample_stats, "diverging"):
-        diverging = np.ravel(data.sample_stats["diverging"])
-    else:
-        diverging = False
+
+    if diagnostics is not None:
+        if type(diagnostics) == str:
+            diagnostics = (diagnostics,)
+
+    var_names = _parameters_to_arviz_var_names(data, var_names)
 
     if not hasattr(data, "posterior"):
         raise RuntimeError("No posterior contained in `data`.")
+
+    diag_dict = {}
+    if diagnostics is not None and len(diagnostics) > 0:
+        if not hasattr(data, "sample_stats"):
+            raise RuntimeError("Asking for diagnostics, but input has not attribute sample_stats")
+        for diag in diagnostics:
+            if hasattr(data.sample_stats, diag):
+                diag_dict[diag + "__"] = np.ravel(data.sample_stats[diag])
+            else:
+                raise RuntimeError(f'{diag} not in data.sample_stats.')
 
     cols, data_as_ndarray = _xarray_to_ndarray(data.posterior, var_names=var_names)
 
@@ -504,7 +522,8 @@ def posterior_to_dataframe(data, var_names=None):
     df = pd.DataFrame(data=data_as_ndarray.T, columns=cols)
     df["chain__"] = chain
     df["draw__"] = draw
-    df["divergent__"] = diverging
+    for diag, res in diag_dict.items():
+        df[diag] = res
 
     return df
 
@@ -1680,7 +1699,7 @@ def _xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
     Output
     ------
     names : list of strings
-        List of names of headings. For a mulitdimensional xarray
+        List of names of headings. For a multidimensional xarray
         DataArray, each entry in the array is the variable name,
         followed indexing information. As an example, if `A` is a 2x2
         matrix, then there will be names 'A[0,0]', 'A[0,1]', 'A[1,0]',
@@ -1691,7 +1710,7 @@ def _xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
 
     """
 
-    names, vals = az_utils.xarray_to_ndarray(ds, var_names=var_names, combined=True)
+    names, vals = arviz.plots.plot_utils.xarray_to_ndarray(ds, var_names=var_names, combined=True)
 
     names = [
         name.replace("\n", "[").replace(", ", ",") + "]" if "\n" in name else name
@@ -1747,17 +1766,20 @@ def _get_var_name(parameter):
 
 def _parameters_to_arviz_var_names(samples, parameters):
     """Convert individual parameter names to ArviZ var_names.
-    E.g., 'alpha[1]' becomes 'alpha'.
+    E.g., 'alpha[0]' becomes 'alpha'.
     """
     if parameters is not None:
         if type(parameters) not in (list, tuple):
             raise RuntimeError("`parameters` must be a list or tuple.")
 
-        var_names = az_utils.purge_duplicates(
-            [_get_var_name(param) for param in parameters]
-        )
-
         sample_vars = list(samples.posterior.data_vars)
+
+        var_names = [
+            param if param in sample_vars else _get_var_name(param)
+            for param in parameters
+        ]
+
+        var_names = arviz.plots.plot_utils.purge_duplicates(var_names)
 
         for var_name in var_names:
             if var_name not in sample_vars:
@@ -1772,18 +1794,18 @@ def _samples_parameters_to_df(samples, parameters, omit=[]):
     """Convert ArviZ InferenceData posterior results to a data frame"""
     var_names_arviz = _parameters_to_arviz_var_names(samples, parameters)
 
-    df = posterior_to_dataframe(samples, var_names=var_names_arviz)
+    df = arviz_to_dataframe(samples, var_names=var_names_arviz)
 
     if parameters is None:
         parameters = [col for col in df.columns if _screen_param(col, omit)]
 
-    cols = list(parameters) + ["chain__", "draw__", "divergent__"]
+    cols = list(parameters) + ["chain__", "draw__", "diverging__"]
 
     return parameters, df[cols].copy()
 
 
 def _screen_param(param, omit):
-    if param in ["chain__", "draw__", "divergent__"]:
+    if param in ["chain__", "draw__", "diverging__"]:
         return False
 
     for pattern in omit:
