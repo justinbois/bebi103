@@ -1302,6 +1302,9 @@ def parcoord(
         Names of parameters to include in the plot. If None, use all
         parameters. For multidimensional parameters, each entry must be
         given separately, e.g., `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
+        If a given entry is a 2-tuple, the first entry is the variable
+        name, and the second entry is the label for the parameter in
+        plots.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
@@ -1309,13 +1312,16 @@ def parcoord(
     omit : str, re.Pattern, or list or tuple of str and re.Pattern
         If `parameters` is not provided, all parameters are used in the
         parallel coordinate plot. We often want to ignore samples of
-        posterior predictive checks, log likelihoods, and other
-        generated quantities. For each string entry in `omit`, the
-        variable given by the string is omitted. For each entry that is
-        a compiled regular expression patters (`re.Pattern`), any
-        variable name matching the pattern is omitted. By default, any
-        variable that ends in '_ppc' and any variable beginning with
-        'log_lik' or 'loglik' are ignored.
+        some variables. For each string entry in `omit`, the variable
+        given by the string is omitted. For each entry that is a
+        compiled regular expression patters (`re.Pattern`), any variable
+        name matching the pattern is omitted.
+    include_ppc : bool, default False
+        If True, include variables ending in _ppc, which denotes
+        posterior predictive checks, in the plot.
+    include_log_lik: bool, default False
+        If True, include variables starting with log_lik or loglik.
+        These denote log-likelihood contributions.
     transformation : function, str, or dict, default None
         A transformation to apply to each set of samples. The function
         must take a single array as input and return an array as the
@@ -1346,6 +1352,9 @@ def parcoord(
         Parallel coordinates plot.
 
     """
+    if parameters is not None and omit is not None:
+        raise RuntimeError("At least one of `parameters` and `omit` must be None.")
+
     omit = _parse_omit(omit, include_ppc, include_log_lik)
 
     # Default properties
@@ -1388,29 +1397,31 @@ def parcoord(
         warnings.warn("No divergence information available.")
 
     parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
+    parameters, labels = _parse_parameters(parameters)
+    df.rename(columns={param: label for param, label in zip(parameters, labels)})
 
     if transformation == "minmax":
         transformation = {
             param: lambda x: (x - x.min()) / (x.max() - x.min())
             if x.min() < x.max()
             else 0.0
-            for param in parameters
+            for param in labels
         }
     elif transformation == "rank":
-        transformation = {param: lambda x: st.rankdata(x) for param in parameters}
+        transformation = {param: lambda x: st.rankdata(x) for param in labels}
 
     if transformation is None:
-        transformation = {param: lambda x: x for param in parameters}
+        transformation = {param: lambda x: x for param in labels}
 
     if callable(transformation) or transformation is None:
-        transformation = {param: transformation for param in parameters}
+        transformation = {param: transformation for param in labels}
 
     for col, trans in transformation.items():
         df[col] = trans(df[col])
     df = df.melt(id_vars=["diverging__", "chain__", "draw__"])
 
     p = bokeh.plotting.figure(
-        x_range=bokeh.models.FactorRange(*parameters),
+        x_range=bokeh.models.FactorRange(*labels),
         toolbar_location=toolbar_location,
         **kwargs,
     )
@@ -1483,18 +1494,26 @@ def trace(
         Names of parameters to include in the plot. If None, use all
         parameters. For multidimensional parameters, each entry must be
         given separately, e.g., `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
+        If a given entry is a 2-tuple, the first entry is the variable
+        name, and the second entry is the label for the parameter in
+        plots.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         colorcet.b_glasbey_category10 from the colorcet package.
     omit : str, re.Pattern, or list or tuple of str and re.Pattern
         If `parameters` is not provided, all parameters are used in the
-        trace plot. We often want to ignore samples of posterior
-        predictive checks, log likelihoods, and other generated
-        quantities. For each string entry in `omit`, the variable given
-        by the string is omitted. For each entry that is a compiled
-        regular expression pattern (`re.Pattern`), any variable name
-        matching the pattern is omitted.
+        parallel coordinate plot. We often want to ignore samples of
+        some variables. For each string entry in `omit`, the variable
+        given by the string is omitted. For each entry that is a
+        compiled regular expression patters (`re.Pattern`), any variable
+        name matching the pattern is omitted.
+    include_ppc : bool, default False
+        If True, include variables ending in _ppc, which denotes
+        posterior predictive checks, in the plot.
+    include_log_lik: bool, default False
+        If True, include variables starting with log_lik or loglik.
+        These denote log-likelihood contributions.
     line_kwargs: dict
         Dictionary of kwargs to be passed to `p.multi_line()` in making
         the plot of non-divergent samples.
@@ -1506,6 +1525,9 @@ def trace(
     output : Bokeh gridplot
         Set of chain traces as a Bokeh gridplot.
     """
+    if parameters is not None and omit is not None:
+        raise RuntimeError("At least one of `parameters` and `omit` must be None.")
+
     omit = _parse_omit(omit, include_ppc, include_log_lik)
 
     if type(samples) != az.data.inference_data.InferenceData:
@@ -1515,6 +1537,7 @@ def trace(
         raise RuntimeError("Input samples do not have 'posterior' group.")
 
     parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
+    parameters, labels = _parse_parameters(parameters)
 
     # Default properties
     if palette is None:
@@ -1541,8 +1564,10 @@ def trace(
 
     plots = []
     grouped = df.groupby("chain__")
-    for i, var in enumerate(parameters):
-        p = bokeh.plotting.figure(x_axis_label=x_axis_label, y_axis_label=var, **kwargs)
+    for i, (var, label) in enumerate(zip(parameters, labels)):
+        p = bokeh.plotting.figure(
+            x_axis_label=x_axis_label, y_axis_label=label, **kwargs
+        )
         for i, (chain, group) in enumerate(grouped):
             p.line(
                 group["draw__"],
@@ -1572,11 +1597,10 @@ def corner(
     omit=None,
     include_ppc=False,
     include_log_lik=False,
-    labels=None,
     max_plotted=10000,
     datashade=False,
-    frame_width=150,
-    frame_height=150,
+    frame_width=None,
+    frame_height=None,
     plot_ecdf=False,
     ecdf_staircase=False,
     cmap="black",
@@ -1612,11 +1636,9 @@ def corner(
         InferenceData instance, `parameters` contains the names of
         parameters to include in the  plot. For multidimensional
         parameters, each entry must be given separately, e.g.,
-        `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
-    labels : list, default None
-        List of labels for the respective variables given in
-        `parameters`. If None, the variable names from `parameters` are
-        used.
+        `['alpha[0]', 'alpha[1]', 'beta[0,1]']`. If a given entry is a
+        2-tuple, the first entry is the variable name, and the second
+        entry is the label for the parameter in plots.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
@@ -1624,23 +1646,31 @@ def corner(
         `color_by_chain` is False.
     omit : str, re.Pattern, or list or tuple of str and re.Pattern
         If `parameters` is not provided, all parameters are used in the
-        corner plot. We often want to ignore samples of posterior
-        predictive checks, log likelihoods, and other generated
-        quantities. For each string entry in `omit`, the variable given
-        by the string is omitted. For each entry that is a compiled
-        regular expression pattern (`re.Pattern`), any variable name
-        matching the pattern is omitted. By default, any variable that
-        ends in '_ppc' and any variable beginning with 'log_lik' or
-        'loglik' are ignored.
+        parallel coordinate plot. We often want to ignore samples of
+        some variables. For each string entry in `omit`, the variable
+        given by the string is omitted. For each entry that is a
+        compiled regular expression patters (`re.Pattern`), any variable
+        name matching the pattern is omitted.
+    include_ppc : bool, default False
+        If True, include variables ending in _ppc, which denotes
+        posterior predictive checks, in the plot.
+    include_log_lik: bool, default False
+        If True, include variables starting with log_lik or loglik.
+        These denote log-likelihood contributions.
     max_plotted : int, default 10000
         Maximum number of points to be plotted.
     datashade : bool, default False
         Whether or not to convert sampled points to a raster image using
         Datashader.
-    frame_width : int, default 150
-        Width of each plot in the corner plot in pixels.
-    frame_height : int, default 150
-        Height of each plot in the corner plot in pixels.
+    frame_width : int or None, default None
+        Width of each plot in the corner plot in pixels. Default is set
+        based on number of parameters plotted. If None and
+        `frame_height` is specificed, `frame_width` is set to
+        `frame_height`.
+    frame_height : int or None, default None
+        Height of each plot in the corner plot in pixels. Default is set
+        based on number of parameters plotted. If None and `frame_width`
+        is specificed, `frame_height` is set to `frame_width`.
     plot_ecdf : bool, default False
         If True, plot ECDFs of samples on the diagonal of the corner
         plot. If False, histograms are plotted.
@@ -1699,6 +1729,9 @@ def corner(
     output : Bokeh gridplot
         Corner plot as a Bokeh gridplot.
     """
+    if parameters is not None and omit is not None:
+        raise RuntimeError("At least one of `parameters` and `omit` must be None.")
+
     omit = _parse_omit(omit, include_ppc, include_log_lik)
 
     # Datashading not implemented
@@ -1722,21 +1755,42 @@ def corner(
     if type(samples) == pd.core.frame.DataFrame:
         df = samples
         if parameters is None:
-            parameters = [col for col in df.columns if len(col) < 2 or col[-2:] != "__"]
+            parameters = [
+                col
+                for col in df.columns
+                if stan._screen_param(col, omit) and (len(col) < 2 or col[-2:] != "__")
+            ]
     elif type(samples) == np.ndarray:
         if parameters is None:
             parameters = list(range(samples.shape[1]))
         for param in parameters:
-            if type(param) != int:
+            if (type(param) in [tuple, list] and type(param[0]) != int) or type(
+                param
+            ) != int:
                 raise RuntimeError(
                     "When `samples` is inputted as a Numpy array, `parameters` must be"
                     " a list of indices."
                 )
-        new_parameters = [str(param) for param in parameters]
+        new_parameters = [
+            str(param) if type(param) == int else param[1] for param in parameters
+        ]
         df = pd.DataFrame(samples[:, parameters], columns=new_parameters)
         parameters = new_parameters
     else:
         parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
+
+    parameters, labels = _parse_parameters(parameters)
+
+    # Set default frame width and height.
+    if frame_height is None:
+        if frame_width is None:
+            default_dim = 25 * (9 - len(parameters)) if len(parameters) < 5 else 100
+            frame_height = default_dim
+            frame_width = default_dim
+        else:
+            frame_height = frame_width
+    elif frame_width is None:
+        frame_width = frame_height
 
     if len(parameters) > 6:
         raise RuntimeError("For space purposes, can show only six parameters.")
@@ -2254,6 +2308,24 @@ def _parse_omit(omit, include_ppc, include_log_lik):
         omit += [re.compile("(log_?lik.*\[?\d*\]?$)")]
 
     return tuple(omit)
+
+
+def _parse_parameters(params):
+    parameters = []
+    labels = []
+    for param in params:
+        if type(param) in (tuple, list):
+            if len(param) != 2:
+                raise RuntimeError("f{param} is not a proper parameter specification.")
+            parameters.append(param[0])
+            labels.append(param[1])
+        elif type(param) == str:
+            parameters.append(param)
+            labels.append(param)
+        else:
+            raise RuntimeError("f{param} is not a proper parameter specification.")
+
+    return parameters, labels
 
 
 @numba.jit(nopython=True)
