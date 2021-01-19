@@ -1792,14 +1792,28 @@ def _parameters_to_arviz_var_names(samples, parameters):
 
 def _samples_parameters_to_df(samples, parameters, omit=[]):
     """Convert ArviZ InferenceData posterior results to a data frame"""
-    var_names_arviz = _parameters_to_arviz_var_names(samples, parameters)
+    if parameters is None:
+        params = None
+    else:
+        param_dict = {}
+        for param in parameters:
+            if type(param) in [tuple, list]:
+                param_dict[param[0]] = param[1]
+            else:
+                param_dict[param] = param
+
+        params = list(param_dict.keys())
+        parameters = [(k, v) for k, v in param_dict.items()]
+
+    var_names_arviz = _parameters_to_arviz_var_names(samples, params)
 
     df = arviz_to_dataframe(samples, var_names=var_names_arviz)
 
     if parameters is None:
         parameters = [col for col in df.columns if _screen_param(col, omit)]
+        params = copy.copy(parameters)
 
-    cols = list(parameters) + ["chain__", "draw__", "diverging__"]
+    cols = list(params) + ["chain__", "draw__", "diverging__"]
 
     return parameters, df[cols].copy()
 
