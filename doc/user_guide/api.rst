@@ -68,7 +68,7 @@ Stan utilities
    clean_cmdstan
    cmdstan_version
    df_to_datadict_hier
-   posterior_to_dataframe
+   arviz_to_dataframe
    check_divergences
    check_treedepth
    check_energy
