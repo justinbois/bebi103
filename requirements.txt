@@ -1,4 +1,4 @@
-cmdstanpy>=0.9.67
+cmdstanpy>=0.9.68
 numpy
 numba
 xarray
@@ -7,6 +7,6 @@ pandas
 tqdm
 bokeh
 matplotlib
-arviz>=0.10.0
+arviz=0.11.1
 colorcet
 holoviews
