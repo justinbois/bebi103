@@ -571,11 +571,11 @@ def predictive_ecdf(
     data : Numpy array, shape (n,) or xarray DataArray, or None
         If not None, ECDF of measured data is overlaid with predictive
         ECDF.
-    diff : 'ecdf', 'iecdf', or None, default None
-        Referring to the variable as x, if `diff` is 'iecdf', for each
-        value of the ECDF, plot the value of x minus the median x. If
-        'ecdf', plot the value of the ECDF minus the median ECDF value.
-        If None, just plot the ECDFs.
+    diff : 'ecdf', 'iecdf', 'eppf', or None, default None
+        Referring to the variable as x, if `diff` is 'iecdf' or 'eppf',
+        for each value of the ECDF, plot the value of x minus the median
+        x. If 'ecdf', plot the value of the ECDF minus the median ECDF
+        value. If None, just plot the ECDFs.
     percentiles : list or tuple, default (95, 68)
         Percentiles for making colored envelopes for confidence
         intervals for the predictive ECDFs. Maximally four can be
@@ -629,6 +629,9 @@ def predictive_ecdf(
 
     if diff is not None:
         diff = diff.lower()
+
+    if diff == 'eppf':
+        diff = 'iecdf'
 
     if type(samples) != np.ndarray:
         if type(samples) == xarray.core.dataarray.DataArray:
