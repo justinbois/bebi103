@@ -594,7 +594,12 @@ def check_treedepth(samples, max_treedepth=10, quiet=False, return_diagnostics=F
         Number of samplers wherein the tree depth was greater than
         `max_treedepth`.
     """
-    n_too_deep = (samples.sample_stats.treedepth.values >= max_treedepth).sum()
+    # ArviZ v. 0.11.2 updated treedepth to be tree_depth
+    if az.__version__ >= "0.11.2":
+        n_too_deep = (samples.sample_stats.tree_depth.values >= max_treedepth).sum()
+    else:
+        n_too_deep = (samples.sample_stats.treedepth.values >= max_treedepth).sum()
+
     n_total = samples.sample_stats.dims["chain"] * samples.sample_stats.dims["draw"]
 
     if not quiet:
