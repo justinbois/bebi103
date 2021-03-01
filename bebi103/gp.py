@@ -359,7 +359,7 @@ def d1_d2_se_kernel(x1, x2, alpha, rho):
 
 
 def matern_kernel(x1, x2, alpha, rho, nu):
-    """Squared exponential kernel.
+    """Matern kernel.
 
     Parameters
     ----------
@@ -396,6 +396,40 @@ def matern_kernel(x1, x2, alpha, rho, nu):
     if nu == 2.5:
         return _matern_5_kernel(x1, x2, alpha, rho)
     return _matern_kernel(x1, x2, alpha, rho, nu)
+
+
+def periodic_kernel(x1, x2, alpha, rho):
+    """Periodic kernel.
+
+    Parameters
+    ----------
+    x1 : float or array
+        Point in the space of covariates.
+    x2 : float or array
+        Point in the space of covariates.
+    alpha : float
+        Marginalized standard deviation of the kernel.
+    rho : float
+        Length scale of the kernel.
+
+    Returns
+    -------
+    output : float
+        Value of returned by kernel evaluated at x1, x2.
+
+    """
+    # Make sure input is vectorial
+    try:
+        len_x1 = len(x1)
+    except:
+        x1 = np.array([x1])
+
+    try:
+        len_x2 = len(x2)
+    except:
+        x2 = np.array([x2])
+
+    return _periodic_kernel(x1, x2, alpha, rho)
 
 
 @numba.njit
