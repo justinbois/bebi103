@@ -14,4 +14,5 @@ The bebi103 package consists of a set of utilities for facilitate the visualizat
 - **viz**: Utilities for creating visualizations of data, but also of results from statistical inference calculations.
 - **bootstrap**: Utilities to perform bootstrap-based statistical inference calculations. 
 - **stan**: Utilities for using PyStan, CmdStanPy, and ArviZ for constructing, running, and parsing MCMC calculations with Stan.
+- **gp**: Utilities for performing inference using Gaussian processes.
 - **image**: Utilities for image processing applications.

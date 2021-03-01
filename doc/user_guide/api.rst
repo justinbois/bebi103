@@ -80,6 +80,29 @@ Stan utilities
    disable_logging
 
 
+Gaussian process utilities
+-----------------------------
+.. currentmodule:: bebi103.gp
+
+.. autosummary::
+   :toctree: generated/gp
+   :nosignatures:
+
+   se_kernel
+   d1_se_kernel
+   d2_se_kernel
+   d1_d2_se_kernel
+   matern_kernel
+   periodic_kernel
+   cov_exp_quad
+   cov_d1_exp_quad
+   cov_d1_d2_exp_quad
+   cov_matern
+   cov_periodic
+   cov_from_kernel
+   posterior_mean_cov
+
+
 Image processing utilities
 -----------------------------
 .. currentmodule:: bebi103.image
