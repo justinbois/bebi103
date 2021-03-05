@@ -53,6 +53,7 @@ import bokeh.plotting
 
 from . import viz
 
+
 def StanModel(
     file=None,
     charset="utf-8",
@@ -447,7 +448,7 @@ def df_to_datadict_hier(
     return data, new_df
 
 
-def arviz_to_dataframe(data, var_names=None, diagnostics=('diverging',)):
+def arviz_to_dataframe(data, var_names=None, diagnostics=("diverging",)):
     """Convert ArviZ InferenceData to a Pandas data frame.
 
     Any multi-dimensional parameters are converted to one-dimensional
@@ -502,12 +503,14 @@ def arviz_to_dataframe(data, var_names=None, diagnostics=('diverging',)):
     diag_dict = {}
     if diagnostics is not None and len(diagnostics) > 0:
         if not hasattr(data, "sample_stats"):
-            raise RuntimeError("Asking for diagnostics, but input has not attribute sample_stats")
+            raise RuntimeError(
+                "Asking for diagnostics, but input has not attribute sample_stats"
+            )
         for diag in diagnostics:
             if hasattr(data.sample_stats, diag):
                 diag_dict[diag + "__"] = np.ravel(data.sample_stats[diag])
             else:
-                raise RuntimeError(f'{diag} not in data.sample_stats.')
+                raise RuntimeError(f"{diag} not in data.sample_stats.")
 
     cols, data_as_ndarray = _xarray_to_ndarray(data.posterior, var_names=var_names)
 
@@ -1715,7 +1718,9 @@ def _xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
 
     """
 
-    names, vals = arviz.plots.plot_utils.xarray_to_ndarray(ds, var_names=var_names, combined=True)
+    names, vals = arviz.plots.plot_utils.xarray_to_ndarray(
+        ds, var_names=var_names, combined=True
+    )
 
     names = [
         name.replace("\n", "[").replace(", ", ",") + "]" if "\n" in name else name

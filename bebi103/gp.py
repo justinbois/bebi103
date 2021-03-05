@@ -445,7 +445,7 @@ def _d1_se_kernel(x1, x2, alpha, rho):
     x_diff = x1 - x2
     rho2 = rho ** 2
 
-    return -alpha ** 2 * x_diff * np.exp(-x_diff ** 2 / 2.0 / rho2) / rho2
+    return -(alpha ** 2) * x_diff * np.exp(-(x_diff ** 2) / 2.0 / rho2) / rho2
 
 
 @numba.njit
@@ -457,10 +457,10 @@ def _d2_se_kernel(x1, x2, alpha, rho):
 @numba.njit
 def _d1_d2_se_kernel(x1, x2, alpha, rho):
     """Derivative of first variable of squared exponential kernel."""
-    x_diff2 = (x1 - x2)**2
-    rho2 = rho**2
+    x_diff2 = (x1 - x2) ** 2
+    rho2 = rho ** 2
 
-    return (alpha / rho)**2 * np.exp(-x_diff2 / 2.0 / rho2) * (1 - x_diff2 / rho2)
+    return (alpha / rho) ** 2 * np.exp(-x_diff2 / 2.0 / rho2) * (1 - x_diff2 / rho2)
 
 
 def _matern_kernel(x1, x2, alpha, rho, nu):
@@ -951,4 +951,3 @@ def _solve_mean_cov(y, Ky, Kstar, Kstarstar, delta):
     )
 
     return mstar, Sigmastar
-
