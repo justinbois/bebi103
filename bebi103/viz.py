@@ -406,11 +406,11 @@ def _ecdf(
 
         # Rays for ends
         if complementary:
-            p.ray(x[0], 1, None, np.pi, **kwargs)
-            p.ray(x[-1], 0, None, 0, **kwargs)
+            p.ray(x=x[0], y=1, length=0, angle=np.pi, **kwargs)
+            p.ray(x=x[-1], y=0, length=0, angle=0, **kwargs)
         else:
-            p.ray(x[0], 0, None, np.pi, **kwargs)
-            p.ray(x[-1], 1, None, 0, **kwargs)
+            p.ray(x=x[0], y=0, length=0, angle=np.pi, **kwargs)
+            p.ray(x=x[-1], y=1, length=0, angle=0, **kwargs)
     else:
         p.circle(x, y, **kwargs)
 
@@ -481,8 +481,8 @@ def _histogram(
         p = bokeh.plotting.figure(y_axis_label=y_axis_label, y_range=y_range, **kwargs)
 
     # Compute histogram
-    bins = _bins_to_np(df[x].values, bins)
-    e0, f0 = _compute_histogram(df[x].values, bins, density)
+    bins = _bins_to_np(data, bins)
+    e0, f0 = _compute_histogram(data, bins, density)
 
     if kind == "step":
         p.line(e0, f0, **line_kwargs)
@@ -630,8 +630,8 @@ def predictive_ecdf(
     if diff is not None:
         diff = diff.lower()
 
-    if diff == 'eppf':
-        diff = 'iecdf'
+    if diff == "eppf":
+        diff = "iecdf"
 
     if type(samples) != np.ndarray:
         if type(samples) == xarray.core.dataarray.DataArray:
@@ -757,16 +757,42 @@ def predictive_ecdf(
     # The median as a solid line
     if diff == "ecdf":
         p.ray(
-            df_ecdf["50"].min(), 0.0, None, np.pi, line_width=2, color=colors[color][-1]
+            x=df_ecdf["50"].min(),
+            y=0.0,
+            length=0,
+            angle=np.pi,
+            line_width=2,
+            color=colors[color][-1],
         )
-        p.ray(df_ecdf["50"].min(), 0.0, None, 0, line_width=2, color=colors[color][-1])
+        p.ray(
+            x=df_ecdf["50"].min(),
+            y=0.0,
+            length=0,
+            angle=0,
+            line_width=2,
+            color=colors[color][-1],
+        )
     elif diff == "iecdf":
         p.line([0.0, 0.0], [0.0, 1.0], line_width=2, color=colors[color][-1])
     else:
         x, y_median = cdf_to_staircase(df_ecdf["50"], y)
         p.line(x, y_median, line_width=2, color=colors[color][-1])
-        p.ray(x.min(), 0.0, None, np.pi, line_width=2, color=colors[color][-1])
-        p.ray(x.max(), diff is None, None, 0, line_width=2, color=colors[color][-1])
+        p.ray(
+            x=x.min(),
+            y=0.0,
+            length=0,
+            angle=np.pi,
+            line_width=2,
+            color=colors[color][-1],
+        )
+        p.ray(
+            x=x.max(),
+            y=int(diff is None),
+            length=0,
+            angle=0,
+            line_width=2,
+            color=colors[color][-1],
+        )
 
     # Overlay data set
     if data is not None:
@@ -788,18 +814,18 @@ def predictive_ecdf(
             # Extend to infinity
             if diff != "iecdf":
                 p.ray(
-                    x_data.min(),
-                    0.0,
-                    None,
-                    np.pi,
+                    x=x_data.min(),
+                    y=0.0,
+                    length=0,
+                    angle=np.pi,
                     line_width=data_size,
                     color=data_color,
                 )
                 p.ray(
-                    x_data.max(),
-                    diff is None,
-                    None,
-                    0,
+                    x=x_data.max(),
+                    y=int(diff is None),
+                    length=0,
+                    angle=0,
                     line_width=data_size,
                     color=data_color,
                 )
@@ -1737,10 +1763,6 @@ def corner(
 
     omit = _parse_omit(omit, include_ppc, include_log_lik)
 
-    # Datashading not implemented
-    if datashade:
-        raise NotImplementedError("Datashading is not yet implemented.")
-
     # Tools, also allowing linked brushing
     tools = "pan,box_zoom,wheel_zoom,box_select,lasso_select,save,reset"
 
@@ -1848,6 +1870,15 @@ def corner(
     cds = bokeh.models.ColumnDataSource(df.loc[df["diverging__"] == 0, :].iloc[inds, :])
     cds_div = bokeh.models.ColumnDataSource(df.loc[df["diverging__"] == 1, :])
 
+    # Set up contour settings
+    contour_lines_kwargs = dict(
+        smooth=smooth,
+        levels=levels,
+        weights=weights,
+        extend_domain=extend_contour_domain,
+        bins=bins_2d,
+    )
+
     # Just make a single plot if only one parameter
     if len(parameters) == 1:
         x = parameters[0]
@@ -1877,7 +1908,7 @@ def corner(
                 y_axis_label="density",
             )
             p = _histogram(
-                df[x],
+                df[x].values,
                 bins=bins,
                 density=True,
                 line_kwargs=dict(line_width=2, line_color=single_var_color),
@@ -1897,48 +1928,27 @@ def corner(
         if i != j:
             y = parameters[i]
             x_range, y_range = _data_range(df, x, y)
-            plots[i][j] = bokeh.plotting.figure(
+            scatter_figure_kwargs = dict(
                 x_range=x_range,
                 y_range=y_range,
                 frame_width=frame_width,
                 frame_height=frame_height,
-                align="end",
-                tools=tools,
             )
 
-            plots[i][j].circle(
-                source=cds,
-                x=x,
-                y=y,
-                size=2,
-                alpha=alpha,
-                color=cmap,
-                nonselection_fill_alpha=0,
-                nonselection_line_alpha=0,
+            plots[i][j] = _corner_scatter(
+                cds,
+                cds_div,
+                x,
+                y,
+                datashade,
+                alpha,
+                cmap,
+                show_contours,
+                divergence_color,
+                contour_color,
+                contour_lines_kwargs,
+                scatter_figure_kwargs,
             )
-
-            if divergence_color is not None:
-                plots[i][j].circle(
-                    source=cds_div,
-                    x=x,
-                    y=y,
-                    size=2,
-                    color=divergence_color,
-                    nonselection_fill_alpha=0,
-                    nonselection_line_alpha=0,
-                )
-
-            if show_contours:
-                xs, ys = contour_lines_from_samples(
-                    df[x].values,
-                    df[y].values,
-                    bins=bins_2d,
-                    smooth=smooth,
-                    levels=levels,
-                    weights=weights,
-                    extend_domain=extend_contour_domain,
-                )
-                plots[i][j].multi_line(xs, ys, line_color=contour_color, line_width=2)
         else:
             if plot_ecdf:
                 x_range, _ = _data_range(df, x, x)
@@ -2198,6 +2208,68 @@ def mpl_cmap_to_color_mapper(cmap):
     cm = mpl_get_cmap(cmap)
     palette = [rgb_frac_to_hex(cm(i)[:3]) for i in range(256)]
     return bokeh.models.LinearColorMapper(palette=palette)
+
+
+def _corner_scatter(
+    cds,
+    cds_div,
+    x,
+    y,
+    datashade,
+    alpha,
+    cmap,
+    show_contours,
+    divergence_color,
+    contour_color,
+    contour_lines_kwargs,
+    figure_kwargs,
+):
+    """Create scatter plot for non-datashaded corner plot."""
+    if datashade:
+        cmap_arg = list(cmap) if type(cmap) == tuple else cmap
+        xlim = tuple(figure_kwargs.pop("x_range"))
+        ylim = tuple(figure_kwargs.pop("y_range"))
+        p = hv.render(
+            hv.operation.datashader.dynspread(
+                hv.operation.datashader.datashade(
+                    hv.Points(data=cds.data, kdims=[x, y]),
+                    cmap=cmap_arg,
+                    cnorm="linear",
+                )
+            ).opts(show_grid=True, align="end", xlim=xlim, ylim=ylim, **figure_kwargs)
+        )
+    else:
+        p = bokeh.plotting.figure(align="end", **figure_kwargs)
+
+        p.circle(
+            source=cds,
+            x=x,
+            y=y,
+            size=2,
+            alpha=alpha,
+            color=cmap,
+            nonselection_fill_alpha=0,
+            nonselection_line_alpha=0,
+        )
+
+    if divergence_color is not None:
+        p.circle(
+            source=cds_div,
+            x=x,
+            y=y,
+            size=2,
+            color=divergence_color,
+            nonselection_fill_alpha=0,
+            nonselection_line_alpha=0,
+        )
+
+    if show_contours:
+        xs, ys = contour_lines_from_samples(
+            cds.data[x], cds.data[y], **contour_lines_kwargs
+        )
+        p.multi_line(xs, ys, line_color=contour_color, line_width=2)
+
+    return p
 
 
 def _ecdf_vals(data, staircase=False, complementary=False):
@@ -2522,7 +2594,7 @@ def contour_lines_from_samples(
     levels : float, list of floats, or None
         The levels of the contours. To enclose 95% of the samples, use
         `levels=0.95`. If provided as a list, multiple levels are used.
-        If None, `levels` is approximated [0.12, 0.39, 0.68, 0.86].
+        If None, `levels` is approximately [0.12, 0.39, 0.68, 0.86].
     bins : int, default 50
         Binning of samples into square bins is necessary to construct
         the contours. `bins` gives the number of bins in each direction.
