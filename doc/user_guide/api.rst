@@ -88,6 +88,8 @@ Gaussian process utilities
    :toctree: generated/gp
    :nosignatures:
 
+   linear_kernel
+   polynomial_kernel
    se_kernel
    d1_se_kernel
    d2_se_kernel

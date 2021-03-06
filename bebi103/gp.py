@@ -199,7 +199,7 @@ def _vector_to_array(x):
     return x
 
 
-def cov_from_kernel(X1, X2, kernel, **kernel_params):
+def cov_from_kernel(X1, X2, kernel, delta=1e-8, **kernel_params):
     """Return covariance matrix for specified kernel."""
     X1 = _vector_to_array(X1)
     X2 = _vector_to_array(X2) if X2 is not None else None
@@ -220,7 +220,7 @@ def cov_from_kernel(X1, X2, kernel, **kernel_params):
             for j in range(m):
                 K[i, j] = kernel(X1[i, :], X2[j, :], **kernel_params)
 
-    return K
+    return K + np.diag(np.ones(len(K))) * delta
 
 
 @numba.njit
@@ -235,6 +235,77 @@ def _se_covariance_matrix_sym(X, alpha, rho):
             K[j, i] = K[i, j]
 
     return K
+
+
+def linear_kernel(x1, x2, sigma_b=0.0, sigma=1.0):
+    """Linear kernel. k = sigma_b ** 2 + sigma ** 2 * np.dot(x1, x2)
+
+    Parameters
+    ----------
+    x1 : float or array
+        Point in the space of covariates.
+    x2 : float or array
+        Point in the space of covariates.
+    sigma_b : float, default 0.0
+        Offset of linear kernel.
+    sigma : float or array, default 1.0
+        scale of linear kernel. If an array, must be of the same length
+        as x1 and x2.
+
+    Returns
+    -------
+    output : float
+        Value of returned by kernel evaluated at x1, x2.
+
+    """
+    # Make sure input is vectorial
+    try:
+        len_x1 = len(x1)
+    except:
+        x1 = np.array([x1])
+
+    try:
+        len_x2 = len(x2)
+    except:
+        x2 = np.array([x2])
+
+    return sigma_b**2 + sigma**2 * np.dot(x1, x2)
+
+
+def polynomial_kernel(x1, x2, sigma_b=1.0, sigma_p=1.0, d=1):
+    """Polynomial kernel: (sigma_0^2 + sigma_p^2 x1 . x2)^d
+
+    Parameters
+    ----------
+    x1 : float or array
+        Point in the space of covariates.
+    x2 : float or array
+        Point in the space of covariates.
+    sigma_b : float, default 1.0
+        Offset of polynomial kernel.
+    sigma_p : float, default 1.0
+        Scale of polynomial kernel.
+    d : int, default 1
+        Degree of polynomial kernel
+
+    Returns
+    -------
+    output : float
+        Value of returned by kernel evaluated at x1, x2.
+
+    """
+    # Make sure input is vectorial
+    try:
+        len_x1 = len(x1)
+    except:
+        x1 = np.array([x1])
+
+    try:
+        len_x2 = len(x2)
+    except:
+        x2 = np.array([x2])
+
+    return (sigma_b**2 + sigma_p**2 * np.dot(x1, x2))**d
 
 
 def se_kernel(x1, x2, alpha, rho):
@@ -398,7 +469,7 @@ def matern_kernel(x1, x2, alpha, rho, nu):
     return _matern_kernel(x1, x2, alpha, rho, nu)
 
 
-def periodic_kernel(x1, x2, alpha, rho):
+def periodic_kernel(x1, x2, alpha, rho, T):
     """Periodic kernel.
 
     Parameters
@@ -411,6 +482,8 @@ def periodic_kernel(x1, x2, alpha, rho):
         Marginalized standard deviation of the kernel.
     rho : float
         Length scale of the kernel.
+    T : float
+        Period of kernel.
 
     Returns
     -------
@@ -429,7 +502,7 @@ def periodic_kernel(x1, x2, alpha, rho):
     except:
         x2 = np.array([x2])
 
-    return _periodic_kernel(x1, x2, alpha, rho)
+    return _periodic_kernel(x1, x2, alpha, rho, T)
 
 
 @numba.njit
@@ -514,7 +587,7 @@ def _matern_5_kernel(x1, x2, alpha, rho):
 def _periodic_kernel(x1, x2, alpha, rho, T):
     """Perdioic kernel."""
     x_diff = x1 - x2
-    exp_arg = 2.0 / rho ** 2 * sin(np.pi / T * np.sqrt(np.dot(x_diff, x_diff)))
+    exp_arg = 2.0 / rho ** 2 * np.sin(np.pi / T * np.sqrt(np.dot(x_diff, x_diff))) ** 2
 
     return alpha ** 2 * np.exp(-exp_arg)
 
@@ -710,7 +783,7 @@ def _periodic_covariance_matrix(X1, X2, alpha, rho, T):
 
 
 @numba.njit
-def _periodic_covariance_matrix_sym(X, alpha, rho):
+def _periodic_covariance_matrix_sym(X, alpha, rho, T):
     """Return covariance matrix for squared exponential kernel."""
     n = X.shape[0]
     K = np.empty((n, n))
