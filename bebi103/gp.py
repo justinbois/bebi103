@@ -975,7 +975,7 @@ def posterior_mean_cov(
         Kstar = cov_periodic(X, Xstar, **kernel_hyperparams)
         Kstarstar = cov_periodic(Xstar, Xstar, **kernel_hyperparams)
     else:
-        Ky = cov_from_kernel(X, Xstar, kernel, **kernel_params)
+        Ky = cov_from_kernel(X, Xstar, kernel, **kernel_hyperparams)
         Kstar = cov_from_kernel(X, Xstar, **kernel_hyperparams)
         Kstarstar = cov_from_kernel(Xstar, Xstar, **kernel_hyperparams)
 
