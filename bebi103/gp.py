@@ -199,8 +199,24 @@ def _vector_to_array(x):
     return x
 
 
-def cov_from_kernel(X1, X2, kernel, delta=1e-8, **kernel_params):
-    """Return covariance matrix for specified kernel."""
+def cov_from_kernel(X1, X2, kernel, **kernel_params):
+    """Return covariance matrix for specified kernel.
+
+    Parameters
+    ----------
+    X1 : 1D, shape (n,) or 2D array, shape (n, d)
+        Array of n points to compute kernel. If a 1D array, assume the
+        points are one-dimensional. If a 2D array, assume the points are
+        d-dimensional.
+    X2 : 1D, shape (m, ) or 2D array, shape (m, d) or None
+        Array of m points to compute kernel. If a 1D array, assume the
+        points are one-dimensional. If a 2D array, assume the points are
+        d-dimensional. If None, assume m = 0 in output.
+    kernel : function
+        Function of the form kernel(x1, x2, **kernel_params) that
+        returns as scalar value that is the kernel evaluated at points
+        x1, x2.
+    """
     X1 = _vector_to_array(X1)
     X2 = _vector_to_array(X2) if X2 is not None else None
 
@@ -220,7 +236,7 @@ def cov_from_kernel(X1, X2, kernel, delta=1e-8, **kernel_params):
             for j in range(m):
                 K[i, j] = kernel(X1[i, :], X2[j, :], **kernel_params)
 
-    return K + np.diag(np.ones(len(K))) * delta
+    return K
 
 
 @numba.njit
@@ -269,7 +285,7 @@ def linear_kernel(x1, x2, sigma_b=0.0, sigma=1.0):
     except:
         x2 = np.array([x2])
 
-    return sigma_b**2 + sigma**2 * np.dot(x1, x2)
+    return sigma_b ** 2 + sigma ** 2 * np.dot(x1, x2)
 
 
 def polynomial_kernel(x1, x2, sigma_b=1.0, sigma_p=1.0, d=1):
@@ -305,7 +321,7 @@ def polynomial_kernel(x1, x2, sigma_b=1.0, sigma_p=1.0, d=1):
     except:
         x2 = np.array([x2])
 
-    return (sigma_b**2 + sigma_p**2 * np.dot(x1, x2))**d
+    return (sigma_b ** 2 + sigma_p ** 2 * np.dot(x1, x2)) ** d
 
 
 def se_kernel(x1, x2, alpha, rho):
@@ -975,9 +991,11 @@ def posterior_mean_cov(
         Kstar = cov_periodic(X, Xstar, **kernel_hyperparams)
         Kstarstar = cov_periodic(Xstar, Xstar, **kernel_hyperparams)
     else:
-        Ky = cov_from_kernel(X, Xstar, kernel, **kernel_hyperparams)
-        Kstar = cov_from_kernel(X, Xstar, **kernel_hyperparams)
-        Kstarstar = cov_from_kernel(Xstar, Xstar, **kernel_hyperparams)
+        Ky = cov_from_kernel(X, X, kernel, **kernel_hyperparams) + np.diag(
+            sigma2
+        )
+        Kstar = cov_from_kernel(X, Xstar, kernel, **kernel_hyperparams)
+        Kstarstar = cov_from_kernel(Xstar, Xstar, kernel, **kernel_hyperparams)
 
     return _solve_mean_cov(y, Ky, Kstar, Kstarstar, delta)
 
