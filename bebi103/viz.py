@@ -2022,14 +2022,23 @@ def corner(
     # Take off tick labels
     for i in range(len(parameters) - 1):
         for j in range(i + 1):
-            plots[i][j].xaxis.major_label_text_font_size = "0pt"
+            plots[i][j].xaxis.visible = False
+
+            # To keep darkened part of axis visible, instead use:
+            # plots[i][j].xaxis.major_label_text_font_size = "0pt"
 
     if not plot_ecdf:
-        plots[0][0].yaxis.major_label_text_font_size = "0pt"
+        plots[0][0].yaxis.visible = False
+
+        # To keep darkened part of axis visible, instead use:
+        # plots[0][0].yaxis.major_label_text_font_size = "0pt"
 
     for i in range(1, len(parameters)):
         for j in range(1, i + 1):
-            plots[i][j].yaxis.major_label_text_font_size = "0pt"
+            plots[i][j].yaxis.visible = False
+
+            # To keep darkened part of axis visible, instead use:
+            # plots[i][j].yaxis.major_label_text_font_size = "0pt"
 
     grid = bokeh.layouts.gridplot(plots, toolbar_location="left")
 

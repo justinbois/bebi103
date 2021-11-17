@@ -5,6 +5,60 @@ import scipy.special
 _float_eps = 1.0e-14
 
 
+def append_sort_index(Xstar, X, index_origin=0):
+    """Add the entries of X to Xstar, sort the result, and find indices
+    in the results where the entries in X appear. Typically, Xstar is
+    an array of x-values for which a GP is to be coputed and X is an
+    array of x-values for which there are data.
+
+    Parameters
+    ----------
+    Xstar : array, shape (n,) or (n, d)
+        Array whose unique, sorted entries are returned.
+    X : array, shape (m,) or (m, d)
+        Array to be added to Xstar and whose entries have their indices
+        returned.
+    index_origin : int, default 0
+        Origin of indexing. Choose `index_origin=1` for use with Stan.
+
+    Returns
+    -------
+    X_out : array, 1D if X is shape (n,), 2D if X is shape (n, d)
+        Sorted, unique entries of concatenation of Xstar and X.
+    inds : array, shape (n,)
+        Array of indices such that X_out[inds] = X.
+    """
+    Xstar = np.array(Xstar)
+    X = np.array(X)
+
+    if len(X.shape) == 1:
+        X_out = np.unique(np.concatenate((Xstar, X)))
+        inds = np.searchsorted(X_out, X)
+    else:
+        if X.shape[1] != Xstar.shape[1]:
+            raise RuntimeError("Shape mismatch in `Xstar` and `X`.")
+        X_out = np.unique(np.concatenate((Xstar, X), axis=0), axis=0)
+        inds = _searchsorted_vector(X_out, X)
+
+    return X_out, inds + index_origin
+
+
+@numba.njit
+def _searchsorted_vector(X_unique, X):
+    """Search a 2-D array that is sorted along the row axis.
+    """
+    X_unique_inds = np.empty(len(X), dtype=np.int64)
+
+    for i, x in enumerate(X):
+        j = 0
+        while j < len(X_unique) and not (x == X_unique[j]).all():
+            j += 1
+        if j == len(X_unique):
+            raise RuntimeError("Not finding.")
+        X_unique_inds[i] = j
+
+    return X_unique_inds
+
 def cov_exp_quad(X1, X2=None, alpha=1.0, rho=1.0):
     """Return covariance matrix for squared exponential kernel.
 
