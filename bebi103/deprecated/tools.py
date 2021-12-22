@@ -1,7 +1,7 @@
 import numpy as np
 import statsmodels.tools.numdiff as smnd
 
-def approx_hess(x, f, epsilon=None, args=(), kwargs={}):
+def approx_hess(x, f, epsilon=None, args=(), kwargs=None):
     """
     .. deprecated:: 0.0.23
           `approx_hess` will be removed in in version 1.0.0.
@@ -87,6 +87,9 @@ def approx_hess(x, f, epsilon=None, args=(), kwargs={}):
     OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
     DAMAGE.
     """
+    if kwargs is None:
+        kwargs = {}
+
     warnings.warn('`approx_hess` is deprecated and will be removed in future versions. Use `box`.', DeprecationWarning)
     n = len(x)
     h = smnd._get_epsilon(x, 4, epsilon, n)

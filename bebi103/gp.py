@@ -512,7 +512,8 @@ def matern_kernel(x1, x2, alpha, rho, nu):
         Marginalized standard deviation of the kernel.
     rho : float
         Length scale of the kernel.
-
+    nu : float
+        Roughness parameter of the kernel
     Returns
     -------
     output : float

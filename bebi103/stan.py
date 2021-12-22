@@ -21,8 +21,11 @@ import pandas as pd
 import xarray
 
 try:
-    import arviz as az
-    import arviz.plots.plot_utils
+    # Import ArviZ catching annoying warning about colors
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        import arviz as az
+        import arviz.sel_utils
 except:
     raise RuntimeError("Could not import ArviZ. Perhaps it is not installed.")
 
@@ -1138,11 +1141,11 @@ def sbc(
     posterior_model_data=None,
     measured_data=None,
     var_names=None,
-    measured_data_dtypes={},
+    measured_data_dtypes=None,
     posterior_predictive_var_names=None,
     log_likelihood_var_name=None,
-    sampling_kwargs={},
-    diagnostic_check_kwargs={},
+    sampling_kwargs=None,
+    diagnostic_check_kwargs=None,
     cores=1,
     N=400,
     n_prior_draws_for_sd=1000,
@@ -1186,17 +1189,17 @@ def sbc(
     log_likelihood_var_name : string, default None
         Name of variable in the Stan model that stores the log
         likelihood. This is ignored in the SBC analysis.
-    measured_data_dtypes : dict, default {}
+    measured_data_dtypes : dict, default None
         The key in the dtypes dict is a string representing the data
         name, and the corresponding item is its dtype, almost always
         either `int` or `float`.
-    sampling_kwargs : dict, default {}
+    sampling_kwargs : dict, default None
         kwargs to be passed to `sm.sample()` for a CmdStanPy model `sm`
         or to `sm.sampling()` for a PyStan model `sm`. If using
         CmdStanPy, the 'output_dir' kwarg is not allowed because
         unambiguous naming is not possible if new sampling is done
         more than once per minute, given CmdStanPy's naming convention.
-    diagnostic_check_kwargs : dict, default {}
+    diagnostic_check_kwargs : dict, default None
         kwargs to pass to `check_all_diagnostics()`. If `quiet` and/or
         `return_diagnostics` are given, they are ignored.
         `max_treedepth` is inferred from `sampling_kwargs`.
@@ -1243,6 +1246,15 @@ def sbc(
     by Talts, et al., for details.
 
     """
+    if measured_data_dtypes is None:
+        measured_data_dtypes = {}
+
+    if sampling_kwargs is None:
+        sampling_kwargs = {}
+
+    if diagnostic_check_kwargs is None:
+        diagnostic_check_kwargs = {}
+
     if prior_predictive_model is None:
         raise RuntimeError("`prior_predictive_model` must be specified.")
     if posterior_model is None:
@@ -1718,7 +1730,7 @@ def _xarray_to_ndarray(ds, var_names=None, omit_dunders=True):
 
     """
 
-    names, vals = arviz.plots.plot_utils.xarray_to_ndarray(
+    names, vals = arviz.sel_utils.xarray_to_ndarray(
         ds, var_names=var_names, combined=True
     )
 
@@ -1789,7 +1801,7 @@ def _parameters_to_arviz_var_names(samples, parameters):
             for param in parameters
         ]
 
-        var_names = arviz.plots.plot_utils.purge_duplicates(var_names)
+        var_names = arviz.sel_utils.purge_duplicates(var_names)
 
         for var_name in var_names:
             if var_name not in sample_vars:

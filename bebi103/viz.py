@@ -9,8 +9,10 @@ import scipy.stats as st
 import numba
 
 try:
-    import arviz as az
-    import arviz.plots.plot_utils
+    # Import ArviZ catching annoying warning about colors
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        import arviz as az
 except:
     warnings.warn(
         "Could not import ArviZ. Perhaps it is not installed."
@@ -52,7 +54,7 @@ except:
 
 
 def confints(
-    summaries, p=None, marker_kwargs={}, line_kwargs={}, palette=None, **kwargs
+    summaries, p=None, marker_kwargs=None, line_kwargs=None, palette=None, **kwargs
 ):
     """Make a horizontal plot of centers/conf ints with error bars.
 
@@ -71,9 +73,9 @@ def confints(
         plot. If specified, it is important that `p.y_range` be set to
         contain all of the values in the labels provided in the
         `summaries` input. If `p` is None, then a new figure is created.
-    marker_kwargs : dict, default {}
+    marker_kwargs : dict, default None
         Kwargs to be passed to p.circle() for plotting estimates.
-    line_kwargs : dict, default {}
+    line_kwargs : dict, default None
         Kwargs passsed to p.line() to plot the confidence interval.
     palette : list, str, or None
         If None, default colors (or those given in `marker_kwargs` and
@@ -87,6 +89,12 @@ def confints(
     output : Bokeh figure
         Plot of error bars.
     """
+    if marker_kwargs is None:
+        marker_kwargs = {}
+
+    if line_kwargs is None:
+        line_kwargs = {}
+
     n = len(summaries)
 
     labels = [summary["label"] for summary in summaries]
@@ -147,8 +155,8 @@ def fill_between(
     x2=None,
     y2=None,
     show_line=True,
-    patch_kwargs={},
-    line_kwargs={},
+    patch_kwargs=None,
+    line_kwargs=None,
     p=None,
     **kwargs,
 ):
@@ -167,9 +175,9 @@ def fill_between(
         Array of y-values for second curve
     show_line : bool, default True
         If True, show the lines on the edges of the fill.
-    patch_kwargs : dict
+    patch_kwargs : dict, defaukt None
         Any kwargs passed into p.patch(), which generates the fill.
-    line_kwargs : dict
+    line_kwargs : dict, default None
         Any kwargs passed into p.line() in generating the line around
         the fill.
     p : bokeh.plotting.Figure instance, or None (default)
@@ -184,6 +192,11 @@ def fill_between(
     output : bokeh.plotting.Figure instance
         Plot populated with fill-between.
     """
+    if line_kwargs is None:
+        line_kwargs = {}
+
+    if patch_kwargs is None:
+        patch_kwargs = {}
 
     if "plot_height" not in kwargs and "frame_height" not in kwargs:
         kwargs["frame_height"] = 275
@@ -215,9 +228,9 @@ def qqplot(
     samples,
     data,
     percentile=95,
-    patch_kwargs={},
-    line_kwargs={},
-    diag_kwargs={},
+    patch_kwargs=None,
+    line_kwargs=None,
+    diag_kwargs=None,
     p=None,
     **kwargs,
 ):
@@ -232,13 +245,13 @@ def qqplot(
         One-dimensional data set to use in Q-Q plot.
     percentile : int or float, default 95
         Which percentile to use in displaying the Q-Q plot.
-    patch_kwargs : dict
+    patch_kwargs : dict, default None
         Any kwargs passed into p.patch(), which generates the filled
         region of the Q-Q plot..
-    line_kwargs : dict
+    line_kwargs : dict, default None
         Any kwargs passed into p.line() in generating the line around
         the fill.
-    diag_kwargs : dict
+    diag_kwargs : dict, default None
         Any kwargs to be passed into p.line() in generating diagonal
         reference line of Q-Q plot.
     p : bokeh.plotting.Figure instance, or None (default)
@@ -253,6 +266,15 @@ def qqplot(
     output : bokeh.plotting.Figure instance
         Plot populated with Q-Q plot.
     """
+    if line_kwargs is None:
+        line_kwargs = {}
+
+    if patch_kwargs is None:
+        patch_kwargs = {}
+
+    if diag_kwargs is None:
+        diag_kwargs = {}
+
     if type(samples) != np.ndarray:
         if type(samples) == xarray.core.dataarray.DataArray:
             samples = samples.squeeze().values
@@ -423,8 +445,8 @@ def _histogram(
     p=None,
     density=False,
     kind="step",
-    line_kwargs={},
-    patch_kwargs={},
+    line_kwargs=None,
+    patch_kwargs=None,
     **kwargs,
 ):
     """
@@ -451,10 +473,10 @@ def _histogram(
     kind : str, default 'step'
         The kind of histogram to display. Allowed values are 'step' and
         'step_filled'.
-    line_kwargs : dict
+    line_kwargs : dict, default None
         Any kwargs to be passed to p.line() in making the line of the
         histogram.
-    patch_kwargs : dict
+    patch_kwargs : dict, default None
         Any kwargs to be passed to p.patch() in making the fill of the
         histogram.
     kwargs : dict
@@ -465,6 +487,12 @@ def _histogram(
     output : Bokeh figure
         Figure populated with histogram.
     """
+    if line_kwargs is None:
+        line_kwargs = {}
+
+    if patch_kwargs is None:
+        patch_kwargs = {}
+
     if data is None:
         raise RuntimeError("Input `data` must be specified.")
 
@@ -852,7 +880,7 @@ def predictive_regression(
     diff=False,
     percentiles=[95, 68],
     color="blue",
-    data_kwargs={},
+    data_kwargs=None,
     p=None,
     **kwargs,
 ):
@@ -878,7 +906,7 @@ def predictive_regression(
         One of ['green', 'blue', 'red', 'gray', 'purple', 'orange'].
         There are used to make the color scheme of shading of
         percentiles.
-    data_kwargs : dict
+    data_kwargs : dict, default None
         Any kwargs to be passed to p.circle() when plotting the data
         points.
     p : bokeh.plotting.Figure instance, or None (default)
@@ -894,6 +922,9 @@ def predictive_regression(
         the samples. The shading goes according to percentiles of
         samples, with the median plotted as line in the middle.
     """
+    if data_kwargs is None:
+        data_kwargs = {}
+
     if type(samples) != np.ndarray:
         if type(samples) == xarray.core.dataarray.DataArray:
             samples = samples.squeeze().values
@@ -1049,9 +1080,9 @@ def sbc_rank_ecdf(
     color_by_warning_code=False,
     staircase=False,
     p=None,
-    marker_kwargs={},
-    envelope_patch_kwargs={},
-    envelope_line_kwargs={},
+    marker_kwargs=None,
+    envelope_patch_kwargs=None,
+    envelope_line_kwargs=None,
     palette=None,
     show_legend=True,
     **kwargs,
@@ -1097,13 +1128,13 @@ def sbc_rank_ecdf(
     p : bokeh.plotting.Figure instance, default None
         Plot to which to add the SBC rank ECDF plot. If None, create a
         new figure.
-    marker_kwargs : dict, default {}
+    marker_kwargs : dict, default None
         Dictionary of kwargs to pass to `p.circle()` or `p.line()` when
         plotting the SBC ECDF.
-    envelope_patch_kwargs : dict
+    envelope_patch_kwargs : dict, default None
         Any kwargs passed into p.patch(), which generates the fill of
         the envelope.
-    envelope_line_kwargs : dict
+    envelope_line_kwargs : dict, default None
         Any kwargs passed into p.line() in generating the line around
         the fill of the envelope.
     palette : list of strings of hex colors, or single hex string
@@ -1126,6 +1157,15 @@ def sbc_rank_ecdf(
     You can see example SBC ECDF plots in Fig. 14 b and c in this
     paper: https://arxiv.org/abs/1804.06788
     """
+    if marker_kwargs is None:
+        marker_kwargs = {}
+
+    if envelope_patch_kwargs is None:
+        envelope_patch_kwargs = {}
+
+    if envelope_line_kwargs is None:
+        envelope_line_kwargs = {}
+
     if sbc_output is None:
         raise RuntimeError("Argument `sbc_output` must be specified.")
 
@@ -1313,8 +1353,8 @@ def parcoord(
     include_log_lik=False,
     transformation=None,
     color_by_chain=False,
-    line_kwargs={},
-    divergence_kwargs={},
+    line_kwargs=None,
+    divergence_kwargs=None,
     xtick_label_orientation=0.7853981633974483,
     **kwargs,
 ):
@@ -1381,6 +1421,12 @@ def parcoord(
         Parallel coordinates plot.
 
     """
+    if line_kwargs is None:
+        line_kwargs = {}
+
+    if divergence_kwargs is None:
+        divergence_kwargs = {}
+
     if parameters is not None and omit is not None:
         raise RuntimeError("At least one of `parameters` and `omit` must be None.")
 
@@ -1509,7 +1555,7 @@ def trace(
     omit=None,
     include_ppc=False,
     include_log_lik=False,
-    line_kwargs={},
+    line_kwargs=None,
     **kwargs,
 ):
     """
@@ -1543,7 +1589,7 @@ def trace(
     include_log_lik: bool, default False
         If True, include variables starting with log_lik or loglik.
         These denote log-likelihood contributions.
-    line_kwargs: dict
+    line_kwargs: dict, default None
         Dictionary of kwargs to be passed to `p.multi_line()` in making
         the plot of non-divergent samples.
     kwargs
@@ -1554,6 +1600,9 @@ def trace(
     output : Bokeh gridplot
         Set of chain traces as a Bokeh gridplot.
     """
+    if line_kwargs is None:
+        line_kwargs = {}
+
     if parameters is not None and omit is not None:
         raise RuntimeError("At least one of `parameters` and `omit` must be None.")
 
@@ -2057,7 +2106,7 @@ def contour(
     fill=False,
     fill_palette=None,
     fill_alpha=0.75,
-    line_kwargs={},
+    line_kwargs=None,
     **kwargs,
 ):
     """
@@ -2065,10 +2114,12 @@ def contour(
 
     Parameters
     ----------
-    X : 2D Numpy array
-        Array of x-values, as would be produced using np.meshgrid()
-    Y : 2D Numpy array
-        Array of y-values, as would be produced using np.meshgrid()
+    X : 1D or 2D Numpy array
+        If 1D, array of x-values. If 2D, array of x-values as would be
+        produced using np.meshgrid().
+    Y : 1D or 2D Numpy array
+        If 1D, array of y-values. If 2D, array of y-values as would be
+        produced using np.meshgrid().
     Z : 2D Numpy array
         Array of z-values.
     levels : array_like
@@ -2092,7 +2143,7 @@ def contour(
     overlay_grid : bool, default False
         If True, faintly overlay the grid on top of image. Ignored if
         overlaid is False.
-    line_kwargs : dict, default {}
+    line_kwargs : dict, default None
         Keyword arguments passed to `p.multiline()` for rendering the
         contour.
     kwargs
@@ -2103,8 +2154,14 @@ def contour(
     output : Bokeh plotting object
         Plot populated with contours, possible with an image.
     """
-    if len(X.shape) != 2 or Y.shape != X.shape or Z.shape != X.shape:
-        raise RuntimeError("All arrays must be 2D and of same shape.")
+    if not ((len(X.shape) == 1 and len(Y.shape) == 1) or (len(X.shape) == 2 and len(Y.shape) == 2)):
+            raise RuntimeError("X and Y both must be 1D or both must be 2D.")
+
+    if len(X.shape) == 1:
+        X, Y = np.meshgrid(X, Y)
+
+    if Y.shape != X.shape or Z.shape != X.shape:
+        raise RuntimeError("Shape mismatch in input arrays.")
 
     if overlaid and p is not None:
         raise RuntimeError("Cannot specify `p` if showing image.")
@@ -2112,6 +2169,9 @@ def contour(
     # Set defaults
     x_axis_label = kwargs.pop("x_axis_label", "x")
     y_axis_label = kwargs.pop("y_axis_label", "y")
+
+    if line_kwargs is None:
+        line_kwargs = {}
 
     if "line_color" not in line_kwargs:
         if overlaid:
@@ -2576,7 +2636,11 @@ def _contour_lines(X, Y, Z, levels):
     xs = []
     ys = []
     for level in V:
-        paths = c.create_contour(level)
+        # For a single level, create_contour returns a 2-tuple of lists.
+        # The first list contains 2D Numpy arrays with the contours.
+        # The second contains integer codes about the contour, which we
+        # do not use.
+        paths = c.create_contour(level)[0]
         for line in paths:
             xs.append(line[:, 0])
             ys.append(line[:, 1])
