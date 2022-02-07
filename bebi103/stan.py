@@ -541,7 +541,7 @@ def check_divergences(samples, quiet=False, return_diagnostics=False):
     ----------
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
-        and `samples_stats`.
+        and `sample_stats`.
     quiet : bool, default False
         If True, do not print diagnostic result to the screen.
     return_diagnostics : bool, default False
@@ -582,7 +582,7 @@ def check_treedepth(samples, max_treedepth=10, quiet=False, return_diagnostics=F
     ----------
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
-        and `samples_stats`.
+        and `sample_stats`.
     max_treedepth: int, default 10
         Maximum tree depth used in the calculation.
     quiet : bool, default False
@@ -601,9 +601,9 @@ def check_treedepth(samples, max_treedepth=10, quiet=False, return_diagnostics=F
         `max_treedepth`.
     """
     # ArviZ v. 0.11.2 updated treedepth to be tree_depth and v. 0.11.4 reverted
-    if az.__version__ == "0.11.2":
+    try:
         n_too_deep = (samples.sample_stats.tree_depth.values >= max_treedepth).sum()
-    else:
+    except:
         n_too_deep = (samples.sample_stats.treedepth.values >= max_treedepth).sum()
 
     n_total = samples.sample_stats.dims["chain"] * samples.sample_stats.dims["draw"]
@@ -637,7 +637,7 @@ def check_energy(
     ----------
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
-        and `samples_stats`.
+        and `sample_stats`.
     e_bfmi_rule_of_thumb : float, default 0.3 (as per cmdstan)
         Rule of thumb value for E-BFMI. If below this value, there may
         be cause for concern.
@@ -703,7 +703,7 @@ def check_ess(
     ----------
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
-        and `samples_stats`.
+        and `sample_stats`.
     parameters : list of str, or None (default)
         Names of parameters to use. If None, use all parameters. For
         multidimensional parameters, each entry must be given
@@ -833,7 +833,7 @@ def check_rhat(
     ----------
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
-        and `samples_stats`.
+        and `sample_stats`.
     parameters : list of str, or None (default)
         Names of parameters to use. If None, use all parameters. For
         multidimensional parameters, each entry must be given
@@ -946,7 +946,7 @@ def check_all_diagnostics(
     ----------
     samples : ArviZ InferenceData instance
         Contains samples to be checked. Must contain both `posterior`
-        and `samples_stats`.
+        and `sample_stats`.
     parameters : list of str, or None (default)
         Names of parameters to use in checking Rhat and ESS. If None,
         use all parameters. For multidimensional parameters, each entry
