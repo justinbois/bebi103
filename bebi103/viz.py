@@ -34,8 +34,6 @@ import colorcet
 try:
     import holoviews as hv
     import holoviews.operation.datashader
-
-    hv.extension("bokeh")
 except ImportError as e:
     warnings.warn(
         f"""DataShader import failed with error "{e}".
@@ -1982,6 +1980,8 @@ def corner(
                 y_range=y_range,
                 frame_width=frame_width,
                 frame_height=frame_height,
+                # New feature
+                tools=tools
             )
 
             plots[i][j] = _corner_scatter(
@@ -2305,7 +2305,8 @@ def _corner_scatter(
                     cmap=cmap_arg,
                     cnorm="linear",
                 )
-            ).opts(show_grid=True, align="end", xlim=xlim, ylim=ylim, **figure_kwargs)
+            ).opts(show_grid=True, align="end", xlim=xlim, ylim=ylim, **figure_kwargs),
+            backend="bokeh",
         )
     else:
         p = bokeh.plotting.figure(align="end", **figure_kwargs)
@@ -2428,6 +2429,94 @@ def cdf_to_staircase(x, y):
     x_staircase[1::2] = x
 
     return x_staircase, y_staircase
+
+
+def q_to_color(
+    x,
+    colors,
+    low=None,
+    high=None,
+    low_color="#808080",
+    high_color="#808080",
+    nan_color="#808080",
+    scale="linear",
+):
+    """Convert a quantitative value to a color.
+
+    Parameters
+    ----------
+    x : int, float or array_like
+        Value(s) for which colors are needed.
+    colors : list or tuple
+        List of hex colors for mapping. E.g., bokeh.palettes.Viridis256.
+    low : int or float or None, default None
+        Lowest quantitative value in color range. If None, take smallest
+        entry in `x`. If `x` is scalar, `low` must not be `None`.
+    high : int or float or None, default None
+        Highest quantitative value in color range. If None, take largest
+        entry in `x`. If `x` is scalar, `high` must not be `None`.
+    low_color : str, default '#808080'
+        Hex value for color to be used for entries that are less than
+        `low`. The default is gray.
+    high_color : str, default '#808080'
+        Hex value for color to be used for entries that are greater than
+        `high`. The default is gray.
+    nan_color : str, default '#808080'
+        Hex value for color to be used for entries that are greater than
+        `high`. The default is gray.
+    scale : str, default 'linear'
+        Scale of color map. Must be either 'linear' or 'log'.
+
+    Returns
+    -------
+    output : str or list
+        If `x` is scalar, then a single hex color is returned.
+        Otherwise, a list of hex colors corresponding to the entries in
+        `x` is returned.
+    """
+    if scale == "linear":
+        spacefun = np.linspace
+    elif scale == "log":
+        spacefun = np.logspace
+
+    if np.isscalar(x):
+        if low is None or high is None:
+            raise ValueError(
+                "If `x` is scalar, then `low` and `high` must both be specified."
+            )
+
+        if np.isnan(x):
+            return nan_color
+        elif x < low:
+            return low_color
+        elif x > high:
+            return high_color
+        else:
+            return colors[np.searchsorted(spacefun(low, high, len(colors)), x)]
+
+    if low is None:
+        low = np.nanmin(x)
+    if high is None:
+        high = np.nanmax(x)
+
+    # It's faster to do one searchsorted call and then adjust for nans and min
+    inds = np.searchsorted(spacefun(low, high, len(colors)), x)
+
+    def color_select(i, x):
+        if np.isnan(x):
+            return nan_color
+        elif np.isclose(x, low):
+            return colors[0]
+        elif x < low:
+            return low_color
+        elif np.isclose(x, high):
+            return colors[-1]
+        elif x > high:
+            return high_color
+        else:
+            return colors[i]
+
+    return [color_select(i, x_val) for i, x_val in zip(inds, x)]
 
 
 def _parse_omit(omit, include_ppc, include_log_lik):
