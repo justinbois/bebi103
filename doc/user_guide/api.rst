@@ -37,6 +37,7 @@ Visualization
    corner
    contour_lines_from_samples
    cdf_to_staircase
+   q_to_color
 
 
 Bootstrap methods
