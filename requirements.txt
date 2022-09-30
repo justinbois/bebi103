@@ -1,4 +1,5 @@
 cmdstanpy>=0.9.68
+contourpy
 numpy
 numba
 xarray
