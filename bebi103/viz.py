@@ -21,7 +21,7 @@ except:
 
 import scipy.ndimage
 
-import matplotlib._contour
+import contourpy
 from matplotlib.pyplot import get_cmap as mpl_get_cmap
 
 import bokeh.models
@@ -1981,7 +1981,7 @@ def corner(
                 frame_width=frame_width,
                 frame_height=frame_height,
                 # New feature
-                tools=tools
+                tools=tools,
             )
 
             plots[i][j] = _corner_scatter(
@@ -2154,8 +2154,11 @@ def contour(
     output : Bokeh plotting object
         Plot populated with contours, possible with an image.
     """
-    if not ((len(X.shape) == 1 and len(Y.shape) == 1) or (len(X.shape) == 2 and len(Y.shape) == 2)):
-            raise RuntimeError("X and Y both must be 1D or both must be 2D.")
+    if not (
+        (len(X.shape) == 1 and len(Y.shape) == 1)
+        or (len(X.shape) == 2 and len(Y.shape) == 2)
+    ):
+        raise RuntimeError("X and Y both must be 1D or both must be 2D.")
 
     if len(X.shape) == 1:
         X, Y = np.meshgrid(X, Y)
@@ -2721,7 +2724,21 @@ def _contour_lines(X, Y, Z, levels):
     V.sort()
 
     # Make contours
-    c = matplotlib._contour.QuadContourGenerator(X, Y, Z, None, True, 0)
+    # Deprecated MPL version, defunct after 3.6.0
+    # import matplotlib._contour
+    # c = matplotlib._contour.QuadContourGenerator(X, Y, Z, None, True, 0)
+
+    # Use contourpy
+    c = contourpy.contour_generator(
+        X,
+        Y,
+        Z,
+        corner_mask=True,
+        line_type=contourpy.LineType.SeparateCode,
+        fill_type=contourpy.FillType.OuterCode,
+        chunk_size=0,
+    )
+
     xs = []
     ys = []
     for level in V:
