@@ -335,6 +335,27 @@ def qqplot(
     return p
 
 
+def _heatmap(X, Y, Z, **kwargs):
+    """Not yet implemented.
+    """
+    raise NotImplementedError("Heatmaps are not yet implemented.")
+
+    if "x_range" in kwargs or "y_range" in kwargs:
+        raise RuntimeError("`x_range` and `y_range` cannot be specified in `kwargs`.")
+
+    x_range = [str(val) for val in sorted(list(np.unique(X)))]
+    y_range = [str(val) for val in sorted(list(np.unique(Y)))]
+
+    # Defaults
+    frame_width = kwargs.pop("frame_width", 300)
+    frame_height = kwargs.pop("frame_height", 300)
+    toolbar_location = kwargs.pop("toolbar_locations", "above")
+
+    p = bokeh.plotting.figure(
+        x_range=x_range, y_range=y_range, toolbar_location=toolbar_location, **kwargs
+    )
+
+
 def _ecdf(
     data=None,
     p=None,
@@ -1693,6 +1714,7 @@ def corner(
     smooth=0.02,
     extend_contour_domain=False,
     xtick_label_orientation="horizontal",
+    min_border_left=80,
 ):
     """
     Make a corner plot of sampling results. Heavily influenced by the
@@ -1799,11 +1821,19 @@ def corner(
         A preferred alternative to 'horizontal' is `np.pi/4`. Be aware,
         though, that non-horizontal tick labels may disrupt alignment
         of some of the plots in the corner plot.
+    min_border_left : int, default 80
+        Argument passed to bokeh.plotting.figure() in making the plots
+        on the left side of the corner plot. A larger value moves the
+        corner plot further right from the toolbar. Too small of a value
+        results in misalignment of plots if the values of the y-axis
+        are such that the numbers take up a lot of space. If you make
+        a corner plot and find that this misalignment is the case, you
+        should increase `min_border_left`.
 
     Returns
     -------
-    output : Bokeh gridplot
-        Corner plot as a Bokeh gridplot.
+    output : Bokeh layout
+        Corner plot as a Bokeh layout.
     """
     if parameters is not None and omit is not None:
         raise RuntimeError("At least one of `parameters` and `omit` must be None.")
@@ -1811,7 +1841,7 @@ def corner(
     omit = _parse_omit(omit, include_ppc, include_log_lik)
 
     # Tools, also allowing linked brushing
-    tools = "pan,box_zoom,wheel_zoom,box_select,lasso_select,save,reset"
+    desired_tools = "pan,box_zoom,wheel_zoom,box_select,lasso_select,save,reset"
 
     # Default properties
     if palette is None:
@@ -1980,9 +2010,10 @@ def corner(
                 y_range=y_range,
                 frame_width=frame_width,
                 frame_height=frame_height,
-                # New feature
-                tools=tools,
+                tools=desired_tools,
             )
+            if j == 0:
+                scatter_figure_kwargs["min_border_left"] = min_border_left
 
             plots[i][j] = _corner_scatter(
                 cds,
@@ -2001,14 +2032,17 @@ def corner(
         else:
             if plot_ecdf:
                 x_range, _ = _data_range(df, x, x)
-                plots[i][i] = bokeh.plotting.figure(
+                plot_kwargs = dict(
                     x_range=x_range,
                     y_range=[-0.02, 1.02],
                     frame_width=frame_width,
                     frame_height=frame_height,
                     align="end",
-                    tools=tools,
+                    tools=desired_tools,
                 )
+                if j == 0:
+                    plot_kwargs["min_border_left"] = min_border_left
+                plots[i][i] = bokeh.plotting.figure(**plot_kwargs)
                 if ecdf_staircase:
                     plots[i][i] = _ecdf(
                         df[x],
@@ -2038,14 +2072,17 @@ def corner(
                     )
             else:
                 x_range, _ = _data_range(df, x, x)
-                plots[i][i] = bokeh.plotting.figure(
+                plot_kwargs = dict(
                     x_range=x_range,
                     y_range=bokeh.models.DataRange1d(start=0.0),
                     frame_width=frame_width,
                     frame_height=frame_height,
                     align="end",
-                    tools=tools,
+                    tools=desired_tools,
                 )
+                if j == 0:
+                    plot_kwargs["min_border_left"] = min_border_left
+                plots[i][i] = bokeh.plotting.figure(**plot_kwargs)
                 bins_plot = _bins_to_np(df[x].values, bins)
                 e0, f0 = _compute_histogram(df[x].values, bins=bins_plot, density=True)
 
@@ -2082,16 +2119,123 @@ def corner(
         # To keep darkened part of axis visible, instead use:
         # plots[0][0].yaxis.major_label_text_font_size = "0pt"
 
+    # Makes darkened part of axis invisible
+    # To keep darkened part of axis visible, instead use:
+    # plots[i][j].yaxis.major_label_text_font_size = "0pt"
     for i in range(1, len(parameters)):
         for j in range(1, i + 1):
             plots[i][j].yaxis.visible = False
 
-            # To keep darkened part of axis visible, instead use:
-            # plots[i][j].yaxis.major_label_text_font_size = "0pt"
+    # Ideally, we would just do this:
+    #    grid = bokeh.layouts.gridplot(plots, toolbar_location="left")
+    # and that's the layout. In Bokeh 3+, there are layout problems with
+    # gridplot, so we build the layout explicitly. We first build the
+    # toolbar that is shared among the plots. Then, we build the layout
+    # with bokeh.layouts.row and bokeh.layouts.column.
 
-    grid = bokeh.layouts.gridplot(plots, toolbar_location="left")
+    # ------------------------------------------------------------------
+    # The following block of code sets up the toolbars. This is mildly
+    # adapted from the code bokeh.layouts.gridplot,
+    #
+    # Copyright (c) 2012 - 2023, Anaconda, Inc., and Bokeh Contributors
+    # All rights reserved.
+    #
+    # Redistribution and use in source and binary forms, with or without modification,
+    # are permitted provided that the following conditions are met:
+    #
+    # Redistributions of source code must retain the above copyright notice,
+    # this list of conditions and the following disclaimer.
+    #
+    # Redistributions in binary form must reproduce the above copyright notice,
+    # this list of conditions and the following disclaimer in the documentation
+    # and/or other materials provided with the distribution.
+    #
+    # Neither the name of Anaconda nor the names of any contributors
+    # may be used to endorse or promote products derived from this software
+    # without specific prior written permission.
+    #
+    # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    # ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+    # LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    # CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    # SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+    # THE POSSIBILITY OF SUCH DAMAGE.
 
-    return grid
+    toolbars = []
+    for i in range(len(parameters)):
+        for j in range(i + 1):
+            toolbars.append(plots[i][j].toolbar)
+            plots[i][j].toolbar_location = None
+
+    def merge(cls, group):
+        if issubclass(
+            cls,
+            (
+                bokeh.models.SaveTool,
+                bokeh.models.CopyTool,
+                bokeh.models.ExamineTool,
+                bokeh.models.FullscreenTool,
+            ),
+        ):
+            return cls()
+        else:
+            return None
+
+    tools = []
+
+    for toolbar in toolbars:
+        tools.extend(toolbar.tools)
+
+    tools = bokeh.layouts.group_tools(tools, merge=merge)
+
+    logos = [toolbar.logo for toolbar in toolbars]
+    active_drags = [toolbar.active_drag for toolbar in toolbars]
+    active_inspects = [toolbar.active_inspect for toolbar in toolbars]
+    active_scrolls = [toolbar.active_scroll for toolbar in toolbars]
+    active_taps = [toolbar.active_tap for toolbar in toolbars]
+    active_multis = [toolbar.active_multi for toolbar in toolbars]
+
+    def assert_unique(values, name):
+        n = len(set(values))
+        if n == 0:
+            return Undefined
+        elif n > 1:
+            warn(
+                f"found multiple competing values for 'toolbar.{name}' property; using the latest value"
+            )
+        return values[-1]
+
+    logo = assert_unique(logos, "logo")
+    active_drag = assert_unique(active_drags, "active_drag")
+    active_inspect = assert_unique(active_inspects, "active_inspect")
+    active_scroll = assert_unique(active_scrolls, "active_scroll")
+    active_tap = assert_unique(active_taps, "active_tap")
+    active_multi = assert_unique(active_multis, "active_multi")
+
+    toolbar = bokeh.models.Toolbar(
+        tools=tools,
+        logo=logo,
+        active_drag=active_drag,
+        active_inspect=active_inspect,
+        active_scroll=active_scroll,
+        active_tap=active_tap,
+        active_multi=active_multi,
+        styles=dict(orientation='horizontal'),
+    )
+    # END OF TOOLBARS CODE ---------------------------------------------
+
+    # Build layout
+    rows = []
+    for i in range(len(plots)):
+        rows.append(bokeh.layouts.row(*[plots[i][j] for j in range(i+1)]))
+    grid = bokeh.layouts.column(*rows)
+
+    return bokeh.layouts.row(toolbar, grid)
 
 
 def contour(
