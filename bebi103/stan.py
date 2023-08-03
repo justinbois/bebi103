@@ -1806,7 +1806,13 @@ def _parameters_to_arviz_var_names(samples, parameters):
             for param in parameters
         ]
 
-        var_names = arviz.sel_utils.purge_duplicates(var_names)
+        # Drop any duplicates
+        var_names_set = set()
+        var_names = [
+            var_name
+            for var_name in var_names
+            if not (var_name in var_names_set or var_names_set.add(var_name))
+        ]
 
         for var_name in var_names:
             if var_name not in sample_vars:
