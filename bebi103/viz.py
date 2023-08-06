@@ -1715,6 +1715,7 @@ def corner(
     extend_contour_domain=False,
     xtick_label_orientation="horizontal",
     min_border_left=80,
+    min_border_bottom=None,
 ):
     """
     Make a corner plot of sampling results. Heavily influenced by the
@@ -1736,7 +1737,9 @@ def corner(
         parameters, each entry must be given separately, e.g.,
         `['alpha[0]', 'alpha[1]', 'beta[0,1]']`. If a given entry is a
         2-tuple, the first entry is the variable name, and the second
-        entry is the label for the parameter in plots.
+        entry is the label for the parameter in plots. If an entry is a
+        2-tuple, the first entry is the parameter name and the second
+        entry is a string to be used for the parameter as axis labels.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
@@ -1829,6 +1832,16 @@ def corner(
         are such that the numbers take up a lot of space. If you make
         a corner plot and find that this misalignment is the case, you
         should increase `min_border_left`.
+    min_border_left : int or None, default None
+        Argument passed to bokeh.plotting.figure() in making the plots
+        on the bottom of the corner plot. A larger value moves the
+        corner plot further up. Too small of a value results in misalignment
+        of plots if the xtick_label_orientation is not 'horizontal' and the
+        numbers take up a lot of space. If you make a corner plot and find
+        that this misalignment is the case, you should increase
+        `min_border_bottom`. By default if `xtick_label_orientation` is
+        'horizontal', the `min_border_bottom` is set to zero. Otherwise,
+        unless specified by this keyword argument, it is set to 80.
 
     Returns
     -------
@@ -1839,6 +1852,11 @@ def corner(
         raise RuntimeError("At least one of `parameters` and `omit` must be None.")
 
     omit = _parse_omit(omit, include_ppc, include_log_lik)
+
+    # Default bottom minimum border
+    if min_border_bottom is None:
+        if xtick_label_orientation != 'horizontal':
+            min_border_bottom = 80
 
     # Tools, also allowing linked brushing
     desired_tools = "pan,box_zoom,wheel_zoom,box_select,lasso_select,save,reset"
@@ -2014,6 +2032,8 @@ def corner(
             )
             if j == 0:
                 scatter_figure_kwargs["min_border_left"] = min_border_left
+            if i == len(parameters) - 1 and min_border_bottom is not None:
+                scatter_figure_kwargs["min_border_bottom"] = min_border_bottom
 
             plots[i][j] = _corner_scatter(
                 cds,
@@ -2042,6 +2062,8 @@ def corner(
                 )
                 if j == 0:
                     plot_kwargs["min_border_left"] = min_border_left
+                if i == len(parameters) - 1 and min_border_bottom is not None:
+                    plot_kwargs["min_border_bottom"] = min_border_bottom
                 plots[i][i] = bokeh.plotting.figure(**plot_kwargs)
                 if ecdf_staircase:
                     plots[i][i] = _ecdf(
@@ -2082,6 +2104,8 @@ def corner(
                 )
                 if j == 0:
                     plot_kwargs["min_border_left"] = min_border_left
+                if i == len(parameters) - 1 and min_border_bottom is not None:
+                    plot_kwargs["min_border_bottom"] = min_border_bottom
                 plots[i][i] = bokeh.plotting.figure(**plot_kwargs)
                 bins_plot = _bins_to_np(df[x].values, bins)
                 e0, f0 = _compute_histogram(df[x].values, bins=bins_plot, density=True)

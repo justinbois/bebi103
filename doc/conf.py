@@ -23,7 +23,7 @@ import recommonmark.parser
 # -- Project information -----------------------------------------------------
 
 project = 'bebi103'
-copyright = '2020, Justin Bois'
+copyright = '2023, Justin Bois'
 author = 'Justin Bois'
 
 # The full version, including alpha/beta/rc tags
@@ -61,7 +61,7 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = ['.rst', '.md', '.ipynb']
+source_suffix = ['.rst', '.md']
 
 # The master toctree document.
 master_doc = 'index'

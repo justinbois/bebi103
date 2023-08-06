@@ -13,16 +13,16 @@ Dependencies
 
 bebi103 has the following dependencies.
 
-- Python 3.6 or newer
+- Python 3.9 or newer
 - NumPy_
 - SciPy_
 - Pandas_
 - Numba_
 - tqdm_
-- CmdStanPy_ 0.9.0 or higher
+- CmdStanPy_ 1.0.0 or higher
 - xarray_
-- ArviZ_ 0.9.0 or higher
-- Bokeh_
+- ArviZ_ 0.16.0 or higher
+- Bokeh_ 3.0.0 or higher
 - Matplotlib_
 - colorcet_
 - HoloViews_
