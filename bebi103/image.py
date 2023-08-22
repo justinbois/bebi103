@@ -25,17 +25,10 @@ from . import utils
 def imshow(
     im,
     cmap=None,
-    frame_height=400,
-    frame_width=None,
     length_units="pixels",
     interpixel_distance=1.0,
-    x_range=None,
-    y_range=None,
     colorbar=False,
     no_ticks=False,
-    x_axis_label=None,
-    y_axis_label=None,
-    title=None,
     flip=True,
     return_im=False,
     saturate_channels=True,
@@ -43,6 +36,7 @@ def imshow(
     max_intensity=None,
     display_clicks=False,
     record_clicks=False,
+    **kwargs,
 ):
     """
     Display an image in a Bokeh figure.
@@ -58,31 +52,14 @@ def imshow(
         intensity to color. If None, default is 256-level Viridis.
         If `im` is a color image, then `cmap` can either be
         'rgb' or 'cmy' (default), for RGB or CMY merge of channels.
-    frame_height : int
-        Height of the plot in pixels. The width is scaled so that the
-        x and y distance between pixels is the same.
-    frame_width : int or None (default)
-        If None, the width is scaled so that the x and y distance
-        between pixels is approximately the same. Otherwise, the width
-        of the plot in pixels.
     length_units : str, default 'pixels'
         The units of length in the image.
     interpixel_distance : float, default 1.0
         Interpixel distance in units of `length_units`.
-    x_range : bokeh.models.Range1d instance, default None
-        Range of x-axis. If None, determined automatically.
-    y_range : bokeh.models.Range1d instance, default None
-        Range of y-axis. If None, determined automatically.
     colorbar : bool, default False
         If True, include a colorbar.
     no_ticks : bool, default False
         If True, no ticks are displayed. See note below.
-    x_axis_label : str, default None
-        Label for the x-axis. If None, labeled with `length_units`.
-    y_axis_label : str, default None
-        Label for the y-axis. If None, labeled with `length_units`.
-    title : str, default None
-        The title of the plot.
     flip : bool, default True
         If True, flip image so it displays right-side up. This is
         necessary because traditionally images have their 0,0 pixel
@@ -106,6 +83,8 @@ def imshow(
         `record_clicks()` or `draw_rois()` functions.
     record_clicks : bool, default False
         Deprecated. Use `display_clicks`.
+    kwargs : dict
+        All other kwargs passed to `bokeh.plotting.figure()`.
 
     Returns
     -------
@@ -179,31 +158,33 @@ def imshow(
 
     # Get shape, dimensions
     n, m = im.shape[:2]
-    if x_range is not None and y_range is not None:
-        dw = x_range[1] - x_range[0]
-        dh = y_range[1] - y_range[0]
+    if "x_range" in kwargs:
+        dw = np.max(kwargs["x_range"]) - np.min(kwargs["x_range"])
     else:
         dw = m * interpixel_distance
+        kwargs["x_range"] = [0, dw]
+    if "y_range" in kwargs:
+        dh = np.max(kwargs["y_range"]) - np.min(kwargs["y_range"])
+    else:
         dh = n * interpixel_distance
-        x_range = [0, dw]
-        y_range = [0, dh]
+        kwargs["x_range"] = [0, dh]
 
     # Set up figure with appropriate dimensions
-    if frame_width is None:
-        frame_width = int(m / n * frame_height)
+    if "height" in kwargs:
+        frame_height = kwargs["height"]
+    elif "frame_height" in kwargs:
+        frame_height = kwargs["frame_height"]
+    else:
+        frame_height = 400
+        kwargs["frame_height"] = frame_height
+
+    if "width" not in kwargs and "frame_width" not in kwargs:
+        kwargs["frame_width"] = int(m / n * frame_height)
     if colorbar:
         toolbar_location = "above"
     else:
         toolbar_location = "right"
-    p = bokeh.plotting.figure(
-        frame_height=frame_height,
-        frame_width=frame_width,
-        x_range=x_range,
-        y_range=y_range,
-        title=title,
-        toolbar_location=toolbar_location,
-        tools="pan,box_zoom,wheel_zoom,save,reset",
-    )
+    p = bokeh.plotting.figure(**kwargs)
     if no_ticks:
         p.xaxis.major_label_text_font_size = "0pt"
         p.yaxis.major_label_text_font_size = "0pt"
@@ -212,14 +193,10 @@ def imshow(
         p.yaxis.major_tick_line_color = None
         p.yaxis.minor_tick_line_color = None
     else:
-        if x_axis_label is None:
+        if "x_axis_label" not in kwargs:
             p.xaxis.axis_label = length_units
-        else:
-            p.xaxis.axis_label = x_axis_label
-        if y_axis_label is None:
+        if "y_axis_label" not in kwargs:
             p.yaxis.axis_label = length_units
-        else:
-            p.yaxis.axis_label = y_axis_label
 
     # Display the image
     if im.ndim == 2:
@@ -227,8 +204,8 @@ def imshow(
             im = im[::-1, :]
         im_bokeh = p.image(
             image=[im],
-            x=x_range[0],
-            y=y_range[0],
+            x=np.min(kwargs['x_range']),
+            y=np.min(kwargs['y_range']),
             dw=dw,
             dh=dh,
             color_mapper=color_mapper,
@@ -236,8 +213,8 @@ def imshow(
     else:
         im_bokeh = p.image_rgba(
             image=[rgb_to_rgba32(im, flip=flip)],
-            x=x_range[0],
-            y=y_range[0],
+            x=np.min(kwargs['x_range']),
+            y=np.min(kwargs['y_range']),
             dw=dw,
             dh=dh,
         )
