@@ -504,7 +504,7 @@ def _draw_bs_reps_mle(
     gen_args=(),
     size=1,
     progress_bar=False,
-    rg=None,
+    rng=None,
 ):
     """Draw parametric bootstrap replicates of maximum likelihood
     estimator.
@@ -517,7 +517,7 @@ def _draw_bs_reps_mle(
     gen_fun : function
         Function to randomly draw a new data set out of the model
         distribution parametrized by the MLE. Must have call
-        signature `gen_fun(params, *gen_args, size, rg)`. Note
+        signature `gen_fun(params, *gen_args, size, rng)`. Note
         that `size` in as an argument in this function relates to the
         number of data you will generate, which is always equal to
         len(data). This is not the same as the `size` argument of
@@ -535,7 +535,7 @@ def _draw_bs_reps_mle(
         Number of bootstrap replicates to draw.
     progress_bar : bool, default False
         Whether or not to display progress bar.
-    rg : numpy.random.Generator instance, default None
+    rng : numpy.random.Generator instance, default None
         RNG to be used in bootstrapping. If None, the default
         Numpy RNG is used with a fresh seed based on the clock.
 
@@ -544,8 +544,8 @@ def _draw_bs_reps_mle(
     output : numpy array
         Bootstrap replicates of MLEs.
     """
-    if rg is None:
-        rg = np.random.default_rng()
+    if rng is None:
+        rng = np.random.default_rng()
 
     params = mle_fun(data, *mle_args)
 
@@ -556,7 +556,7 @@ def _draw_bs_reps_mle(
 
     return np.array(
         [
-            mle_fun(gen_fun(params, *gen_args, size=len(data), rg=rg), *mle_args)
+            mle_fun(gen_fun(params, *gen_args, size=len(data), rng=rng), *mle_args)
             for _ in iterator
         ]
     )
@@ -571,7 +571,7 @@ def draw_bs_reps_mle(
     size=1,
     n_jobs=1,
     progress_bar=False,
-    rg=None,
+    rng=None,
 ):
     """Draw bootstrap replicates of maximum likelihood estimator.
 
@@ -583,7 +583,7 @@ def draw_bs_reps_mle(
     gen_fun : function
         Function to randomly draw a new data set out of the model
         distribution parametrized by the MLE. Must have call
-        signature `gen_fun(params, *gen_args, size, rg)`. Note
+        signature `gen_fun(params, *gen_args, size, rng)`. Note
         that `size` as an argument in this function relates to the
         number of data you will generate, which is always equal to
         len(data). This is not the same as the `size` argument of
@@ -603,7 +603,7 @@ def draw_bs_reps_mle(
         Number of cores to use in drawing bootstrap replicates.
     progress_bar : bool, default False
         Whether or not to display progress bar.
-    rg : numpy.random.Generator instance, default None
+    rng : numpy.random.Generator instance, default None
         RNG to be used in bootstrapping. If None, the default
         Numpy RNG is used with a fresh seed based on the clock.
 
@@ -622,16 +622,16 @@ def draw_bs_reps_mle(
             gen_args=gen_args,
             size=size,
             progress_bar=progress_bar,
-            rg=rg,
+            rng=rng,
         )
 
-    if rg is not None:
+    if rng is not None:
         raise RuntimeError(
             "You are attempting to draw replicates in parallel with a specified random"
-            " number generator (`rg` is not `None`). Each of the sets of replicates"
+            " number generator (`rng` is not `None`). Each of the sets of replicates"
             " drawn in parallel will be the same since the random number generator is"
             " not reseeded for each thread. When running in parallel, you  must have"
-            " `rg=None`."
+            " `rng=None`."
         )
 
     # Set up sizes of bootstrap replicates for each core, making sure we
