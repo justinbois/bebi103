@@ -1,0 +1,6 @@
+﻿bebi103.stan.clean\_cmdstan
+===========================
+
+.. currentmodule:: bebi103.stan
+
+.. autofunction:: clean_cmdstan

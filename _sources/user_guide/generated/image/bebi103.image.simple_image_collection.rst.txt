@@ -1,0 +1,6 @@
+﻿bebi103.image.simple\_image\_collection
+=======================================
+
+.. currentmodule:: bebi103.image
+
+.. autofunction:: simple_image_collection

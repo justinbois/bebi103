@@ -1,0 +1,6 @@
+﻿bebi103.viz.corner
+==================
+
+.. currentmodule:: bebi103.viz
+
+.. autofunction:: corner

@@ -1,0 +1,6 @@
+﻿bebi103.stan.check\_treedepth
+=============================
+
+.. currentmodule:: bebi103.stan
+
+.. autofunction:: check_treedepth

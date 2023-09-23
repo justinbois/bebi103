@@ -1,0 +1,6 @@
+﻿bebi103.stan.check\_energy
+==========================
+
+.. currentmodule:: bebi103.stan
+
+.. autofunction:: check_energy

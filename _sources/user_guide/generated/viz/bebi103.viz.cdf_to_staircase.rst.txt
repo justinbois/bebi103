@@ -1,0 +1,6 @@
+﻿bebi103.viz.cdf\_to\_staircase
+==============================
+
+.. currentmodule:: bebi103.viz
+
+.. autofunction:: cdf_to_staircase

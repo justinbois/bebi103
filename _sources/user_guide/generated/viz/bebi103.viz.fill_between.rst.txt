@@ -1,0 +1,6 @@
+﻿bebi103.viz.fill\_between
+=========================
+
+.. currentmodule:: bebi103.viz
+
+.. autofunction:: fill_between

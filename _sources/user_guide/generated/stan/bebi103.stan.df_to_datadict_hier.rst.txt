@@ -1,0 +1,6 @@
+﻿bebi103.stan.df\_to\_datadict\_hier
+===================================
+
+.. currentmodule:: bebi103.stan
+
+.. autofunction:: df_to_datadict_hier

@@ -1,0 +1,6 @@
+﻿bebi103.stan.sbc
+================
+
+.. currentmodule:: bebi103.stan
+
+.. autofunction:: sbc

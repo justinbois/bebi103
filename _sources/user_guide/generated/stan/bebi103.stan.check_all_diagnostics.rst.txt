@@ -1,0 +1,6 @@
+﻿bebi103.stan.check\_all\_diagnostics
+====================================
+
+.. currentmodule:: bebi103.stan
+
+.. autofunction:: check_all_diagnostics

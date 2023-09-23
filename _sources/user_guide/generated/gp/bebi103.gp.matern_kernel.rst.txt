@@ -1,0 +1,6 @@
+﻿bebi103.gp.matern\_kernel
+=========================
+
+.. currentmodule:: bebi103.gp
+
+.. autofunction:: matern_kernel

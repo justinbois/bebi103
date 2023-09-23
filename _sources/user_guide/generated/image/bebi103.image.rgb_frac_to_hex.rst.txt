@@ -1,0 +1,6 @@
+﻿bebi103.image.rgb\_frac\_to\_hex
+================================
+
+.. currentmodule:: bebi103.image
+
+.. autofunction:: rgb_frac_to_hex

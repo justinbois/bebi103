@@ -1,0 +1,6 @@
+﻿bebi103.bootstrap.draw\_bs\_reps
+================================
+
+.. currentmodule:: bebi103.bootstrap
+
+.. autofunction:: draw_bs_reps

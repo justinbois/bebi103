@@ -1,0 +1,6 @@
+﻿bebi103.viz.qqplot
+==================
+
+.. currentmodule:: bebi103.viz
+
+.. autofunction:: qqplot

@@ -1,0 +1,6 @@
+﻿bebi103.viz.parcoord
+====================
+
+.. currentmodule:: bebi103.viz
+
+.. autofunction:: parcoord

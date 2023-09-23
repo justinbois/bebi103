@@ -1,0 +1,6 @@
+﻿bebi103.gp.append\_sort\_index
+==============================
+
+.. currentmodule:: bebi103.gp
+
+.. autofunction:: append_sort_index

@@ -1,0 +1,6 @@
+﻿bebi103.hv.set\_defaults
+========================
+
+.. currentmodule:: bebi103.hv
+
+.. autofunction:: set_defaults

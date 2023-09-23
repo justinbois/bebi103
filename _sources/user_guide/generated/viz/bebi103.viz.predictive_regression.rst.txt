@@ -1,0 +1,6 @@
+﻿bebi103.viz.predictive\_regression
+==================================
+
+.. currentmodule:: bebi103.viz
+
+.. autofunction:: predictive_regression

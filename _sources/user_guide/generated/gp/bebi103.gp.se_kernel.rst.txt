@@ -1,0 +1,6 @@
+﻿bebi103.gp.se\_kernel
+=====================
+
+.. currentmodule:: bebi103.gp
+
+.. autofunction:: se_kernel
