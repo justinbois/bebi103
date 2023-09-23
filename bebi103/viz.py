@@ -336,7 +336,8 @@ def qqplot(
 
 
 def _heatmap(X, Y, Z, **kwargs):
-    """Not yet implemented."""
+    """Not yet implemented.
+    """
     raise NotImplementedError("Heatmaps are not yet implemented.")
 
     if "x_range" in kwargs or "y_range" in kwargs:
@@ -1708,14 +1709,13 @@ def corner(
     show_contours=False,
     contour_color="black",
     bins_2d=50,
-    density_levels=None,
+    levels=None,
     weights=None,
     smooth=0.02,
     extend_contour_domain=False,
     xtick_label_orientation="horizontal",
     min_border_left=80,
     min_border_bottom=None,
-    levels=None,
 ):
     """
     Make a corner plot of sampling results. Heavily influenced by the
@@ -1805,7 +1805,7 @@ def corner(
     bins_2d : int, default 50
         Number of bins in each direction for binning 2D histograms when
         computing contours.
-    density_levels : list of floats, default None
+    levels : list of floats, default None
         Levels to use when constructing contours. By default, these are
         chosen according to this principle from Dan Foreman-Mackey:
         http://corner.readthedocs.io/en/latest/pages/sigmas.html
@@ -1848,16 +1848,6 @@ def corner(
     output : Bokeh layout
         Corner plot as a Bokeh layout.
     """
-    if levels is not None:
-        warnings.warn("levels is deprecated. Use `density_levels`.", DeprecationWarning)
-        if density_levels is None:
-            density_levels = levels
-        else:
-            raise RuntimeError(
-                "`levels` and `density_levels` cannot both be specified."
-                " Use only `density_levels`."
-            )
-
     if parameters is not None and omit is not None:
         raise RuntimeError("At least one of `parameters` and `omit` must be None.")
 
@@ -1865,7 +1855,7 @@ def corner(
 
     # Default bottom minimum border
     if min_border_bottom is None:
-        if xtick_label_orientation != "horizontal":
+        if xtick_label_orientation != 'horizontal':
             min_border_bottom = 80
 
     # Tools, also allowing linked brushing
@@ -1978,7 +1968,7 @@ def corner(
     # Set up contour settings
     contour_lines_kwargs = dict(
         smooth=smooth,
-        density_levels=density_levels,
+        levels=levels,
         weights=weights,
         extend_domain=extend_contour_domain,
         bins=bins_2d,
@@ -2259,14 +2249,14 @@ def corner(
         active_scroll=active_scroll,
         active_tap=active_tap,
         active_multi=active_multi,
-        styles=dict(orientation="horizontal"),
+        styles=dict(orientation='horizontal'),
     )
     # END OF TOOLBARS CODE ---------------------------------------------
 
     # Build layout
     rows = []
     for i in range(len(plots)):
-        rows.append(bokeh.layouts.row(*[plots[i][j] for j in range(i + 1)]))
+        rows.append(bokeh.layouts.row(*[plots[i][j] for j in range(i+1)]))
     grid = bokeh.layouts.column(*rows)
 
     return bokeh.layouts.row(toolbar, grid)
@@ -2277,12 +2267,14 @@ def contour(
     Y,
     Z,
     levels=None,
-    density_levels=None,
     p=None,
-    overlaid=None,
+    overlaid=False,
     cmap=None,
     overlay_grid=False,
-    visual_kwargs=None,
+    fill=False,
+    fill_palette=None,
+    fill_alpha=0.75,
+    line_kwargs=None,
     **kwargs,
 ):
     """
@@ -2298,34 +2290,30 @@ def contour(
         produced using np.meshgrid().
     Z : 2D Numpy array
         Array of z-values.
-    levels : array_like or None
-        If given, absolute levels for contours. If given,
-        `density_levels` must be None. If None, defers to
-        `density_levels`.
-    density_levels : array_like or None
+    levels : array_like
         Levels to plot, ranging from 0 to 1. The contour around a given
         level contains that fraction of the total probability if the
-        contour plot is for a 2D probability density function. If
-        None, the levels are given by the one, two, three, and four
+        contour plot is for a 2D probability density function. By
+        default, the levels are given by the one, two, three, and four
         sigma levels corresponding to a marginalized distribution from
-        a 2D Gaussian distribution. `levels` must be None if
-        `density_levels` is specified.
+        a 2D Gaussian distribution.
     p : bokeh plotting object, default None
         If not None, the contour are added to `p`. This option is not
         allowed if `overlaid` is True.
-    overlaid : str ('image', 'fill') or None, default None
-        If 'image', the contours are overlaid on `Z` as an image. If
-        'fill', then the spaces between the contour are filled. If None,
-        only contour lines are plotted.
+    overlaid : bool, default False
+        If True, `Z` is displayed as an image and the contours are
+        overlaid.
     cmap : str or list of hex colors, default None
-        Colormap to apply to image if `overlaid` is 'image'.
-        If None, default is 256-level Viridis.
+        If `im` is an intensity image, `cmap` is a mapping of
+        intensity to color. If None, default is 256-level Viridis.
+        If `im` is a color image, then `cmap` can either be
+        'rgb' or 'cmy' (default), for RGB or CMY merge of channels.
     overlay_grid : bool, default False
         If True, faintly overlay the grid on top of image. Ignored if
         overlaid is False.
-    visual_kwargs : dict, default None
-        Keyword arguments passed to `p.contour()` for rendering the
-        contour. If None, prudent defaults are chosen.
+    line_kwargs : dict, default None
+        Keyword arguments passed to `p.multiline()` for rendering the
+        contour.
     kwargs
         Any kwargs to be passed to `bokeh.plotting.figure()`.
 
@@ -2333,32 +2321,7 @@ def contour(
     -------
     output : Bokeh plotting object
         Plot populated with contours, possible with an image.
-
-    Notes
-    -----
-    .. The functionality beyond that of Bokeh's native contour plotting
-       is the ability to conveniently overlay the contours on an image
-       and to have the contours correspond to levels of containing
-       reasonable amounts of probability mass if the contour is of a 2D
-       probability density function.
     """
-    if overlaid == True:
-        warnings.warn(
-            "overlaid = True is deprecated. Use overlaid='image' to overlay the"
-            " contour over an image.",
-            DeprecationWarning,
-        )
-        overlaid = "image"
-
-    if overlaid is not None and overlaid not in ("image", "fill"):
-        raise RuntimeError(
-            f"Valid values for `overlaid` are 'image', 'fill', and None."
-            " {overlaid} is invalid."
-        )
-
-    if density_levels is not None and levels is not None:
-        raise RuntimeError("`levels` and `density_levels` cannot both be specified.")
-
     if not (
         (len(X.shape) == 1 and len(Y.shape) == 1)
         or (len(X.shape) == 2 and len(Y.shape) == 2)
@@ -2371,53 +2334,91 @@ def contour(
     if Y.shape != X.shape or Z.shape != X.shape:
         raise RuntimeError("Shape mismatch in input arrays.")
 
-    if overlaid is not None and p is not None:
-        raise RuntimeError("Cannot specify `p` if showing image or fill.")
+    if overlaid and p is not None:
+        raise RuntimeError("Cannot specify `p` if showing image.")
 
     # Set defaults
-    kwargs['x_axis_label'] = kwargs.pop("x_axis_label", "x")
-    kwargs['y_axis_label'] = kwargs.pop("y_axis_label", "y")
-    if "height" not in kwargs and "frame_height" not in kwargs:
-        kwargs["frame_height"] = 300
-    if "width" not in kwargs and "frame_width" not in kwargs:
-        kwargs["frame_width"] = 300
-    if visual_kwargs is None:
-        visual_kwargs = {}
+    x_axis_label = kwargs.pop("x_axis_label", "x")
+    y_axis_label = kwargs.pop("y_axis_label", "y")
 
-    if "line_color" not in visual_kwargs:
-        if overlaid is not None:
-            visual_kwargs["line_color"] = "white"
+    if line_kwargs is None:
+        line_kwargs = {}
+
+    if "line_color" not in line_kwargs:
+        if overlaid:
+            line_kwargs["line_color"] = "white"
         else:
-            visual_kwargs["line_color"] = "black"
-    if overlaid == "fill":
-        visual_kwargs["fill_color"] = visual_kwargs.pop(
-            "fill_color", bokeh.palettes.Viridis
-        )
-    visual_kwargs["line_width"] = visual_kwargs.pop("line_width", 2)
+            line_kwargs["line_color"] = "black"
+
+    line_width = line_kwargs.pop("line_width", 2)
 
     if p is None:
-        if overlaid is not None:
-            kwargs["x_range"] = kwargs.pop("x_range", [X.min(), X.max()])
-            kwargs["y_range"] = kwargs.pop("y_range", [Y.min(), Y.max()])
-        if overlaid == "image":
-            p = image.imshow(Z, cmap=cmap, flip=False, **kwargs)
+        if overlaid:
+            frame_height = kwargs.pop("frame_height", 300)
+            frame_width = kwargs.pop("frame_width", 300)
+            title = kwargs.pop("title", None)
+            p = image.imshow(
+                Z,
+                cmap=cmap,
+                frame_height=frame_height,
+                frame_width=frame_width,
+                x_axis_label=x_axis_label,
+                y_axis_label=y_axis_label,
+                x_range=[X.min(), X.max()],
+                y_range=[Y.min(), Y.max()],
+                no_ticks=False,
+                flip=False,
+                return_im=False,
+            )
         else:
-            p = bokeh.plotting.figure(**kwargs)
+            if "plot_height" not in kwargs and "frame_height" not in kwargs:
+                kwargs["frame_height"] = 300
+            if "plot_width" not in kwargs and "frame_width" not in kwargs:
+                kwargs["frame_width"] = 300
+            p = bokeh.plotting.figure(
+                x_axis_label=x_axis_label, y_axis_label=y_axis_label, **kwargs
+            )
 
-    # Set levels
+    # Set default levels
     if levels is None:
-        if density_levels is None:
-            density_levels = 1.0 - np.exp(-np.arange(0.5, 2.1, 0.5) ** 2 / 2)
-        levels = _contour_levels_from_density(Z, density_levels)
+        levels = 1.0 - np.exp(-np.arange(0.5, 2.1, 0.5) ** 2 / 2)
 
-    # Overlay contour
-    if overlaid == "fill":
-        # For fill, need top and bottom to color extremes
-        levels = np.concatenate(((-np.inf,), levels, (np.inf,)))
+    # Compute contour lines
+    if fill or line_width:
+        xs, ys = _contour_lines(X, Y, Z, levels)
 
-    p.contour(X, Y, Z, levels, **visual_kwargs)
+    # Make fills. This is currently not supported
+    if fill:
+        raise NotImplementedError("Filled contours are not yet implemented.")
+        if fill_palette is None:
+            if len(levels) <= 6:
+                fill_palette = bokeh.palettes.Greys[len(levels) + 3][1:-1]
+            elif len(levels) <= 10:
+                fill_palette = bokeh.palettes.Viridis[len(levels) + 1]
+            else:
+                raise RuntimeError(
+                    "Can only have maximally 10 levels with filled contours"
+                    + " unless user specifies `fill_palette`."
+                )
+        elif len(fill_palette) != len(levels) + 1:
+            raise RuntimeError(
+                "`fill_palette` must have 1 more entry" + " than `levels`"
+            )
 
-    if overlay_grid and overlaid is not None:
+        p.patch(
+            xs[-1], ys[-1], color=fill_palette[0], alpha=fill_alpha, line_color=None
+        )
+        for i in range(1, len(levels)):
+            x_p = np.concatenate((xs[-1 - i], xs[-i][::-1]))
+            y_p = np.concatenate((ys[-1 - i], ys[-i][::-1]))
+            p.patch(x_p, y_p, color=fill_palette[i], alpha=fill_alpha, line_color=None)
+
+        p.background_fill_color = fill_palette[-1]
+
+    # Populate the plot with contour lines
+    p.multi_line(xs, ys, line_width=line_width, **line_kwargs)
+
+    if overlay_grid and overlaid:
         p.grid.level = "overlay"
         p.grid.grid_line_alpha = 0.2
 
@@ -2866,15 +2867,18 @@ def _create_line_image(x_range, y_range, w, h, df, x, y, cmap=None):
     return ds.transfer_functions.dynspread(ds.transfer_functions.shade(agg, cmap=cmap))
 
 
-def _contour_levels_from_density(Z, density_levels):
-    # Compute the levels for given density levels.
+def _contour_lines(X, Y, Z, levels):
+    """
+    Generate lines for contour plot.
+    """
+    # Compute the density levels.
     Zflat = Z.flatten()
     inds = np.argsort(Zflat)[::-1]
     Zflat = Zflat[inds]
     sm = np.cumsum(Zflat)
     sm /= sm[-1]
-    V = np.empty(len(density_levels))
-    for i, v0 in enumerate(density_levels):
+    V = np.empty(len(levels))
+    for i, v0 in enumerate(levels):
         try:
             V[i] = Zflat[sm <= v0][-1]
         except:
@@ -2886,19 +2890,6 @@ def _contour_levels_from_density(Z, density_levels):
         V[np.where(m)[0][0]] *= 1.0 - 1e-4
         m = np.diff(V) == 0
     V.sort()
-
-    return V
-
-
-def _contour_lines(X, Y, Z, levels, density_levels):
-    """
-    Generate lines for contour plot.
-    """
-    # Compute the levels for given density levels.
-    if levels is None:
-        V = _contour_levels_from_density(Z, density_levels)
-    else:
-        V = levels
 
     # Make contours
     # Deprecated MPL version, defunct after 3.6.0
@@ -2932,14 +2923,7 @@ def _contour_lines(X, Y, Z, levels, density_levels):
 
 
 def contour_lines_from_samples(
-    x,
-    y,
-    smooth=0.02,
-    density_levels=None,
-    bins=50,
-    weights=None,
-    extend_domain=False,
-    levels=None,
+    x, y, smooth=0.02, levels=None, bins=50, weights=None, extend_domain=False
 ):
     """
     Get lines for a contour plot from (x, y) samples.
@@ -2954,7 +2938,7 @@ def contour_lines_from_samples(
         Smoothing parameter for Gaussian smoothing of contour. A
         Gaussian filter is applied with standard deviation given by
         `smooth * bins`. If None, no smoothing is done.
-    density_levels : float, list of floats, or None
+    levels : float, list of floats, or None
         The levels of the contours. To enclose 95% of the samples, use
         `levels=0.95`. If provided as a list, multiple levels are used.
         If None, `levels` is approximately [0.12, 0.39, 0.68, 0.86].
@@ -3016,30 +3000,20 @@ def contour_lines_from_samples(
     # The views and conclusions contained in the software and documentation are those
     # of the authors and should not be interpreted as representing official policies,
     # either expressed or implied, of the FreeBSD Project.
-    if levels is not None:
-        warnings.warn("levels is deprecated. Use `density_levels`.", DeprecationWarning)
-        if density_levels is None:
-            density_levels = levels
-        else:
-            raise RuntimeError(
-                "`levels` and `density_levels` cannot both be specified."
-                " Use only `density_levels`."
-            )
-
     if type(bins) != int or bins <= 0:
         raise ValueError("`bins` must be a positive integer.")
 
     data_range = [[x.min(), x.max()], [y.min(), y.max()]]
 
     # Choose the default "sigma" contour levels.
-    if density_levels is None:
-        density_levels = 1.0 - np.exp(-0.5 * np.arange(0.5, 2.1, 0.5) ** 2)
-    elif type(density_levels) not in [list, tuple, np.ndarray]:
-        density_levels = [density_levels]
+    if levels is None:
+        levels = 1.0 - np.exp(-0.5 * np.arange(0.5, 2.1, 0.5) ** 2)
+    elif type(levels) not in [list, tuple, np.ndarray]:
+        levels = [levels]
 
-    for level in density_levels:
+    for level in levels:
         if level <= 0 or level > 1:
-            raise ValueError("All density_level values must be between zero and one.")
+            raise ValueError("All level values must be between zero and one.")
 
     # We'll make the 2D histogram to directly estimate the density.
     try:
@@ -3092,4 +3066,4 @@ def contour_lines_from_samples(
         X2, Y2 = np.meshgrid(X1, Y1)
         H2 = H
 
-    return _contour_lines(X2, Y2, H2.transpose(), None, density_levels)
+    return _contour_lines(X2, Y2, H2.transpose(), levels)
