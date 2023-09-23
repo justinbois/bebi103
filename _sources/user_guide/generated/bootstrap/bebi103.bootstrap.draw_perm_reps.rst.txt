@@ -1,6 +1,0 @@
-﻿bebi103.bootstrap.draw\_perm\_reps
-==================================
-
-.. currentmodule:: bebi103.bootstrap
-
-.. autofunction:: draw_perm_reps

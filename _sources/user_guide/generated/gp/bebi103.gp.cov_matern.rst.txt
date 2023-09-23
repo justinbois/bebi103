@@ -1,6 +1,0 @@
-﻿bebi103.gp.cov\_matern
-======================
-
-.. currentmodule:: bebi103.gp
-
-.. autofunction:: cov_matern

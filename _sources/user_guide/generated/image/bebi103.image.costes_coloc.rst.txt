@@ -1,6 +1,0 @@
-﻿bebi103.image.costes\_coloc
-===========================
-
-.. currentmodule:: bebi103.image
-
-.. autofunction:: costes_coloc

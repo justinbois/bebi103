@@ -1,6 +1,0 @@
-﻿bebi103.viz.sbc\_rank\_ecdf
-===========================
-
-.. currentmodule:: bebi103.viz
-
-.. autofunction:: sbc_rank_ecdf

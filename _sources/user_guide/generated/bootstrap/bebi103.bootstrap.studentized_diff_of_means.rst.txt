@@ -1,6 +1,0 @@
-﻿bebi103.bootstrap.studentized\_diff\_of\_means
-==============================================
-
-.. currentmodule:: bebi103.bootstrap
-
-.. autofunction:: studentized_diff_of_means

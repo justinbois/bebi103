@@ -1,6 +1,0 @@
-﻿bebi103.image.record\_clicks
-============================
-
-.. currentmodule:: bebi103.image
-
-.. autofunction:: record_clicks

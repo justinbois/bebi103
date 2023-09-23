@@ -1,6 +1,0 @@
-﻿bebi103.image.im\_merge
-=======================
-
-.. currentmodule:: bebi103.image
-
-.. autofunction:: im_merge

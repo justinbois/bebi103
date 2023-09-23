@@ -1,6 +1,0 @@
-﻿bebi103.gp.d2\_se\_kernel
-=========================
-
-.. currentmodule:: bebi103.gp
-
-.. autofunction:: d2_se_kernel

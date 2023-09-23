@@ -1,6 +1,0 @@
-﻿bebi103.stan.parse\_warning\_code
-=================================
-
-.. currentmodule:: bebi103.stan
-
-.. autofunction:: parse_warning_code

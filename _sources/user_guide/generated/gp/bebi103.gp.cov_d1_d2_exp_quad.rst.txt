@@ -1,6 +1,0 @@
-﻿bebi103.gp.cov\_d1\_d2\_exp\_quad
-=================================
-
-.. currentmodule:: bebi103.gp
-
-.. autofunction:: cov_d1_d2_exp_quad

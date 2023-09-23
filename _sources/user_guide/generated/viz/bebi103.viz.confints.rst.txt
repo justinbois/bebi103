@@ -1,6 +1,0 @@
-﻿bebi103.viz.confints
-====================
-
-.. currentmodule:: bebi103.viz
-
-.. autofunction:: confints

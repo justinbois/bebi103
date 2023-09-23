@@ -1,6 +1,0 @@
-﻿bebi103.viz.predictive\_ecdf
-============================
-
-.. currentmodule:: bebi103.viz
-
-.. autofunction:: predictive_ecdf

@@ -1,6 +1,0 @@
-﻿bebi103.image.draw\_rois
-========================
-
-.. currentmodule:: bebi103.image
-
-.. autofunction:: draw_rois

@@ -1,6 +1,0 @@
-﻿bebi103.image.imshow
-====================
-
-.. currentmodule:: bebi103.image
-
-.. autofunction:: imshow

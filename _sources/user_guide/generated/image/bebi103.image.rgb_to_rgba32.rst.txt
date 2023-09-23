@@ -1,6 +1,0 @@
-﻿bebi103.image.rgb\_to\_rgba32
-=============================
-
-.. currentmodule:: bebi103.image
-
-.. autofunction:: rgb_to_rgba32

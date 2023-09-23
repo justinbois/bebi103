@@ -1,6 +1,0 @@
-﻿bebi103.bootstrap.seed\_rng
-===========================
-
-.. currentmodule:: bebi103.bootstrap
-
-.. autofunction:: seed_rng

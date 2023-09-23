@@ -1,6 +1,0 @@
-﻿bebi103.viz.q\_to\_color
-========================
-
-.. currentmodule:: bebi103.viz
-
-.. autofunction:: q_to_color

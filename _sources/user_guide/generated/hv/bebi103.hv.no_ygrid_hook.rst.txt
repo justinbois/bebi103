@@ -1,6 +1,0 @@
-﻿bebi103.hv.no\_ygrid\_hook
-==========================
-
-.. currentmodule:: bebi103.hv
-
-.. autofunction:: no_ygrid_hook

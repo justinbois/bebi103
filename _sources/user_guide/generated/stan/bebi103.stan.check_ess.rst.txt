@@ -1,6 +1,0 @@
-﻿bebi103.stan.check\_ess
-=======================
-
-.. currentmodule:: bebi103.stan
-
-.. autofunction:: check_ess

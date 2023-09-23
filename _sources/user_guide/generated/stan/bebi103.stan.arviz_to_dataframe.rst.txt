@@ -1,6 +1,0 @@
-﻿bebi103.stan.arviz\_to\_dataframe
-=================================
-
-.. currentmodule:: bebi103.stan
-
-.. autofunction:: arviz_to_dataframe

@@ -1,6 +1,0 @@
-﻿bebi103.bootstrap.draw\_bs\_reps\_pairs
-=======================================
-
-.. currentmodule:: bebi103.bootstrap
-
-.. autofunction:: draw_bs_reps_pairs

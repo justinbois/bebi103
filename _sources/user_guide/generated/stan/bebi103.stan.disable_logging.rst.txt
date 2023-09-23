@@ -1,6 +1,0 @@
-﻿bebi103.stan.disable\_logging
-=============================
-
-.. currentmodule:: bebi103.stan
-
-.. autofunction:: disable_logging

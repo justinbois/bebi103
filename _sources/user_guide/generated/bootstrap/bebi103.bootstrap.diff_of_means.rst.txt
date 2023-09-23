@@ -1,6 +1,0 @@
-﻿bebi103.bootstrap.diff\_of\_means
-=================================
-
-.. currentmodule:: bebi103.bootstrap
-
-.. autofunction:: diff_of_means
