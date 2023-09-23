@@ -167,7 +167,7 @@ def imshow(
         dh = np.max(kwargs["y_range"]) - np.min(kwargs["y_range"])
     else:
         dh = n * interpixel_distance
-        kwargs["y_range"] = [0, dh]
+        kwargs["x_range"] = [0, dh]
 
     # Set up figure with appropriate dimensions
     if "height" in kwargs:
