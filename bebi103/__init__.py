@@ -10,6 +10,9 @@ warnings.filterwarnings(
     "always", category=DeprecationWarning, module="^{}\.".format(re.escape(__name__))
 )
 
+# Filter annoying warning about PyArrow
+warnings.filterwarnings('ignore', message='.*pyarrow.*', category=FutureWarning)
+
 try:
     import multiprocess
 except:
@@ -47,4 +50,4 @@ except:
 
 __author__ = """Justin Bois"""
 __email__ = "bois@caltech.edu"
-__version__ = "0.1.18"
+__version__ = "0.1.19"
