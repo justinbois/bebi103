@@ -1785,7 +1785,8 @@ def corner(
         If True, color the glyphs by chain index.
     divergence_color : str, default 'orange'
         Color to use for showing points where the sampler experienced a
-        divergence.
+        divergence. If None, divergences are plotted the same as all
+        other samples.
     alpha : float or None, default None
         Opacity of glyphs. If None, inferred.
     single_var_color : str, default 'black'
@@ -1869,9 +1870,6 @@ def corner(
         if cmap not in ["black", None]:
             warnings.warn("Ignoring cmap values to color by chain.")
 
-    if divergence_color is None:
-        divergence_color = cmap
-
     if type(samples) == pd.core.frame.DataFrame:
         df = samples
         if parameters is None:
@@ -1923,11 +1921,11 @@ def corner(
         cmap = bokeh.transform.factor_cmap("chain__", palette=palette, factors=factors)
 
     # Add dummy divergent column if no divergence information is given
-    if "diverging__" not in df.columns:
+    if "diverging__" not in df.columns or divergence_color is None:
         df = df.copy()
         df["diverging__"] = 0
 
-    # Add dummy chain column if no divergence information is given
+    # Add dummy chain column if no chain information is given
     if "chain__" not in df.columns:
         df = df.copy()
         df["chain__"] = 0
@@ -2493,7 +2491,6 @@ def _corner_scatter(
             nonselection_line_alpha=0,
         )
 
-    if divergence_color is not None:
         p.circle(
             source=cds_div,
             x=x,
