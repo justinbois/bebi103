@@ -127,9 +127,9 @@ def confints(
     size = marker_kwargs.pop("size", 5)
 
     if p is None:
-        if "plot_height" not in kwargs and "frame_height" not in kwargs:
+        if "height" not in kwargs and "frame_height" not in kwargs:
             kwargs["frame_height"] = 50 * n
-        if "plot_width" not in kwargs and "frame_width" not in kwargs:
+        if "width" not in kwargs and "frame_width" not in kwargs:
             kwargs["frame_width"] = 450
         toolbar_location = kwargs.pop("toolbar_location", "above")
 
@@ -196,9 +196,9 @@ def fill_between(
     if patch_kwargs is None:
         patch_kwargs = {}
 
-    if "plot_height" not in kwargs and "frame_height" not in kwargs:
+    if "height" not in kwargs and "frame_height" not in kwargs:
         kwargs["frame_height"] = 275
-    if "plot_width" not in kwargs and "frame_width" not in kwargs:
+    if "width" not in kwargs and "frame_width" not in kwargs:
         kwargs["frame_width"] = 350
 
     if p is None:
@@ -292,9 +292,9 @@ def qqplot(
     if data is not None and len(data) != samples.shape[1]:
         raise RuntimeError("Mismatch in shape of `data` and `samples`.")
 
-    if "plot_height" not in kwargs and "frame_height" not in kwargs:
+    if "height" not in kwargs and "frame_height" not in kwargs:
         kwargs["frame_height"] = 275
-    if "plot_width" not in kwargs and "frame_width" not in kwargs:
+    if "width" not in kwargs and "frame_width" not in kwargs:
         kwargs["frame_width"] = 275
     if "fill_alpha" not in patch_kwargs:
         patch_kwargs["fill_alpha"] = 0.5
@@ -362,8 +362,8 @@ def _ecdf(
     x_axis_label=None,
     y_axis_label="ECDF",
     title=None,
-    plot_height=300,
-    plot_width=450,
+    height=300,
+    width=450,
     staircase=False,
     complementary=False,
     x_axis_type="linear",
@@ -399,9 +399,9 @@ def _ecdf(
         Label for the y-axis. Ignored if `p` is not None.
     title : str, default None
         Title of the plot. Ignored if `p` is not None.
-    plot_height : int, default 300
+    height : int, default 300
         Height of plot, in pixels. Ignored if `p` is not None.
-    plot_width : int, default 450
+    width : int, default 450
         Width of plot, in pixels. Ignored if `p` is not None.
     staircase : bool, default False
         If True, make a plot of a staircase ECDF (staircase). If False,
@@ -432,8 +432,8 @@ def _ecdf(
     if p is None:
         y_axis_label = kwargs.pop("y_axis_label", "ECCDF" if complementary else "ECDF")
         p = bokeh.plotting.figure(
-            plot_height=plot_height,
-            plot_width=plot_width,
+            height=height,
+            width=width,
             x_axis_label=x_axis_label,
             y_axis_label=y_axis_label,
             x_axis_type=x_axis_type,
@@ -519,9 +519,9 @@ def _histogram(
     if p is None:
         y_axis_label = kwargs.pop("y_axis_label", "density" if density else "count")
 
-        if "plot_height" not in kwargs and "frame_height" not in kwargs:
+        if "height" not in kwargs and "frame_height" not in kwargs:
             kwargs["frame_height"] = 275
-        if "plot_width" not in kwargs and "frame_width" not in kwargs:
+        if "width" not in kwargs and "frame_width" not in kwargs:
             kwargs["frame_width"] = 400
         y_range = kwargs.pop("y_range", bokeh.models.DataRange1d(start=0))
 
@@ -756,9 +756,9 @@ def predictive_ecdf(
             "y_axis_label", "ECDF difference" if diff == "ecdf" else "ECDF"
         )
 
-        if "plot_height" not in kwargs and "frame_height" not in kwargs:
+        if "height" not in kwargs and "frame_height" not in kwargs:
             kwargs["frame_height"] = 325
-        if "plot_width" not in kwargs and "frame_width" not in kwargs:
+        if "width" not in kwargs and "frame_width" not in kwargs:
             kwargs["frame_width"] = 400
         p = bokeh.plotting.figure(
             x_axis_label=x_axis_label, y_axis_label=y_axis_label, **kwargs
@@ -1023,9 +1023,9 @@ def predictive_regression(
         x_axis_label = kwargs.pop("x_axis_label", "x")
         y_axis_label = kwargs.pop("y_axis_label", "y difference" if diff else "y")
 
-        if "plot_height" not in kwargs and "frame_height" not in kwargs:
+        if "height" not in kwargs and "frame_height" not in kwargs:
             kwargs["frame_height"] = 325
-        if "plot_width" not in kwargs and "frame_width" not in kwargs:
+        if "width" not in kwargs and "frame_width" not in kwargs:
             kwargs["frame_width"] = 400
         p = bokeh.plotting.figure(
             x_axis_label=x_axis_label, y_axis_label=y_axis_label, **kwargs
@@ -1199,9 +1199,9 @@ def sbc_rank_ecdf(
     if "y_axis_label" not in kwargs:
         kwargs["y_axis_label"] = "ECDF difference" if diff else "ECDF"
 
-    if "plot_height" not in kwargs and "frame_height" not in kwargs:
+    if "height" not in kwargs and "frame_height" not in kwargs:
         kwargs["frame_height"] = 275
-    if "plot_width" not in kwargs and "frame_width" not in kwargs:
+    if "width" not in kwargs and "frame_width" not in kwargs:
         kwargs["frame_width"] = 450
     toolbar_location = kwargs.pop("toolbar_location", "above")
 
@@ -1468,9 +1468,9 @@ def parcoord(
     divergence_color = divergence_kwargs.pop("color", "orange")
     divergence_alpha = divergence_kwargs.pop("alpha", 1)
 
-    if "plot_height" not in kwargs and "frame_height" not in kwargs:
+    if "height" not in kwargs and "frame_height" not in kwargs:
         kwargs["frame_height"] = 175
-    if "plot_width" not in kwargs and "frame_width" not in kwargs:
+    if "width" not in kwargs and "frame_width" not in kwargs:
         kwargs["frame_width"] = 600
     toolbar_location = kwargs.pop("toolbar_location", "above")
     if "x_range" in kwargs:
@@ -1647,9 +1647,9 @@ def trace(
             "Cannot specify line color. Specify color scheme with `palette` kwarg."
         )
 
-    if "plot_height" not in kwargs and "frame_height" not in kwargs:
+    if "height" not in kwargs and "frame_height" not in kwargs:
         kwargs["frame_height"] = 150
-    if "plot_width" not in kwargs and "frame_width" not in kwargs:
+    if "width" not in kwargs and "frame_width" not in kwargs:
         kwargs["frame_width"] = 600
     x_axis_label = kwargs.pop("x_axis_label", "step")
     if "y_axis_label" in kwargs:
@@ -1684,7 +1684,116 @@ def trace(
     for i, p in enumerate(plots[:-1]):
         plots[i].x_range = plots[-1].x_range
 
-    return bokeh.layouts.gridplot(plots, ncols=1)
+    # Ideally, we would just do this:
+    #    grid = bokeh.layouts.gridplot(plots)
+    # and that's the layout. In Bokeh 3+, there are layout problems with
+    # gridplot, so we build the layout explicitly. We first build the
+    # toolbar that is shared among the plots. Then, we build the layout
+    # with bokeh.layouts.row and bokeh.layouts.column.
+
+    # ------------------------------------------------------------------
+    # The following block of code sets up the toolbars. This is mildly
+    # adapted from the code bokeh.layouts.gridplot,
+    #
+    # Copyright (c) 2012 - 2023, Anaconda, Inc., and Bokeh Contributors
+    # All rights reserved.
+    #
+    # Redistribution and use in source and binary forms, with or without modification,
+    # are permitted provided that the following conditions are met:
+    #
+    # Redistributions of source code must retain the above copyright notice,
+    # this list of conditions and the following disclaimer.
+    #
+    # Redistributions in binary form must reproduce the above copyright notice,
+    # this list of conditions and the following disclaimer in the documentation
+    # and/or other materials provided with the distribution.
+    #
+    # Neither the name of Anaconda nor the names of any contributors
+    # may be used to endorse or promote products derived from this software
+    # without specific prior written permission.
+    #
+    # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    # AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    # ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+    # LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    # CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    # SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+    # THE POSSIBILITY OF SUCH DAMAGE.
+
+    toolbars = []
+    for i in range(len(plots)):
+        toolbars.append(plots[i].toolbar)
+        plots[i].toolbar_location = None
+
+    def merge(cls, group):
+        if issubclass(
+            cls,
+            (
+                bokeh.models.SaveTool,
+                bokeh.models.CopyTool,
+                bokeh.models.ExamineTool,
+                bokeh.models.FullscreenTool,
+            ),
+        ):
+            return cls()
+        else:
+            return None
+
+    tools = []
+
+    for toolbar in toolbars:
+        tools.extend(toolbar.tools)
+
+    tools = bokeh.layouts.group_tools(tools, merge=merge)
+
+    logos = [toolbar.logo for toolbar in toolbars]
+    active_drags = [toolbar.active_drag for toolbar in toolbars]
+    active_inspects = [toolbar.active_inspect for toolbar in toolbars]
+    active_scrolls = [toolbar.active_scroll for toolbar in toolbars]
+    active_taps = [toolbar.active_tap for toolbar in toolbars]
+    active_multis = [toolbar.active_multi for toolbar in toolbars]
+
+    def assert_unique(values, name):
+        n = len(set(values))
+        if n == 0:
+            return Undefined
+        elif n > 1:
+            warn(
+                f"found multiple competing values for 'toolbar.{name}' property; using the latest value"
+            )
+        return values[-1]
+
+    logo = assert_unique(logos, "logo")
+    active_drag = assert_unique(active_drags, "active_drag")
+    active_inspect = assert_unique(active_inspects, "active_inspect")
+    active_scroll = assert_unique(active_scrolls, "active_scroll")
+    active_tap = assert_unique(active_taps, "active_tap")
+    active_multi = assert_unique(active_multis, "active_multi")
+
+    toolbar = bokeh.models.Toolbar(
+        tools=tools,
+        logo=logo,
+        active_drag=active_drag,
+        active_inspect=active_inspect,
+        active_scroll=active_scroll,
+        active_tap=active_tap,
+        active_multi=active_multi,
+        # styles=dict(orientation='horizontal'),
+    )
+    # END OF TOOLBARS CODE ---------------------------------------------
+
+    # Build layout
+    # This is a hack. Ideally we would like to have the toolbar oriented horizontally
+    # And above the top plot, but the horizontal orientation does not seem to be
+    # working in Bokeh 3.3.0.
+    return bokeh.layouts.row(
+        bokeh.layouts.column(*plots),
+        toolbar
+    )
 
 
 def corner(
@@ -2369,9 +2478,9 @@ def contour(
                 return_im=False,
             )
         else:
-            if "plot_height" not in kwargs and "frame_height" not in kwargs:
+            if "height" not in kwargs and "frame_height" not in kwargs:
                 kwargs["frame_height"] = 300
-            if "plot_width" not in kwargs and "frame_width" not in kwargs:
+            if "width" not in kwargs and "frame_width" not in kwargs:
                 kwargs["frame_width"] = 300
             p = bokeh.plotting.figure(
                 x_axis_label=x_axis_label, y_axis_label=y_axis_label, **kwargs
@@ -2848,7 +2957,7 @@ def _data_range(df, x, y, margin=0.02):
 
 def _create_points_image(x_range, y_range, w, h, df, x, y, cmap):
     cvs = ds.Canvas(
-        x_range=x_range, y_range=y_range, plot_height=int(h), plot_width=int(w)
+        x_range=x_range, y_range=y_range, height=int(h), width=int(w)
     )
     agg = cvs.points(df, x, y, agg=ds.reductions.count())
     return ds.transfer_functions.dynspread(
@@ -2858,7 +2967,7 @@ def _create_points_image(x_range, y_range, w, h, df, x, y, cmap):
 
 def _create_line_image(x_range, y_range, w, h, df, x, y, cmap=None):
     cvs = ds.Canvas(
-        x_range=x_range, y_range=y_range, plot_height=int(h), plot_width=int(w)
+        x_range=x_range, y_range=y_range, height=int(h), width=int(w)
     )
     agg = cvs.line(df, x, y)
     return ds.transfer_functions.dynspread(ds.transfer_functions.shade(agg, cmap=cmap))

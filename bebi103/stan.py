@@ -1258,6 +1258,10 @@ def sbc(
     by Talts, et al., for details.
 
     """
+    # PyStan is not currently supported
+    if "pystan" in str(type(prior_predictive_model)):
+        raise NotImplementedError('SBC using PyStan is not yet implemented. Use CmdStanPy.')
+
     if measured_data_dtypes is None:
         measured_data_dtypes = {}
 
@@ -1320,6 +1324,7 @@ def sbc(
             prior_sample = prior_predictive_model.sample(
                 data=prior_predictive_model_data,
                 fixed_param=True,
+                chains=1,
                 iter_sampling=1,
                 show_progress=False,
             )
@@ -1470,6 +1475,7 @@ def _perform_sbc(args):
             prior_sample_cmdstanpy = prior_predictive_model.sample(
                 data=prior_predictive_model_data,
                 fixed_param=True,
+                chains=1,
                 iter_sampling=1,
                 show_progress=False,
                 output_dir=output_dir,
@@ -1610,6 +1616,7 @@ def _get_prior_sds(
                 data=prior_predictive_model_data,
                 fixed_param=True,
                 iter_sampling=n_prior_draws_for_sd,
+                chains=1,
                 show_progress=False,
                 output_dir=output_dir,
             )
