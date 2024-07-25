@@ -1,3 +1,5 @@
+import os
+
 import multiprocessing
 import warnings
 
@@ -5,6 +7,118 @@ import tqdm
 
 import numpy as np
 import numba
+
+def unpivot_csv(
+    input_file: str,
+    output_file: str,
+    n_header_rows=None,
+    header_names=None,
+    value_name: str = "value",
+    sep: str = ",",
+    retain_row_index: bool = True,
+    row_index_name: str = "original_row_index",
+    comment_prefix=None,
+    force_overwrite=False,
+    include_comments=True,
+    additional_comment=None,
+) -> type(None):
+    """Converts a CSV file in wide format, possibly with a hierarchical
+    column, index to tall format via a unpivot operation.
+
+    Parameters
+    ----------
+    input_file : str
+        Path to CSV file containing data in a wide format.
+    output_file : str
+        Path to file to write contents in tall format.
+    n_header_rows : int, default 1
+        Number of header rows, ignored if `header_names` is given.
+    header_names : string, list of strings, or None, default None
+        Names of each level of the header. These become the names of
+        columns in the tall representation of the data set. If None,
+        column names are variable_0, variable_1, etc.
+    value_name : str or None, default 'value'
+        Name to assign to column containing values in tall
+        representation.
+    sep : str, default ','
+        Separator. Cannot be a regex; must be a single character.
+    retain_row_index : bool, default True
+        If True, include a column containing the original row index
+        in the original file. This is useful to avoid information loss,
+        since all entries in a given row can be related. These are 
+        essentially identifies variables.
+    row_index_name : str, default 'original_row_index'
+        Label in the row index if the row index is retained. Ignored if
+        `retain_row_index` is False.
+    comment_prefix : str or None, default None
+        A single character defining which rows in the input file should
+        be treated as comments.
+    force_overwrite : bool, default False
+        If True, if the output_file already exists, it is overwritten.
+    include_comments : bool, default True
+        If True, write comments from the input file in the output files.
+    additional_comment : str or None, default None
+        Additional comment at top of output file.
+
+    Returns
+    -------
+    output : None
+        Does not return anything. The output is written to output_file.
+    """
+    if input_file == output_file:
+        raise RuntimeError("`input_file` and `output_file` are the same.")
+
+    if not force_overwrite and os.path.isfile(output_file):
+        raise RuntimeError(f"File {output_file} exists, not overwriting.")
+
+    if header_names is None:
+        if n_header_rows is None:
+            n_header_rows = 1
+        header_names = [f"variable_{i}" for i in range(n_header_rows)]
+    elif np.isscalar(header_names):
+        header_names = [header_names]
+
+    if n_header_rows is None:
+        n_header_rows = len(header_names)
+
+    if len(header_names) != n_header_rows:
+        raise RuntimeError("len(header_names) != n_header_rows")
+
+    with open(input_file, "r") as f, open(output_file, "w") as fout:
+        # Read and write comments
+        line = f.readline()
+        while line != "" and line[0] == comment_prefix:
+            if include_comments:
+                fout.write(line)
+            line = f.readline()
+
+        # Headers, a list of lists
+        headers = [line.rstrip().split(sep)] + [
+            f.readline().rstrip().split(sep) for _ in range(n_header_rows - 1)
+        ]
+
+        # Header to output
+        if retain_row_index:
+            fout.write(f"{row_index_name},")
+        fout.write(sep.join(header_names + [value_name]) + "\n")
+
+        # Now read data and add to output file
+        row_index = 0
+        line = f.readline()
+        while line != "":
+            data = line.split(sep)
+            for i, data_str in enumerate(data):
+                data_str = data_str.strip().rstrip()
+                if retain_row_index:
+                    fout.write(str(row_index) + sep)
+                if data_str != "":
+                    fout.write(
+                        sep.join([head[i] for head in headers] + [data_str]) + "\n"
+                    )
+            line = f.readline()
+            row_index += 1
+
+    return None
 
 
 def _dummy_jit(*args, **kwargs):
