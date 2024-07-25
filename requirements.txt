@@ -5,6 +5,7 @@ numba
 xarray
 scipy
 pandas
+polars
 tqdm
 bokeh>=3.0.0
 matplotlib
