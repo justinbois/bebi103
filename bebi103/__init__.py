@@ -7,7 +7,7 @@ import re
 import warnings
 
 warnings.filterwarnings(
-    "always", category=DeprecationWarning, module="^{}\.".format(re.escape(__name__))
+    "always", category=DeprecationWarning, module=r"^{}\.".format(re.escape(__name__))
 )
 
 # Filter annoying warning about PyArrow
@@ -39,6 +39,8 @@ from . import bootstrap
 
 from . import gp
 
+from . import utils
+
 try:
     from . import stan
 except:
@@ -50,4 +52,4 @@ except:
 
 __author__ = """Justin Bois"""
 __email__ = "bois@caltech.edu"
-__version__ = "0.1.20"
+__version__ = "0.1.21"
