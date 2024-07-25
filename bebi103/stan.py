@@ -22,6 +22,7 @@ import tqdm
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import xarray
 
 try:
@@ -34,27 +35,14 @@ except:
     raise RuntimeError("Could not import ArviZ. Perhaps it is not installed.")
 
 try:
-    import pystan
-
-    pystan_success = True
-except:
-    pystan_success = False
-
-try:
     import cmdstanpy
 
     cmdstanpy_success = True
 except:
     cmdstanpy_success = False
 
-if pystan_success and cmdstanpy_success:
-    warnings.warn(
-        "Both pystan and cmdstanpy are importable in this environment. As per the"
-        " cmdstanpy documentation, this is not advised."
-    )
-
-if not pystan_success and not cmdstanpy_success:
-    raise RuntimeError("Neither PyStan nor CmdStanPy could be imported.")
+if not cmdstanpy_success:
+    raise RuntimeError("CmdStanPy could not be imported.")
 
 import bokeh.plotting
 
@@ -70,78 +58,9 @@ def StanModel(
     **kwargs,
 ):
     """ "Utility to load/save cached compiled Stan models using PyStan.
-
-    Parameters
-    ----------
-    file : str or open file
-        File from which Stan model is to be read. Cannot be specified
-        if `model_code` is not None.
-    charset : str, default utf-8
-        Character set to be used to decode model.
-    model_name : str, 'default anon_model'
-        The name of the model.
-    model_code : str, default None
-        The Stan code to be compiled. If not None, `file` must be None.
-    force_compile : bool, deafult False
-        If True, compile, even if a cached version exists.
-    kwargs : dict
-        And kwargs to pass to pystem.StanModel().
-
-    Returns
-    -------
-    output : pystan.model.StanModel
-        A compiled Stan model.
-
-    Notes
-    -----
-    If a Stan model does not exist in the pwd that matches the code
-    provided in either `file` or `model_code`, a new Stan model is
-    built and compiled and then pickled and stored in pwd. If such a
-    model does exist, the pickled model is loaded.
+    DEPRECATED
     """
-
-    logger = logging.getLogger("pystan")
-
-    if file and model_code:
-        raise ValueError("Specify stan model with `file` or `model_code`, " "not both.")
-    if file is None and model_code is None:
-        raise ValueError("Model file missing and empty model_code.")
-    if file is not None:
-        if isinstance(file, str):
-            try:
-                with open(file, "rt", encoding=charset) as f:
-                    model_code = f.read()
-            except:
-                logger.critical("Unable to read file specified by `file`.")
-                raise
-        else:
-            model_code = file.read()
-
-    # Make a code_hash to use for file name
-    code_hash = hashlib.md5(model_code.encode("ascii")).hexdigest()
-
-    if model_name is None:
-        cache_fname = "cached-model-{}.pkl".format(code_hash)
-    else:
-        cache_fname = "cached-{}-{}.pkl".format(model_name, code_hash)
-
-    if force_compile:
-        sm = pystan.StanModel(model_code=model_code, **kwargs)
-
-        with open(cache_fname, "wb") as f:
-            pickle.dump(sm, f)
-    else:
-        try:
-            sm = pickle.load(open(cache_fname, "rb"))
-        except:
-            sm = pystan.StanModel(model_code=model_code, **kwargs)
-
-            with open(cache_fname, "wb") as f:
-                pickle.dump(sm, f)
-        else:
-            print("Using cached StanModel.")
-
-    return sm
+    raise RuntimeError('bebi103.stan.StanModel is deprecated.')
 
 
 def clean_cmdstan(path="./", prefix=None, delete_sampling_output=False):
@@ -231,7 +150,7 @@ def df_to_datadict_hier(
     Parameters
     ----------
     df : DataFrame
-        A tidy Pandas data frame.
+        A tidy Polars or Pandas data frame.
     level_cols : list
         A list of column names containing variables that specify the
         level of the hierarchical model. These must be given in order
@@ -401,6 +320,13 @@ def df_to_datadict_hier(
     if type(sort_cols) != list:
         raise RuntimeError("`sort_cols` must be a list.")
 
+    # For now, if polars, just convert to pandas
+    if 'polars.dataframe.frame.DataFrame' in str(type(df)):
+        polars_in = True
+        df = df.to_pandas()
+    else:
+        polars_in = False
+
     # Get a copy so we don't overwrite
     new_df = df.copy(deep=True)
 
@@ -452,11 +378,17 @@ def df_to_datadict_hier(
 
         data[new_col] = new_df[col].values
 
+    # Return polars if input was polars
+    if polars_in:
+        new_df = pl.from_pandas(df)
+
     return data, new_df
 
 
-def arviz_to_dataframe(data, var_names=None, diagnostics=("diverging",)):
-    """Convert ArviZ InferenceData to a Pandas data frame.
+def arviz_to_dataframe(
+    data, var_names=None, diagnostics=("diverging",), df_package="polars"
+):
+    """Convert ArviZ InferenceData to a Pandas or Polars data frame.
 
     Any multi-dimensional parameters are converted to one-dimensional
     equivalents. For example, a 2x2 matrix A is converted to columns
@@ -480,12 +412,14 @@ def arviz_to_dataframe(data, var_names=None, diagnostics=("diverging",)):
         variables in `data.posterior.data_vars` may be stored.
     diagnostics : list or tuple of strings
         Diagnostic data to be stored in the data frame. The elements of
-        the list may include: 'lp', 'accept_stat', 'stepsize',
-        'treedepth', 'n_leapfrog', 'diverging', and 'energy'.
+        the list may include: 'lp', 'acceptance_rate', 'step_size',
+        'tree_depth', 'n_steps', 'diverging', and 'energy'.
+    df_package : str, one of 'polars' (default) or 'pandas'
+        What type of data frame to output
 
     Returns
     -------
-    output : Pandas DataFrame
+    output : Polars or Pandas DataFrame
         DataFrame with posterior samples and diagnostics. The column
         names of all diagnostics, as well as 'chain' and 'draw', are
         appended with a double-underscore (`__`) to signify that they
@@ -522,18 +456,31 @@ def arviz_to_dataframe(data, var_names=None, diagnostics=("diverging",)):
     cols, data_as_ndarray = _xarray_to_ndarray(data.posterior, var_names=var_names)
 
     chain = np.concatenate(
-        [[i] * data.posterior.dims["draw"] for i in range(data.posterior.dims["chain"])]
+        [
+            [i] * data.posterior.sizes["draw"]
+            for i in range(data.posterior.sizes["chain"])
+        ]
     )
 
     draw = np.concatenate(
-        [data.posterior["draw"].values for i in range(data.posterior.dims["chain"])]
+        [data.posterior["draw"].values for i in range(data.posterior.sizes["chain"])]
     )
 
-    df = pd.DataFrame(data=data_as_ndarray.T, columns=cols)
-    df["chain__"] = chain
-    df["draw__"] = draw
-    for diag, res in diag_dict.items():
-        df[diag] = res
+    if type(df_package) == str and df_package.lower() == "pandas":
+        df = pd.DataFrame(data=data_as_ndarray.T, columns=cols)
+        df["chain__"] = chain
+        df["draw__"] = draw
+        for diag, res in diag_dict.items():
+            df[diag] = res
+    elif type(df_package) == str and df_package.lower() == "polars":
+        df = pl.DataFrame(data=data_as_ndarray.T, schema=cols)
+        df = df.with_columns(
+            pl.Series(chain).alias("chain__"),
+            pl.Series(draw).alias("draw__"),
+            *[pl.Series(res).alias(diag) for diag, res in diag_dict.items()],
+        )
+    else:
+        raise RuntimeError("Invalid `df_package`. Must be either 'polars' or 'pandas'.")
 
     return df
 
@@ -561,7 +508,7 @@ def check_divergences(samples, quiet=False, return_diagnostics=False):
         Number of divergent samples.
     """
     n_divergent = samples.sample_stats["diverging"].values.sum()
-    n_total = samples.sample_stats.dims["chain"] * samples.sample_stats.dims["draw"]
+    n_total = samples.sample_stats.sizes["chain"] * samples.sample_stats.sizes["draw"]
 
     if not quiet:
         msg = "{} of {} ({}%) iterations ended with a divergence.".format(
@@ -610,7 +557,7 @@ def check_treedepth(samples, max_treedepth=10, quiet=False, return_diagnostics=F
     except:
         n_too_deep = (samples.sample_stats.treedepth.values >= max_treedepth).sum()
 
-    n_total = samples.sample_stats.dims["chain"] * samples.sample_stats.dims["draw"]
+    n_total = samples.sample_stats.sizes["chain"] * samples.sample_stats.sizes["draw"]
 
     if not quiet:
         msg = "{} of {} ({}%) iterations saturated".format(
@@ -743,8 +690,8 @@ def check_ess(
     Vehtari, et al., 2019, https://arxiv.org/abs/1903.08008.
     """
     # For convenience
-    N = samples.posterior.dims["draw"]
-    M = samples.posterior.dims["chain"]
+    N = samples.posterior.sizes["draw"]
+    M = samples.posterior.sizes["chain"]
     total_ess_rule_of_thumb *= M
 
     var_names_arviz = _parameters_to_arviz_var_names(samples, parameters)
@@ -1155,15 +1102,16 @@ def sbc(
     n_prior_draws_for_sd=1000,
     samples_dir="sbc_samples",
     remove_sample_files=True,
+    df_package='polars',
     progress_bar=False,
 ):
     """Perform simulation-based calibration on a Stan Model.
 
     Parameters
     ----------
-    prior_predictive_model : pystan.model.StanModel
+    prior_predictive_model : cmdstanpy.model.CmdStanModel
         A Stan model for generating prior predictive data sets.
-    posterior_model : pystan.model.StanModel
+    posterior_model : cmdstanpy.model.CmdStanModel
         A Stan model of the posterior that allows sampling.
     prior_predictive_model_data : dict
         Dictionary with entries specified by the data block of the prior
@@ -1199,11 +1147,7 @@ def sbc(
         name, and the corresponding item is its dtype, almost always
         either `int` or `float`.
     sampling_kwargs : dict, default None
-        kwargs to be passed to `sm.sample()` for a CmdStanPy model `sm`
-        or to `sm.sampling()` for a PyStan model `sm`. If using
-        CmdStanPy, the 'output_dir' kwarg is not allowed because
-        unambiguous naming is not possible if new sampling is done
-        more than once per minute, given CmdStanPy's naming convention.
+        kwargs to be passed to `sm.sample()`.
     diagnostic_check_kwargs : dict, default None
         kwargs to pass to `check_all_diagnostics()`. If `quiet` and/or
         `return_diagnostics` are given, they are ignored.
@@ -1218,22 +1162,20 @@ def sbc(
         deviation is used in the shrinkage calculation.
     samples_dir : str, default "sbc_samples"
         Path to directory to store .csv and .txt files generated by
-        CmdStan. If the Stan models are made using PyStan, this is
-        ignored; it is only active if using CmdStanPy. The directory
-        specified here will NOT be destroyed after a calculation,
-        though the files within it may be, depending on the
-        `remove_sample_files` kwarg.
+        CmdStan. The directory specified here will NOT be destroyed 
+        after a calculation, though the files within it may be, 
+        depending on the `remove_sample_files` kwarg.
     remove_sample_files : bool, default True
-        If True, remove .csv and .txt files generated by CmdStan. If
-        the Stan models are made using PyStan, this is ignored; it is
-        only active if using CmdStanPy.
+        If True, remove .csv and .txt files generated by CmdStan.
+    df_package : str, either 'polars' (default) or 'pandas'
+        Which package to use for output data frame
     progress_bar : bool, default False
         If True, display a progress bar for the calculation using tqdm.
 
     Returns
     -------
-    output : Pandas DataFrame
-        A Pandas DataFrame with the output of the SBC analysis. It has
+    output : Polars or Pandas DataFrame
+        Data frame with the output of the SBC analysis. It has
         the following columns.
 
             - trial : Unique trial number for the simulation.
@@ -1258,10 +1200,6 @@ def sbc(
     by Talts, et al., for details.
 
     """
-    # PyStan is not currently supported
-    if "pystan" in str(type(prior_predictive_model)):
-        raise NotImplementedError('SBC using PyStan is not yet implemented. Use CmdStanPy.')
-
     if measured_data_dtypes is None:
         measured_data_dtypes = {}
 
@@ -1307,34 +1245,17 @@ def sbc(
         sampling_kwargs["show_progress"] = False
 
     # Take a prior sample to infer data types
-    if "pystan" in str(type(prior_predictive_model)):
-        with disable_logging():
-            prior_sample = prior_predictive_model.sampling(
-                data=prior_predictive_model_data,
-                algorithm="Fixed_param",
-                iter=1,
-                chains=1,
-                warmup=0,
-            )
-        prior_sample = az.from_pystan(
-            prior=prior_sample, prior_predictive=measured_data
+    with disable_logging():
+        prior_sample = prior_predictive_model.sample(
+            data=prior_predictive_model_data,
+            fixed_param=True,
+            chains=1,
+            iter_sampling=1,
+            show_progress=False,
         )
-    elif "cmdstanpy" in str(type(prior_predictive_model)):
-        with disable_logging():
-            prior_sample = prior_predictive_model.sample(
-                data=prior_predictive_model_data,
-                fixed_param=True,
-                chains=1,
-                iter_sampling=1,
-                show_progress=False,
-            )
-        prior_sample = az.from_cmdstanpy(
-            prior=prior_sample, prior_predictive=measured_data
-        )
-    elif callable(prior_predictive_model):
-        raise NotImplementedError("Python-based prior models not yet supported.")
-    else:
-        raise RuntimeError("Improper type for `prior_predictive_model`.")
+    prior_sample = az.from_cmdstanpy(
+        prior=prior_sample, prior_predictive=measured_data
+    )
 
     # Infer dtypes of measured data
     for data in measured_data:
@@ -1413,31 +1334,21 @@ def sbc(
     # Determine number of iterations
     thin = sampling_kwargs["thin"] if "thin" in sampling_kwargs else 1
     chains = sampling_kwargs["chains"] if "chains" in sampling_kwargs else 4
-    if "pystan" in str(type(posterior_model)):
-        if "iter" in sampling_kwargs:
-            if "warmup" in sampling_kwargs:
-                iter_sampling = sampling_kwargs["iter"] - sampling_kwargs["warmup"]
-            else:
-                iter_sampling = sampling_kwargs["iter"] - sampling_kwargs["iter"] // 2
-        elif "warmup" in sampling_kwargs:
-            iter_sampling = 2000 - sampling_kwargs["warmup"]
-        else:
-            iter_sampling = 1000
-    elif "cmdstanpy" in str(type(prior_predictive_model)):
-        if "iter_sampling" in sampling_kwargs:
-            iter_sampling = sampling_kwargs["iter_sampling"]
-        else:
-            iter_sampling = 1000
+    if "iter_sampling" in sampling_kwargs:
+        iter_sampling = sampling_kwargs["iter_sampling"]
+    else:
+        iter_sampling = 1000
 
     output["L"] = iter_sampling * chains // thin
 
-    return _tidy_sbc_output(output)
+    if type(df_package) == str and df_package.lower() == 'polars':
+        return pl.from_pandas(_tidy_sbc_output(output))
+    else:
+        return _tidy_sbc_output(output)
 
 
 def _perform_sbc(args):
     """Perform an SBC analysis"""
-    logging.getLogger("pystan").setLevel(logging.CRITICAL)
-
     (
         prior_predictive_model,
         posterior_model,
@@ -1457,34 +1368,21 @@ def _perform_sbc(args):
 
     posterior_model_data = copy.deepcopy(posterior_model_data)
 
-    if "pystan" in str(type(prior_predictive_model)):
-        with disable_logging():
-            prior_sample = prior_predictive_model.sampling(
-                data=prior_predictive_model_data,
-                algorithm="Fixed_param",
-                iter=1,
-                chains=1,
-                warmup=0,
-            )
-        prior_sample = az.from_pystan(
-            prior=prior_sample, prior_predictive=measured_data
+    with disable_logging():
+        output_dir = _get_output_dir(samples_dir, "prior_pred")
+        prior_sample_cmdstanpy = prior_predictive_model.sample(
+            data=prior_predictive_model_data,
+            fixed_param=True,
+            chains=1,
+            iter_sampling=1,
+            show_progress=False,
+            output_dir=output_dir,
         )
-    elif "cmdstanpy" in str(type(prior_predictive_model)):
-        with disable_logging():
-            output_dir = _get_output_dir(samples_dir, "prior_pred")
-            prior_sample_cmdstanpy = prior_predictive_model.sample(
-                data=prior_predictive_model_data,
-                fixed_param=True,
-                chains=1,
-                iter_sampling=1,
-                show_progress=False,
-                output_dir=output_dir,
-            )
-        prior_sample = az.from_cmdstanpy(
-            prior=prior_sample_cmdstanpy, prior_predictive=measured_data
-        )
-        if remove_sample_files:
-            _remove_sampling_files(prior_sample_cmdstanpy.runset)
+    prior_sample = az.from_cmdstanpy(
+        prior=prior_sample_cmdstanpy, prior_predictive=measured_data
+    )
+    if remove_sample_files:
+        _remove_sampling_files(prior_sample_cmdstanpy.runset)
 
     # Extract data generated from the prior predictive calculation
     for data in measured_data:
@@ -1499,18 +1397,7 @@ def _perform_sbc(args):
     param_priors = {name: val.item() for name, val in zip(names, vals)}
 
     # Generate posterior samples
-    if "pystan" in str(type(posterior_model)):
-        with disable_logging():
-            posterior_samples = posterior_model.sampling(
-                data=posterior_model_data, n_jobs=1, **sampling_kwargs
-            )
-        posterior_samples = az.from_pystan(
-            posterior=posterior_samples,
-            posterior_predictive=posterior_predictive_var_names,
-            log_likelihood=log_likelihood_var_name,
-        )
-
-    elif "cmdstanpy" in str(type(posterior_model)):
+    try:
         with disable_logging():
             output_dir = _get_output_dir(samples_dir, "model")
             posterior_samples_cmdstanpy = posterior_model.sample(
@@ -1529,60 +1416,96 @@ def _perform_sbc(args):
         if remove_sample_files:
             _remove_sampling_files(posterior_samples_cmdstanpy.runset)
 
-    # Check diagnostics
-    warning_code, diagnostics = check_all_diagnostics(
-        posterior_samples, **diagnostic_check_kwargs
-    )
+        # Check diagnostics
+        warning_code, diagnostics = check_all_diagnostics(
+            posterior_samples, **diagnostic_check_kwargs
+        )
+        err_str = 'no error'
+        success = True
+    except Exception as exception:
+        err_str = exception.__str__()
+        warnings.warn(f"Trial failure with error message: {err_str}")
+        success = False
 
-    # Convert output to Numpy array
-    names, vals = _xarray_to_ndarray(posterior_samples.posterior, var_names=var_names)
+    if success:
+        # Convert output to Numpy array
+        names, vals = _xarray_to_ndarray(posterior_samples.posterior, var_names=var_names)
 
-    # Generate output dictionary
-    output = {
-        name + "_rank_statistic": (vals[i] < param_priors[name]).sum()
-        for i, name in enumerate(names)
-    }
-    for name, p_prior in param_priors.items():
-        output[name + "_ground_truth"] = p_prior
+        # Generate output dictionary
+        output = {
+            name + "_rank_statistic": (vals[i] < param_priors[name]).sum()
+            for i, name in enumerate(names)
+        }
+        for name, p_prior in param_priors.items():
+            output[name + "_ground_truth"] = p_prior
 
-    # Compute posterior sensitivities
-    for name, val in zip(names, vals):
-        output[name + "_mean"] = np.mean(val)
-        output[name + "_sd"] = np.std(val)
-        output[name + "_z_score"] = (
-            output[name + "_mean"] - output[name + "_ground_truth"]
-        ) / output[name + "_sd"]
-        output[name + "_shrinkage"] = 1 - (output[name + "_sd"] / prior_sd[name]) ** 2
-        output[name + "_ESS"] = (
-            diagnostics["ess"]
-            .loc[diagnostics["ess"]["parameter"] == name, "ESS"]
-            .values[0]
-        )
-        output[name + "_ESS_per_iter"] = (
-            diagnostics["ess"]
-            .loc[diagnostics["ess"]["parameter"] == name, "ESS_per_iter"]
-            .values[0]
-        )
-        output[name + "_tail_ESS"] = (
-            diagnostics["ess"]
-            .loc[diagnostics["ess"]["parameter"] == name, "tail_ESS"]
-            .values[0]
-        )
-        output[name + "_tail_ESS_per_iter"] = (
-            diagnostics["ess"]
-            .loc[diagnostics["ess"]["parameter"] == name, "tail_ESS_per_iter"]
-            .values[0]
-        )
-        output[name + "_Rhat"] = (
-            diagnostics["rhat"]
-            .loc[diagnostics["rhat"]["parameter"] == name, "Rhat"]
-            .values[0]
-        )
+        # Compute posterior sensitivities
+        for name, val in zip(names, vals):
+            output[name + "_mean"] = np.mean(val)
+            output[name + "_sd"] = np.std(val)
+            output[name + "_z_score"] = (
+                output[name + "_mean"] - output[name + "_ground_truth"]
+            ) / output[name + "_sd"]
+            output[name + "_shrinkage"] = 1 - (output[name + "_sd"] / prior_sd[name]) ** 2
+            output[name + "_ESS"] = (
+                diagnostics["ess"]
+                .loc[diagnostics["ess"]["parameter"] == name, "ESS"]
+                .values[0]
+            )
+            output[name + "_ESS_per_iter"] = (
+                diagnostics["ess"]
+                .loc[diagnostics["ess"]["parameter"] == name, "ESS_per_iter"]
+                .values[0]
+            )
+            output[name + "_tail_ESS"] = (
+                diagnostics["ess"]
+                .loc[diagnostics["ess"]["parameter"] == name, "tail_ESS"]
+                .values[0]
+            )
+            output[name + "_tail_ESS_per_iter"] = (
+                diagnostics["ess"]
+                .loc[diagnostics["ess"]["parameter"] == name, "tail_ESS_per_iter"]
+                .values[0]
+            )
+            output[name + "_Rhat"] = (
+                diagnostics["rhat"]
+                .loc[diagnostics["rhat"]["parameter"] == name, "Rhat"]
+                .values[0]
+            )
 
-    output["n_bad_ebfmi"] = diagnostics["e_bfmi"]["problematic"].sum()
-    output["n_divergences"] = int(diagnostics["n_divergences"])
-    output["n_max_treedepth"] = int(diagnostics["n_max_treedepth"])
-    output["warning_code"] = warning_code
+        output["n_bad_ebfmi"] = diagnostics["e_bfmi"]["problematic"].sum()
+        output["n_divergences"] = int(diagnostics["n_divergences"])
+        output["n_max_treedepth"] = int(diagnostics["n_max_treedepth"])
+        output["warning_code"] = warning_code
+    else:
+        # Convert output to Numpy array
+        names, _ = _xarray_to_ndarray(prior_sample.prior, var_names=var_names)
+
+        # Generate output dictionary
+        output = {
+            name + "_rank_statistic": np.nan
+            for i, name in enumerate(names)
+        }
+        for name, p_prior in param_priors.items():
+            output[name + "_ground_truth"] = p_prior
+
+        # Posterior sensitivities
+        for name, val in zip(names, vals):
+            output[name + "_mean"] = np.nan
+            output[name + "_sd"] = np.nan
+            output[name + "_z_score"] = np.nan
+            output[name + "_shrinkage"] = np.nan
+            output[name + "_ESS"] = np.nan
+            output[name + "_ESS_per_iter"] = np.nan
+            output[name + "_tail_ESS"] = np.nan
+            output[name + "_tail_ESS_per_iter"] = np.nan
+            output[name + "_Rhat"] = np.nan
+
+        output["n_bad_ebfmi"] = np.nan
+        output["n_divergences"] = np.nan
+        output["n_max_treedepth"] = np.nan
+        output["warning_code"] = np.nan
+    output['error'] = err_str
 
     return output
 
@@ -1597,35 +1520,22 @@ def _get_prior_sds(
     remove_sample_files,
 ):
     """Compute standard deviations of prior parameters."""
-    if "pystan" in str(type(prior_predictive_model)):
-        with disable_logging():
-            prior_samples = prior_predictive_model.sampling(
-                data=prior_predictive_model_data,
-                algorithm="Fixed_param",
-                iter=n_prior_draws_for_sd,
-                chains=1,
-                warmup=0,
-            )
-        prior_samples = az.from_pystan(
-            prior=prior_samples, prior_predictive=measured_data
+    with disable_logging():
+        output_dir = _get_output_dir(samples_dir, "prior_pred")
+        prior_samples_cmdstanpy = prior_predictive_model.sample(
+            data=prior_predictive_model_data,
+            fixed_param=True,
+            iter_sampling=n_prior_draws_for_sd,
+            chains=1,
+            show_progress=False,
+            output_dir=output_dir,
         )
-    elif "cmdstanpy" in str(type(prior_predictive_model)):
-        with disable_logging():
-            output_dir = _get_output_dir(samples_dir, "prior_pred")
-            prior_samples_cmdstanpy = prior_predictive_model.sample(
-                data=prior_predictive_model_data,
-                fixed_param=True,
-                iter_sampling=n_prior_draws_for_sd,
-                chains=1,
-                show_progress=False,
-                output_dir=output_dir,
-            )
-        prior_samples = az.from_cmdstanpy(
-            prior=prior_samples_cmdstanpy, prior_predictive=measured_data
-        )
+    prior_samples = az.from_cmdstanpy(
+        prior=prior_samples_cmdstanpy, prior_predictive=measured_data
+    )
 
-        if remove_sample_files:
-            _remove_sampling_files(prior_samples_cmdstanpy.runset)
+    if remove_sample_files:
+        _remove_sampling_files(prior_samples_cmdstanpy.runset)
 
     # Compute prior sd's
     names, vals = _xarray_to_ndarray(prior_samples.prior)
@@ -1696,6 +1606,7 @@ def _tidy_sbc_output(sbc_output):
         "warning_code",
         "L",
         "trial",
+        "error"
     ]
     for param in params:
         cols = [param + "_" + stat for stat in stats]
@@ -1847,7 +1758,7 @@ def _samples_parameters_to_df(samples, parameters, omit=[]):
 
     var_names_arviz = _parameters_to_arviz_var_names(samples, params)
 
-    df = arviz_to_dataframe(samples, var_names=var_names_arviz)
+    df = arviz_to_dataframe(samples, var_names=var_names_arviz, df_package='pandas')
 
     if parameters is None:
         parameters = [col for col in df.columns if _screen_param(col, omit)]
