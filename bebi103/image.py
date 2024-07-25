@@ -167,7 +167,7 @@ def imshow(
         dh = np.max(kwargs["y_range"]) - np.min(kwargs["y_range"])
     else:
         dh = n * interpixel_distance
-        kwargs["x_range"] = [0, dh]
+        kwargs["y_range"] = [0, dh]
 
     # Set up figure with appropriate dimensions
     if "height" in kwargs:
@@ -538,7 +538,7 @@ def draw_rois(
             fill_alpha=fill_alpha,
             color=color,
         )
-        vertex_renderer = p.circle([], [], size=vertex_size, color="red")
+        vertex_renderer = p.scatter([], [], size=vertex_size, color="red")
 
         columns = [
             bokeh.models.TableColumn(field="xs", title="xs"),
