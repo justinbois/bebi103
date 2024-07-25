@@ -47,8 +47,20 @@ try:
     from . import stan
 except:
     warnings.warn(
-        "Could not import `stan` submodule. Perhaps pystan or cmdstanpy is not properly installed."
+        "Could not import `stan` submodule. Perhaps ArviZ or cmdstanpy is not properly installed."
     )
+
+
+def to_ColumnDataSource(df):
+    if "polars.dataframe.frame.DataFrame" in str(type(df)):
+        return bokeh.models.ColumnDataSource({s.name: s.to_list() for s in df})    
+    elif "pandas.core.frame.DataFrame" in str(type(df)) or type(df) == dict:
+        return bokeh.models.ColumnDataSource(df)
+    else:
+        try:
+            return bokeh.models.ColumnDataSource(df)
+        except:
+            raise RuntimeError('Unable to convert `df` to a ColumnDataSource.')
 
 
 def confints(
@@ -72,7 +84,7 @@ def confints(
         contain all of the values in the labels provided in the
         `summaries` input. If `p` is None, then a new figure is created.
     marker_kwargs : dict, default None
-        Kwargs to be passed to p.circle() for plotting estimates.
+        Kwargs to be passed to p.scatter() for plotting estimates.
     line_kwargs : dict, default None
         Kwargs passsed to p.line() to plot the confidence interval.
     palette : list, str, or None
@@ -141,7 +153,7 @@ def confints(
         if use_palette:
             marker_kwargs["color"] = palette[i % len(palette)]
             line_kwargs["color"] = palette[i % len(palette)]
-        p.circle(x=[estimate], y=[label], size=size, **marker_kwargs)
+        p.scatter(x=[estimate], y=[label], size=size, **marker_kwargs)
         p.line(x=conf, y=[label, label], line_width=line_width, **line_kwargs)
 
     return p
@@ -414,7 +426,7 @@ def _ecdf(
     y_axis_type : str, default 'linear'
         Either 'linear' or 'log'.
     kwargs
-        Any kwargs to be passed to either p.circle or p.line, for
+        Any kwargs to be passed to either p.scatter or p.line, for
         `staircase` being False or True, respectively.
 
     Returns
@@ -453,7 +465,7 @@ def _ecdf(
             p.ray(x=x[0], y=0, length=0, angle=np.pi, **kwargs)
             p.ray(x=x[-1], y=1, length=0, angle=0, **kwargs)
     else:
-        p.circle(x, y, **kwargs)
+        p.scatter(x, y, **kwargs)
 
     return p
 
@@ -878,16 +890,16 @@ def predictive_ecdf(
                 )
         else:
             if diff == "iecdf":
-                p.circle(data_plot - df_ecdf["50"], y, color=data_color, size=data_size)
+                p.scatter(data_plot - df_ecdf["50"], y, color=data_color, size=data_size)
             elif diff == "ecdf":
-                p.circle(
+                p.scatter(
                     data_plot,
                     y - _ecdf_arbitrary_points(df_ecdf["50"].values, data_plot),
                     color=data_color,
                     size=data_size,
                 )
             else:
-                p.circle(data_plot, y, color=data_color, size=data_size)
+                p.scatter(data_plot, y, color=data_color, size=data_size)
 
     return p
 
@@ -909,7 +921,7 @@ def predictive_regression(
     ----------
     samples : Numpy array, shape (n_samples, n_x) or xarray DataArray
         Numpy array containing predictive samples of y-values.
-    sample_x : Numpy array, shape (n_x,)
+    samples_x : Numpy array, shape (n_x,)
     data : Numpy array, shape (n, 2) or xarray DataArray
         If not None, the measured data. The first column is the x-data,
         and the second the y-data. These are plotted as points over the
@@ -926,7 +938,7 @@ def predictive_regression(
         There are used to make the color scheme of shading of
         percentiles.
     data_kwargs : dict, default None
-        Any kwargs to be passed to p.circle() when plotting the data
+        Any kwargs to be passed to p.scatter() when plotting the data
         points.
     p : bokeh.plotting.Figure instance, or None (default)
         If None, create a new figure. Otherwise, populate the existing
@@ -1003,14 +1015,14 @@ def predictive_regression(
         df_data = pd.DataFrame(data=data, columns=["__data_x", "__data_y"])
         df_data = df_data.sort_values(by="__data_x")
 
-    # Make sure all entries in x-data in samples_x
-    if diff:
-        if len(samples_x) != len(df_data) or not np.allclose(
-            np.sort(samples_x), df_data["__data_x"].values
-        ):
-            raise ValueError(
-                "If `diff == True`, then samples_x must match the x-values of `data`."
-            )
+        # Make sure all entries in x-data in samples_x
+        if diff:
+            if len(samples_x) != len(df_data) or not np.allclose(
+                np.sort(samples_x), df_data["__data_x"].values
+            ):
+                raise ValueError(
+                    "If `diff == True`, then samples_x must match the x-values of `data`."
+                )
 
     df_pred = pd.DataFrame(
         data=np.percentile(samples, ptiles, axis=0).transpose(),
@@ -1066,7 +1078,7 @@ def predictive_regression(
         data_alpha = data_kwargs.pop("alpha", 1.0)
         data_size = data_kwargs.pop("size", 2)
         if diff:
-            p.circle(
+            p.scatter(
                 df_data["__data_x"],
                 df_data["__data_y"] - df_pred["50"],
                 color=data_color,
@@ -1075,7 +1087,7 @@ def predictive_regression(
                 **data_kwargs,
             )
         else:
-            p.circle(
+            p.scatter(
                 df_data["__data_x"],
                 df_data["__data_y"],
                 color=data_color,
@@ -1148,7 +1160,7 @@ def sbc_rank_ecdf(
         Plot to which to add the SBC rank ECDF plot. If None, create a
         new figure.
     marker_kwargs : dict, default None
-        Dictionary of kwargs to pass to `p.circle()` or `p.line()` when
+        Dictionary of kwargs to pass to `p.scatter()` or `p.line()` when
         plotting the SBC ECDF.
     envelope_patch_kwargs : dict, default None
         Any kwargs passed into p.patch(), which generates the fill of
@@ -1299,7 +1311,7 @@ def sbc_rank_ecdf(
     if staircase:
         plot_cmd = p.line
     else:
-        plot_cmd = p.circle
+        plot_cmd = p.scatter
 
     if show_legend:
         legend_items = []
@@ -1832,9 +1844,10 @@ def corner(
 
     Parameters
     ----------
-    samples : Numpy array, Pandas DataFrame, or ArviZ InferenceData
-        Results of sampling. If a Numpy array or Pandas DataFrame, each
-        row is a sample and each column corresponds to a variable.
+    samples : Numpy array, Polars DataFrame, Pandas DataFrame, or ArviZ InferenceData
+        Results of sampling. If a Numpy array, Polars DataFrame, Pandas 
+        DataFrame, each row is a sample and each column corresponds to a
+        variable.
     parameters : list
         List of variables as strings included in `samples` to construct
         corner plot. If None, use all parameters. The entries correspond
@@ -1987,6 +2000,15 @@ def corner(
                 for col in df.columns
                 if stan._screen_param(col, omit) and (len(col) < 2 or col[-2:] != "__")
             ]
+    elif 'polars.dataframe.frame.DataFrame' in str(type(samples)):
+        # Just convert to pandas for now
+        df = samples.to_pandas()
+        if parameters is None:
+            parameters = [
+                col
+                for col in df.columns
+                if stan._screen_param(col, omit) and (len(col) < 2 or col[-2:] != "__")
+            ]        
     elif type(samples) == np.ndarray:
         if parameters is None:
             parameters = list(range(samples.shape[1]))
@@ -2100,8 +2122,8 @@ def corner(
                     p=p,
                 )
             else:
-                p.circle(source=cds, x=x, y=f"__ECDF_{x}", color=single_var_color)
-                p.circle(source=cds_div, x=x, y=f"__ECDF_{x}", color=divergence_color)
+                p.scatter(source=cds, x=x, y=f"__ECDF_{x}", color=single_var_color)
+                p.scatter(source=cds_div, x=x, y=f"__ECDF_{x}", color=divergence_color)
         else:
             p = bokeh.plotting.figure(
                 frame_width=frame_width,
@@ -2181,7 +2203,7 @@ def corner(
                         line_color=single_var_color,
                     )
                 else:
-                    plots[i][i].circle(
+                    plots[i][i].scatter(
                         source=cds,
                         x=x,
                         y=f"__ECDF_{x}",
@@ -2190,7 +2212,7 @@ def corner(
                         nonselection_fill_alpha=0,
                         nonselection_line_alpha=0,
                     )
-                    plots[i][i].circle(
+                    plots[i][i].scatter(
                         source=cds_div,
                         x=x,
                         y=f"__ECDF_{x}",
@@ -2589,7 +2611,7 @@ def _corner_scatter(
     else:
         p = bokeh.plotting.figure(align="end", **figure_kwargs)
 
-        p.circle(
+        p.scatter(
             source=cds,
             x=x,
             y=y,
@@ -2600,7 +2622,7 @@ def _corner_scatter(
             nonselection_line_alpha=0,
         )
 
-        p.circle(
+        p.scatter(
             source=cds_div,
             x=x,
             y=y,
@@ -2811,11 +2833,11 @@ def _parse_omit(omit, include_ppc, include_log_lik):
 
     if not include_ppc:
         if not include_log_lik:
-            omit += [re.compile("(.*_ppc\[?\d*\]?$)|(log_?lik.*\[?\d*\]?$)")]
+            omit += [re.compile("(.*_ppc\\[?\\d*\\]?$)|(log_?lik.*\\[?\\d*\\]?$)")]
         else:
-            omit += [re.compile("(.*_ppc\[?\d*\]?$)")]
+            omit += [re.compile("(.*_ppc\\[?\\d*\\]?$)")]
     elif not include_log_like:
-        omit += [re.compile("(log_?lik.*\[?\d*\]?$)")]
+        omit += [re.compile("(log_?lik.*\\[?\\d*\\]?$)")]
 
     return tuple(omit)
 
