@@ -1236,6 +1236,9 @@ def sbc_rank_ecdf(
     elif type(parameters) not in [list, tuple]:
         parameters = [parameters]
 
+    if 'polars.dataframe.frame.DataFrame' in str(type(sbc_output)):
+        sbc_output = sbc_output.to_pandas()
+
     L = sbc_output["L"].iloc[0]
     df = sbc_output.loc[
         sbc_output["parameter"].isin(parameters),
