@@ -7,6 +7,8 @@ import copy
 import itertools
 import os
 import shutil
+import sys
+import urllib
 import glob
 import pickle
 import hashlib
@@ -61,6 +63,116 @@ def StanModel(
     DEPRECATED
     """
     raise RuntimeError('bebi103.stan.StanModel is deprecated.')
+
+
+def install_cmdstan_colab(cmdstan_colab_url=None, quiet=False):
+    """Install CmdStan with Google Colab.
+
+    Parameters
+    ----------
+    cmdstan_colab_url : str, default None
+        Full URL for zip file containing version of Stan for
+        installation. If None, searches for the most recent version. In
+        general, this should be `None`.
+    quiet : bool, default False
+        If True, suppresses success message.
+
+    Returns
+    -------
+    None
+    """
+    if "google.colab" not in sys.modules:
+        raise RuntimeError('This is only meant for installation using Google Colab.')
+
+    if cmdstan_colab_url is None:
+        from cmdstanpy.install_cmdstan import latest_version
+        cmdstan_version = latest_version()
+
+        # First spelling of URL
+        try:
+            cmdstan_url = f"https://github.com/stan-dev/cmdstan/releases/download/v{cmdstan_version}/"
+            fname = f"colab-cmdstan-{cmdstan_version}.tgz"
+            urllib.request.urlretrieve(cmdstan_url + fname, fname)
+            shutil.unpack_archive(fname)
+            os.environ["CMDSTAN"] = f"./cmdstan-{cmdstan_version}"
+
+            if not quiet:
+                print(f'CmdStan version {cmdstan_version} successfully installed.')
+
+            return None
+        except:
+            pass
+
+        # Old misspelling
+        try:
+            cmdstan_url = f"https://github.com/stan-dev/cmdstan/releases/download/v{cmdstan_version}/"
+            fname = f"collab-cmdstan-{cmdstan_version}.tgz"
+            urllib.request.urlretrieve(cmdstan_url + fname, fname)
+            shutil.unpack_archive(fname)
+            os.environ["CMDSTAN"] = f"./cmdstan-{cmdstan_version}"
+
+            if not quiet:
+                print(f'CmdStan version {cmdstan_version} successfully installed.')
+
+            return None
+        except:
+            pass
+
+        # Try each with .tar.gz suffix
+        try:
+            cmdstan_url = f"https://github.com/stan-dev/cmdstan/releases/download/v{cmdstan_version}/"
+            fname = f"colab-cmdstan-{cmdstan_version}.tar.gz"
+            urllib.request.urlretrieve(cmdstan_url + fname, fname)
+            shutil.unpack_archive(fname)
+            os.environ["CMDSTAN"] = f"./cmdstan-{cmdstan_version}"
+
+            if not quiet:
+                print(f'CmdStan version {cmdstan_version} successfully installed.')
+
+            return None
+        except:
+            pass
+
+        try:
+            cmdstan_url = f"https://github.com/stan-dev/cmdstan/releases/download/v{cmdstan_version}/"
+            fname = f"collab-cmdstan-{cmdstan_version}.tar.gz"
+            urllib.request.urlretrieve(cmdstan_url + fname, fname)
+            shutil.unpack_archive(fname)
+            os.environ["CMDSTAN"] = f"./cmdstan-{cmdstan_version}"
+
+            if not quiet:
+                print(f'CmdStan version {cmdstan_version} successfully installed.')
+
+            return None
+        except:
+            pass
+
+        # The only way we get here is if we never successfully completed a try
+        raise RuntimeError('Unable to install CmdStan, most likely because the URL for the most recent version of CmdStan could not be found. Try finding at URL for a downloadable Colab-compatible version of CmdStan here: https://github.com/stan-dev/cmdstan/releases. Then call `install_cmdstan_colab(cmdstan_colab_url)`.')
+    else:
+        try:
+            urllib.request.urlretrieve(cmdstan_colab_url)
+            shutil.unpack_archive(fname)
+            os.environ["CMDSTAN"] = f"./cmdstan-{cmdstan_version}"
+
+            if not quiet:
+                print('CmdStan successfully installed. You should nonetheless test the installation.')
+
+            return None
+        except:
+            raise RuntimeError('Unable to install CmdStan, most likely because the imputted URL for CmdStan was invalid. You can run without providing a URL, and the latest version of CmdStan willbe installed; `install_cmdstan_colab()`.')
+
+
+
+def include_path():
+    """Return path to include files for Stan.
+
+    Returns
+    -------
+    output : str
+        Absolute path to directory containing include files.
+    """
+    return os.path.join(os.path.dirname(__file__), 'stan_include')
 
 
 def clean_cmdstan(path="./", prefix=None, delete_sampling_output=False):
