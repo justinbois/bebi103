@@ -7,7 +7,7 @@ scipy
 pandas
 polars
 tqdm
-bokeh>=3.0.0
+bokeh>=3.4.0
 matplotlib
 arviz>=0.16.0
 colorcet
