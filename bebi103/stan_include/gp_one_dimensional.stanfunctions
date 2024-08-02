@@ -1,0 +1,156 @@
+/*
+  These functions are for GPs with univariate x. The functions 
+  gp_posterior_mstar and gp_posterior_sigmastar_cholesky are general,
+  and the remainder are for squared-exponential kernels.
+ */
+
+  /**
+   * Return posterior m* for a model with a Normal likelihood and GP
+   * prior for a given Cholesky decomposition, Ly, of the matrix Ky, 
+   * and K*.
+   *
+   * @param y y-values of data
+   * @param Ly Cholesky decomposition of the matrix Ly
+   * @param Kstar Matrix K*
+   * @return Posterior m*
+   */
+  vector gp_posterior_mstar(vector y, matrix Ly, matrix Kstar) {
+    // Get sizes
+    int N = size(y);
+    int Nstar = cols(Kstar);
+
+    // Compute xi = inv(Ky) . y, which is solution xi to Ky . xi = y.
+    vector[N] z = mdivide_left_tri_low(Ly, y);
+    vector[N] xi = mdivide_right_tri_low(z', Ly)';
+
+    // Compute mean vector mstar
+    vector[Nstar] mstar = Kstar' * xi;
+
+    return mstar;
+  }
+
+
+  /** 
+   * Return Cholesky decomposition of posterior Σ* for a model with a 
+   * Normal likelihood and GP prior.
+   *
+   * @param y y-values of data
+   * @param Ly Cholesky decomposition of the matrix Ly
+   * @param Kstar Matrix K*
+   * @param Kstarstar Matrix K**
+   * @param delta Small value to add to the diagonal of Σ* to ensure
+   *              numerical positive definiteness
+   * @return Cholesky decomposition of posterior Σ*
+   */
+  matrix gp_posterior_sigmastar_cholesky(
+      vector y, 
+      matrix Ly, 
+      matrix Kstar, 
+      matrix Kstarstar,
+      real delta) {
+
+    // Get sizes
+    int N = size(y);
+    int Nstar = cols(Kstar);
+
+    // Compute Xi = inv(Ky) . Kstar, which is the solution Xi to Ky . Xi = Kstar.
+    matrix[N, Nstar] Z = mdivide_left_tri_low(Ly, Kstar);
+    matrix[N, Nstar] Xi = mdivide_right_tri_low(Z', Ly)';
+
+    // Compute Sigma_star (plus a small number of the diagonal to ensure pos. def.)
+    matrix[Nstar, Nstar] Sigmastar = Kstarstar - Kstar' * Xi 
+                                   + diag_matrix(rep_vector(delta, Nstar));
+
+    // Compute and return Cholesky decomposition
+    matrix[Nstar, Nstar] Lstar = cholesky_decompose(Sigmastar);
+
+    return Lstar;
+  }
+
+
+  /**
+   * Return squared exponential (SE) kernel differentiated by the first
+   * variable.
+   *
+   * @param x1 Value of first variable
+   * @param x2 Value of second variable
+   * @param alpha α hyperparameter of SE kernel
+   * @param rho ρ hyperparameter of SE kernel
+   * @return Partial first derivative of SE kernel with respect to the
+   *         first variable
+   */
+  real d1_se_kernel(real x1, real x2, real alpha, real rho) {
+     real x_diff = x1 - x2;
+
+     return -(alpha / rho)^2 * x_diff * exp(-x_diff^2 / 2.0 / rho^2);
+  }
+
+
+  /**
+   * Return mixed second derivative of squared exponential (SE) kernel
+   *
+   * @param x1 Value of first variable
+   * @param x2 Value of second variable
+   * @param alpha α hyperparameter of SE kernel
+   * @param rho ρ hyperparameter of SE kernel
+   * @return Mixed second derivative of squared exponential (SE) kernel
+   */
+  real d1_d2_se_kernel(real x1, real x2, real alpha, real rho) {
+     real rho2 = rho^2;
+     real term1 = x1 - x2 + rho;
+     real term2 = x2 - x1 + rho;
+
+     return (alpha / rho2)^2 * term1 * term2 * exp(-(x1 - x2)^2 / 2.0 / rho2);
+  }
+
+
+  /**
+   * Return first derivative of the covariance matrix of the squared
+   * exponential kernel with respect to the first variable.
+   *
+   * @param x1 Value of first variable
+   * @param x2 Value of second variable
+   * @param alpha α hyperparameter of SE kernel
+   * @param rho ρ hyperparameter of SE kernel
+   * @return First derivative of the covariance matrix of the squared
+   * exponential kernel with respect to the first variable.
+   */
+  matrix d1_cov_exp_quad(array[] real x1, array[] real x2, real alpha, real rho) {
+    int m = size(x1);
+    int n = size(x2);
+    matrix[m, n] d1_K;
+
+    for (i in 1:m) {
+      for (j in 1:n) {
+        d1_K[i, j] = d1_se_kernel(x1[i], x2[j], alpha, rho);
+      }
+    }
+
+    return d1_K;
+  }
+
+
+  /**
+   * Return mixed second derivative of the covariance matrix of the 
+   * squared exponential kernel.
+   *
+   * @param x1 Value of first variable
+   * @param x2 Value of second variable
+   * @param alpha α hyperparameter of SE kernel
+   * @param rho ρ hyperparameter of SE kernel
+   * @return Mixed second derivative of the covariance matrix of the 
+   * squared exponential kernel.
+   */
+  matrix d1_d2_cov_exp_quad(array[] real x1, array[] real x2, real alpha, real rho) {
+    int m = size(x1);
+    int n = size(x2);
+    matrix[m, n] d1_d2_K;
+
+    for (i in 1:m) {
+      for (j in 1:n) {
+        d1_d2_K[i, j] = d1_d2_se_kernel(x1[i], x2[j], alpha, rho);
+      }
+    }
+
+    return d1_d2_K;
+  }
