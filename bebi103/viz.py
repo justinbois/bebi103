@@ -1775,9 +1775,9 @@ def trace(
     def assert_unique(values, name):
         n = len(set(values))
         if n == 0:
-            return Undefined
+            return bokeh.core.property.singletons.Undefined
         elif n > 1:
-            warn(
+            warnings.warn(
                 f"found multiple competing values for 'toolbar.{name}' property; using the latest value"
             )
         return values[-1]
@@ -1847,7 +1847,7 @@ def corner(
 
     Parameters
     ----------
-    samples : Numpy array, Polars DataFrame, Pandas DataFrame, or ArviZ InferenceData
+    samples : dict, Numpy array, Polars DataFrame, Pandas DataFrame, or ArviZ InferenceData
         Results of sampling. If a Numpy array, Polars DataFrame, Pandas 
         DataFrame, each row is a sample and each column corresponds to a
         variable.
@@ -1995,6 +1995,9 @@ def corner(
         if cmap not in ["black", None]:
             warnings.warn("Ignoring cmap values to color by chain.")
 
+    if type(samples) == dict:
+        samples = pd.DataFrame(samples)
+    
     if type(samples) == pd.core.frame.DataFrame:
         df = samples
         if parameters is None:
@@ -2359,9 +2362,9 @@ def corner(
     def assert_unique(values, name):
         n = len(set(values))
         if n == 0:
-            return Undefined
+            return bokeh.core.property.singletons.Undefined
         elif n > 1:
-            warn(
+            warnings.warn(
                 f"found multiple competing values for 'toolbar.{name}' property; using the latest value"
             )
         return values[-1]
@@ -2578,7 +2581,7 @@ def mpl_cmap_to_color_mapper(cmap):
     for available Matplotlib colormaps.
     """
     cm = mpl_get_cmap(cmap)
-    palette = [rgb_frac_to_hex(cm(i)[:3]) for i in range(256)]
+    palette = [image.rgb_frac_to_hex(cm(i)[:3]) for i in range(256)]
     return bokeh.models.LinearColorMapper(palette=palette)
 
 
@@ -2839,7 +2842,7 @@ def _parse_omit(omit, include_ppc, include_log_lik):
             omit += [re.compile("(.*_ppc\\[?\\d*\\]?$)|(log_?lik.*\\[?\\d*\\]?$)")]
         else:
             omit += [re.compile("(.*_ppc\\[?\\d*\\]?$)")]
-    elif not include_log_like:
+    elif not include_log_lik:
         omit += [re.compile("(log_?lik.*\\[?\\d*\\]?$)")]
 
     return tuple(omit)
@@ -2981,6 +2984,7 @@ def _data_range(df, x, y, margin=0.02):
 
 
 def _create_points_image(x_range, y_range, w, h, df, x, y, cmap):
+    import datashader as ds
     cvs = ds.Canvas(
         x_range=x_range, y_range=y_range, height=int(h), width=int(w)
     )
@@ -2991,6 +2995,7 @@ def _create_points_image(x_range, y_range, w, h, df, x, y, cmap):
 
 
 def _create_line_image(x_range, y_range, w, h, df, x, y, cmap=None):
+    import datashader as ds
     cvs = ds.Canvas(
         x_range=x_range, y_range=y_range, height=int(h), width=int(w)
     )

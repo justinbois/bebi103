@@ -52,4 +52,4 @@ except:
 
 __author__ = """Justin Bois"""
 __email__ = "bois@caltech.edu"
-__version__ = "0.1.22"
+__version__ = "0.1.24"

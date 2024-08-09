@@ -492,7 +492,7 @@ def df_to_datadict_hier(
 
     # Return polars if input was polars
     if polars_in:
-        new_df = pl.from_pandas(df)
+        new_df = pl.from_pandas(new_df)
 
     return data, new_df
 
@@ -1870,13 +1870,18 @@ def _samples_parameters_to_df(samples, parameters, omit=[]):
 
     var_names_arviz = _parameters_to_arviz_var_names(samples, params)
 
-    df = arviz_to_dataframe(samples, var_names=var_names_arviz, df_package='pandas')
+    diagnostics = ('diverging',) if hasattr(samples.sample_stats, 'diverging') else tuple()
+
+    df = arviz_to_dataframe(samples, var_names=var_names_arviz, diagnostics=diagnostics, df_package='pandas')
 
     if parameters is None:
         parameters = [col for col in df.columns if _screen_param(col, omit)]
         params = copy.copy(parameters)
 
-    cols = list(params) + ["chain__", "draw__", "diverging__"]
+    if hasattr(samples.sample_stats, 'diverging'):
+        cols = list(params) + ["chain__", "draw__", "diverging__"]
+    else:
+        cols = list(params) + ["chain__", "draw__"]
 
     return parameters, df[cols].copy()
 
