@@ -1,0 +1,169 @@
+/*
+Functions for inverse Gaussian distribution.
+*/
+
+/**
+* Log PDF of Inverse Gaussian distribution
+*
+* @param real y
+* @param real mu
+* @param lreal ambda
+* @return log PDF of Inverse Gaussian distribution for scalar input
+*/
+real inv_gaussian_lpdf(real y, real mu, real lambda) {
+    if (y <= 0 || is_nan(y)) {
+        reject("inverse_gaussian_lpdf: y must be greater than 0; found y = ", y);
+    }
+    if (mu <= 0 || is_nan(mu)) {
+        reject("inverse_gaussian_lpdf: mu must be greater than 0; found mu = ", mu);
+    }
+    if (lambda <= 0 || is_nan(lambda)) {
+        reject("inverse_gaussian_lpdf: lambda must be greater than 0; found lambda = ", lambda);
+    }
+
+    real logpdf = -log(2 * pi()) / 2.0
+                    + (log(lambda) - 3.0 * log(y)) / 2.0
+                    - lambda * (y - mu)^2 / (2.0 * mu^2 * y);
+
+    return logpdf;
+}
+
+/**
+* Log PDF of Inverse Gaussian distribution
+*
+* @param array[] real y
+* @param real mu
+* @param real lambda
+* @return real log PDF of Inverse Gaussian distribution for array input
+*/
+real inv_gaussian_lpdf(array[] real y, real mu, real lambda) {
+    if (mu <= 0 || is_nan(mu)) {
+        reject("inverse_gaussian_lpdf: mu must be greater than 0; found mu = ", mu);
+    }
+    if (lambda <= 0 || is_nan(lambda)) {
+        reject("inverse_gaussian_lpdf: lambda must be greater than 0; found lambda = ", lambda);
+    }
+
+    real logpdf = -num_elements(y) * log(2 * pi()) / 2.0;
+    for (yi in y) {
+        if (yi <= 0 || is_nan(yi)) {
+            reject("inverse_gaussian_lpdf: all elements of y must be greater than 0 and not NaN, got ", yi);
+        }
+        else {
+            logpdf += (log(lambda) - 3.0 * log(yi)) / 2.0 - lambda * (yi - mu)^2 / (2.0 * mu^2 * yi);
+        }
+    }
+
+    return logpdf;
+}
+
+
+/**
+* Log PDF of Inverse Gaussian distribution
+*
+* @param vector y
+* @param real mu
+* @param real lambda
+* @return real log PDF of Inverse Gaussian distribution for vector input
+*/
+real inv_gaussian_lpdf(vector y, real mu, real lambda) {
+    if (mu <= 0 || is_nan(mu)) {
+        reject("inverse_gaussian_lpdf: mu must be greater than 0; found mu = ", mu);
+    }
+    if (lambda <= 0 || is_nan(lambda)) {
+        reject("inverse_gaussian_lpdf: lambda must be greater than 0; found lambda = ", lambda);
+    }
+    for (yi in y) {
+        if (yi <= 0 || is_nan(yi)) {
+            reject("inverse_gaussian_lpdf: all elements of y must be greater than 0 and not NaN, got ", yi);
+        }
+    }
+
+    real logpdf = num_elements(y) * (log(lambda) - log(2 * pi())) / 2.0
+                    - 1.5 * sum(log(y))
+                    - lambda * sum((y - mu).^2 ./ y) / (2.0 * mu^2);
+
+    return logpdf;
+}
+
+/**
+* Log CDF of Inverse Gaussian distribution
+*
+* @param real y
+* @param real mu
+* @param real lambda
+* @return log CDF of Inverse Gaussian distribution for scalar input
+*/
+real inv_gaussian_lcdf(real y, real mu, real lambda) {
+    if (y <= 0 || is_nan(y)) {
+        reject("inverse_gaussian_lcdf: y must be greater than 0; found y = ", y);
+    }
+    if (mu <= 0 || is_nan(mu)) {
+        reject("inverse_gaussian_lcdf: mu must be greater than 0; found mu = ", mu);
+    }
+    if (lambda <= 0 || is_nan(lambda)) {
+        reject("inverse_gaussian_lcdf: lambda must be greater than 0; found lambda = ", lambda);
+    }
+
+    real term1 = std_normal_lcdf(sqrt(lambda / y) * (y / mu - 1.0));
+    real term2 = 2.0 * lambda / mu + std_normal_lcdf(-sqrt(lambda / y) * (y / mu + 1.0));
+
+    return log_sum_exp(term1, term2);
+}
+
+
+/**
+* Log CCDF of Inverse Gaussian distribution
+*
+* @param real y
+* @param real mu
+* @param real lambda
+* @return log CCDF of Inverse Gaussian distribution
+*/
+real inv_gaussian_lccdf(real y, real mu, real lambda) {
+    if (y <= 0 || is_nan(y)) {
+        reject("inverse_gaussian_lccdf: y must be greater than 0; found y = ", y);
+    }
+    if (mu <= 0 || is_nan(mu)) {
+        reject("inverse_gaussian_lccdf: mu must be greater than 0; found mu = ", mu);
+    }
+    if (lambda <= 0 || is_nan(lambda)) {
+        reject("inverse_gaussian_lccdf: lambda must be greater than 0; found lambda = ", lambda);
+    }
+
+    real term1 = std_normal_lccdf(sqrt(lambda / y) * (y / mu - 1.0));
+    real term2 = 2.0 * lambda / mu + std_normal_lcdf(-sqrt(lambda / y) * (y / mu + 1.0));
+
+    return log_diff_exp(term1, term2);
+}
+
+
+/**
+* Draw a random number from Inverse Gaussian distribution
+*
+* @param real mu
+* @param real lambda
+* @return A random number drawn from Inverse Gaussian distribution
+*/
+real inv_gaussian_rng(real mu, real lambda) {
+    if (mu <= 0 || is_nan(mu)) {
+        reject("inverse_gaussian_rng: mu must be greater than 0; found mu = ", mu);
+    }
+    if (lambda <= 0 || is_nan(lambda)) {
+        reject("inverse_gaussian_rng: lambda must be greater than 0; found lambda = ", lambda);
+    }
+
+    real y = std_normal_rng()^2;
+    real mu2 = mu^2;
+    real x = mu + (mu2 * y - mu * sqrt(4.0 * mu * lambda * y + mu2 * y^2)) / (2.0 * lambda);
+    real z = uniform_rng(0, 1);
+
+    real return_value;
+    if (z <= mu / (mu + x)) {
+        return_value = x;
+    } else {
+        return_value = mu2 / x;
+    }
+
+    return return_value;
+}
