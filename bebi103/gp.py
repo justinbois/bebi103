@@ -62,8 +62,9 @@ def _searchsorted_vector(X_unique, X):
 
 
 def cov_exp_quad(X1, X2=None, alpha=1.0, rho=1.0):
-    """Return covariance matrix for exponentiated quadratic (a.k.a.
-    squared exponential) kernel.
+    """
+    Return covariance matrix for exponentiated quadratic (a.k.a. squared
+    exponential) kernel.
 
     Parameters
     ----------
@@ -99,7 +100,7 @@ def cov_exp_quad(X1, X2=None, alpha=1.0, rho=1.0):
 
 
 def cov_d1_exp_quad(x1, x2=None, alpha=1.0, rho=1.0):
-    """Return covariance matrix for exponentiated quadratic (a.k.a.
+    """Return covariance matrix for exponentiated quadratic (a.k.a. 
     squared exponential) kernel differentiated by the first variable.
 
     Parameters
@@ -130,8 +131,9 @@ def cov_d1_exp_quad(x1, x2=None, alpha=1.0, rho=1.0):
 
 
 def cov_d1_d2_exp_quad(x, alpha=1.0, rho=1.0):
-    """Return covariance matrix for exponentiated quadratic (a.k.a.
-    squared exponential) kernel differentiated once by the first
+    """
+    Return covariance matrix for exponentiated quadratic (a.k.a. 
+    squared exponential) kernel differentiated once by the first 
     variable and once by the second.
 
     Parameters
@@ -181,7 +183,8 @@ def cov_se(X1, X2=None, alpha=1.0, rho=1.0):
 
 
 def cov_d1_se(x1, x2=None, alpha=1.0, rho=1.0):
-    """Return covariance matrix for squared exponential kernel
+    """
+    Return covariance matrix for squared exponential kernel
     differentiated by the first variable.
 
     Parameters
@@ -204,7 +207,8 @@ def cov_d1_se(x1, x2=None, alpha=1.0, rho=1.0):
 
 
 def cov_d1_d2_se(x, alpha=1.0, rho=1.0):
-    """Return covariance matrix for squared exponential kernel
+    """
+    Return covariance matrix for squared exponential kernel
     differentiated once by the first variable and once by the second.
 
     Parameters
@@ -224,7 +228,8 @@ def cov_d1_d2_se(x, alpha=1.0, rho=1.0):
 
 
 def cov_matern(X1, X2=None, alpha=1.0, rho=1.0, nu=2.5):
-    """Return covariance matrix for a Matérn kernel.
+    """
+    Return covariance matrix for a Matérn kernel.
 
     Parameters
     ----------
@@ -276,7 +281,8 @@ def cov_matern(X1, X2=None, alpha=1.0, rho=1.0, nu=2.5):
 
 
 def cov_d1_matern(x1, x2=None, alpha=1.0, rho=1.0, nu=2.5):
-    """Return covariance matrix for Matérn kernel
+    """
+    Return covariance matrix for Matérn kernel
     differentiated by the first variable.
 
     Parameters
@@ -419,6 +425,11 @@ def cov_from_kernel(X1, X2, kernel, **kernel_params):
         Function of the form kernel(x1, x2, **kernel_params) that
         returns as scalar value that is the kernel evaluated at points
         x1, x2.
+
+    Returns
+    -------
+    output : Numpy array of what (X1.shape[0], X2.shape[0])
+        Covariance matrix computed from inputted kernel.
     """
     X1 = _vector_to_array(X1)
     X2 = _vector_to_array(X2) if X2 is not None else None
@@ -587,7 +598,8 @@ def se_kernel(x1, x2, alpha, rho):
 
 
 def d1_exp_quad_kernel(x1, x2, alpha, rho):
-    """Derivative of first variable of the exponentiated quadratic
+    """
+    Derivative of first variable of the exponentiated quadratic 
     (a.k.a. squared exponential) kernel.
 
     Parameters
@@ -643,7 +655,8 @@ def d1_se_kernel(x1, x2, alpha, rho):
 
 
 def d2_exp_quad_kernel(x1, x2, alpha, rho):
-    """Derivative of the exponentiated quadratic (a.k.a. squared
+    """
+    Derivative of the exponentiated quadratic (a.k.a. squared 
     exponential) kernel with respect to the second variable.
 
     Parameters
@@ -699,7 +712,8 @@ def d2_se_kernel(x1, x2, alpha, rho):
 
 
 def d1_d2_exp_quad_kernel(x1, x2, alpha, rho):
-    """Mixed second derivative of exponeitiated quadratic (a.k.a.
+    """
+    Mixed second derivative of exponentiated quadratic (a.k.a. 
     squared exponential) kernel.
 
     Parameters
@@ -793,6 +807,98 @@ def matern_kernel(x1, x2, alpha, rho, nu):
     if nu == 2.5:
         return _matern_52_kernel(x1, x2, alpha, rho)
     return _matern_kernel(x1, x2, alpha, rho, nu)
+
+
+def d1_matern_kernel(x1, x2, alpha, rho, nu):
+    """
+    Derivative of the Matern kernel with respect to the first variable.
+
+    Parameters
+    ----------
+    x1 : float
+        Point in the space of covariates.
+    x2 : float
+        Point in the space of covariates.
+    alpha : float
+        Marginalized standard deviation of the kernel.
+    rho : float
+        Length scale of the kernel.
+    nu : float
+        Roughness parameter.
+
+    Returns
+    -------
+    output : float
+        Value of returned by kernel evaluated at x1, x2.
+    """
+    # Make sure input is float
+    if not np.isscalar(x1) or not np.isscalar(x2):
+        raise NotImplementedError(
+            "Derivatives of kernels only allowed for scalar variables."
+        )
+
+    return _d1_matern_kernel(x1, x2, alpha, rho, nu)
+
+
+def d2_matern_kernel(x1, x2, alpha, rho, nu):
+    """
+    Derivative of the Matern kernel with respect to the second parameter.
+
+    Parameters
+    ----------
+    x1 : float
+        Point in the space of covariates.
+    x2 : float
+        Point in the space of covariates.
+    alpha : float
+        Marginalized standard deviation of the kernel.
+    rho : float
+        Length scale of the kernel.
+    nu : float
+        Roughness parameter.
+
+    Returns
+    -------
+    output : float
+        Value of returned by kernel evaluated at x1, x2.
+    """
+    # Make sure input is float
+    if not np.isscalar(x1) or not np.isscalar(x2):
+        raise NotImplementedError(
+            "Derivatives of kernels only allowed for scalar variables."
+        )
+
+    return _d2_matern_kernel(x1, x2, alpha, rho, nu)
+
+
+def d1_d2_matern_kernel(x1, x2, alpha, rho, nu):
+    """Mixed second derivative of Matern kernel.
+
+    Parameters
+    ----------
+    x1 : float
+        Point in the space of covariates.
+    x2 : float
+        Point in the space of covariates.
+    alpha : float
+        Marginalized standard deviation of the kernel.
+    rho : float
+        Length scale of the kernel.
+    nu : float
+        Roughness parameter.
+
+    Returns
+    -------
+    output : float
+        Value of returned by kernel evaluated at x1, x2.
+    """
+    # Make sure input is float
+    if not np.isscalar(x1) or not np.isscalar(x2):
+        raise NotImplementedError(
+            "Derivatives of kernels only allowed for scalar variables."
+        )
+
+    return _d1_d2_matern_kernel(x1, x2, alpha, rho, nu)
 
 
 def periodic_kernel(x1, x2, alpha, rho, T):

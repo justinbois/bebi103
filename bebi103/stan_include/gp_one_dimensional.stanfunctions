@@ -1,7 +1,9 @@
 /*
   These functions are for GPs with univariate x. The functions 
-  gp_posterior_mstar and gp_posterior_sigmastar_cholesky are general,
-  and the remainder are for squared-exponential kernels.
+  gp_posterior_mstar and gp_posterior_sigmastar_cholesky are general.
+  The remaining functions are useful for computing derivatives of
+  GPs that use exponentiated quadratic (a.k.a. squared exponential or 
+  radial basis function), Matern 3/2, and Matern 5/2 kernels.
  */
 
 /**

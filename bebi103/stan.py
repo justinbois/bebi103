@@ -4,14 +4,11 @@ import time
 import random
 import contextlib
 import copy
-import itertools
 import os
 import shutil
 import sys
 import urllib
 import glob
-import pickle
-import hashlib
 import logging
 import warnings
 
@@ -28,27 +25,19 @@ import polars as pl
 import xarray
 
 try:
-    # Import ArviZ catching annoying warning about colors
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        import arviz as az
-        import arviz.sel_utils
+    import arviz as az
+    import arviz.sel_utils
 except:
     raise RuntimeError("Could not import ArviZ. Perhaps it is not installed.")
 
 try:
     import cmdstanpy
-
     cmdstanpy_success = True
 except:
     cmdstanpy_success = False
 
 if not cmdstanpy_success:
     raise RuntimeError("CmdStanPy could not be imported.")
-
-import bokeh.plotting
-
-from . import viz
 
 
 def StanModel(
@@ -160,8 +149,7 @@ def install_cmdstan_colab(cmdstan_colab_url=None, quiet=False):
 
             return None
         except:
-            raise RuntimeError('Unable to install CmdStan, most likely because the imputted URL for CmdStan was invalid. You can run without providing a URL, and the latest version of CmdStan willbe installed; `install_cmdstan_colab()`.')
-
+            raise RuntimeError('Unable to install CmdStan, most likely because the inputted URL for CmdStan was invalid. You can run without providing a URL, and the latest version of CmdStan willbe installed; `install_cmdstan_colab()`.')
 
 
 def include_path():
