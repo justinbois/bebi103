@@ -17,21 +17,22 @@ bebi103 has the following dependencies.
 - NumPy_
 - SciPy_
 - Pandas_
+- Polars_
 - Numba_
 - tqdm_
 - CmdStanPy_ 1.0.0 or higher
 - xarray_
 - ArviZ_ 0.16.0 or higher
-- Bokeh_ 3.0.0 or higher
+- Bokeh_ 3.4.0 or higher
 - Matplotlib_
 - colorcet_
 - HoloViews_
 
-Additionally, bebi103 can make use of PyStan_, though it is not required.
 
 .. _NumPy: http://www.numpy.org/
 .. _SciPy: http://www.scipy.org/
-.. _Pandas: http://pandas.pydata.org/
+.. _Pandas: https://pandas.pydata.org
+.. _Polars: https://pola.rs
 .. _Numba: http://numba.pydata.org/
 .. _tqdm: https://tqdm.github.io/
 .. _CmdStanPy: https://cmdstanpy.readthedocs.io/

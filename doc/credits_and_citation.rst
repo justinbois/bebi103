@@ -1,7 +1,7 @@
 Credits
 =======
 
-This package is primarily written by `Justin Bois <http://bois.caltech.edu>`_ for use in the `BE/Bi 103 ab courses <http://bebi103.caltech.edu/>`_ at `Caltech <http://caltech.edu/>`_.
+This package is primarily written by `Justin Bois <http://bois.caltech.edu>`_ for use in the `BE/Bi 103 a <https://bebi103a.github.io/>`_ and `BE/Bi 103 b <https://bebi103b.github.io/>`_ courses at `Caltech <http://caltech.edu/>`_.
 
 
 Citing bebi103

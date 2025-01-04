@@ -6,7 +6,7 @@ data {
   int J_1;
 
   //Index array to keep track of hierarchical structure
-  int index_1[N];
+  array[N] int index_1;
 }
 
 
@@ -17,21 +17,21 @@ generated quantities {
 
   for (i in 1:2) {
     theta[i] = normal_rng(5, 5);
-    tau[i] = fabs(normal_rng(0, 10));
-    sigma[i] = fabs(normal_rng(0, 10));
+    tau[i] = abs(normal_rng(0, 10));
+    sigma[i] = abs(normal_rng(0, 10));
   }
 
   real rho = uniform_rng(-1, 1);
 
-  vector[2] theta_1[J_1];
+  array[J_1] vector[2] theta_1;
   for (i in 1:J_1) {
     for (j in 1:2) {
       theta_1[i, j] = normal_rng(theta[j], tau[j]);
     }
   }
 
-  real x[N];
-  real y[N];
+  array[N] real x;
+  array[N] real y;
 
   {
     matrix[2, 2] Sigma = [

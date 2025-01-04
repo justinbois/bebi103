@@ -93,15 +93,20 @@ Gaussian process utilities
    linear_kernel
    polynomial_kernel
    se_kernel
-   d1_se_kernel
-   d2_se_kernel
-   d1_d2_se_kernel
+   d1_exp_quad_kernel
+   d2_exp_quad_kernel
+   d1_d2_exp_quad_kernel
    matern_kernel
+   d1_matern_kernel
+   d2_matern_kernel
+   d1_d2_matern_kernel
    periodic_kernel
    cov_exp_quad
    cov_d1_exp_quad
    cov_d1_d2_exp_quad
    cov_matern
+   cov_d1_matern
+   cov_d1_d2_matern
    cov_periodic
    cov_from_kernel
    posterior_mean_cov
