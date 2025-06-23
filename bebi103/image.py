@@ -26,6 +26,8 @@ def imshow(
     im,
     cmap=None,
     length_units="pixels",
+    x_interpixel_distance=None,
+    y_interpixel_distance=None,
     interpixel_distance=1.0,
     colorbar=False,
     no_ticks=False,
@@ -54,6 +56,12 @@ def imshow(
         'rgb' or 'cmy' (default), for RGB or CMY merge of channels.
     length_units : str, default 'pixels'
         The units of length in the image.
+    x_interpixel_distance : float, default None
+        If given, the distances between pixels in the x-axis. If None,
+        defaults to `interpixel_distance`.
+    y_interpixel_distance : float, default None
+        If given, the distances between pixels in the y-axis. If None,
+        defaults to `interpixel_distance`.
     interpixel_distance : float, default 1.0
         Interpixel distance in units of `length_units`.
     colorbar : bool, default False
@@ -100,6 +108,12 @@ def imshow(
             DeprecationWarning,
         )
 
+    if x_interpixel_distance is None:
+        x_interpixel_distance = interpixel_distance
+        
+    if y_interpixel_distance is None:
+        y_interpixel_distance = interpixel_distance
+    
     # If a single channel in 3D image, flatten and check shape
     if im.ndim == 3:
         if im.shape[2] == 1:
@@ -161,12 +175,12 @@ def imshow(
     if "x_range" in kwargs:
         dw = np.max(kwargs["x_range"]) - np.min(kwargs["x_range"])
     else:
-        dw = m * interpixel_distance
+        dw = m * x_interpixel_distance
         kwargs["x_range"] = [0, dw]
     if "y_range" in kwargs:
         dh = np.max(kwargs["y_range"]) - np.min(kwargs["y_range"])
     else:
-        dh = n * interpixel_distance
+        dh = n * y_interpixel_distance
         kwargs["y_range"] = [0, dh]
 
     # Set up figure with appropriate dimensions
