@@ -1,3 +1,3 @@
 include README.md
 include requirements.txt
-recursive-include bebi103/stan_include
+recursive-include bebi103/stan_include *
