@@ -4,20 +4,10 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import polars as pl
 import xarray
 import scipy.stats as st
 import numba
-
-try:
-    # Import ArviZ catching annoying warning about colors
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        import arviz as az
-except:
-    warnings.warn(
-        "Could not import ArviZ. Perhaps it is not installed."
-        " Some functionality in the viz submodule will not be available."
-    )
 
 import scipy.ndimage
 
@@ -31,15 +21,6 @@ import bokeh.plotting
 import colorcet
 
 
-try:
-    import holoviews as hv
-    import holoviews.operation.datashader
-except ImportError as e:
-    warnings.warn(
-        f"""DataShader import failed with error "{e}".
-Features requiring DataShader will not work and you will get exceptions."""
-    )
-
 from . import utils
 from . import image
 
@@ -52,9 +33,9 @@ except:
 
 
 def to_ColumnDataSource(df):
-    if "polars.dataframe.frame.DataFrame" in str(type(df)):
-        return bokeh.models.ColumnDataSource({s.name: s.to_list() for s in df})    
-    elif "pandas.core.frame.DataFrame" in str(type(df)) or type(df) == dict:
+    if isinstance(df, pl.DataFrame):
+        return bokeh.models.ColumnDataSource({s.name: s.to_list() for s in df})
+    elif isinstance(df, pd.DataFrame) or type(df) == dict:
         return bokeh.models.ColumnDataSource(df)
     else:
         try:
@@ -131,7 +112,6 @@ def confints(
         line_kwargs["color"] = palette
         use_palette = False
     elif type(palette) == list or type(palette) == tuple:
-        palette[:n][::-1]
         use_palette = True
 
     line_width = kwargs.pop("line_width", 3)
@@ -249,9 +229,9 @@ def qqplot(
 
     Parameters
     ----------
-    samples : Numpy array or xarray, shape (n_samples, n) or xarray DataArray
+    samples : Numpy array, shape (n_samples, n)
         A Numpy array containing predictive samples.
-    data : Numpy array, shape (n,) or xarray DataArray
+    data : Numpy array, shape (n,)
         One-dimensional data set to use in Q-Q plot.
     percentile : int or float, default 95
         Which percentile to use in displaying the Q-Q plot.
@@ -286,10 +266,7 @@ def qqplot(
         diag_kwargs = {}
 
     if type(samples) != np.ndarray:
-        if type(samples) == xarray.core.dataarray.DataArray:
-            samples = samples.squeeze().values
-        else:
-            raise RuntimeError("`samples` can only be a Numpy array or xarray.")
+        raise RuntimeError("`samples` must be a Numpy array.")
 
     if samples.ndim != 2:
         raise RuntimeError(
@@ -1100,7 +1077,7 @@ def predictive_regression(
 
 
 def sbc_rank_ecdf(
-    sbc_output=None,
+    inferential_calibration_output=None,
     parameters=None,
     diff=True,
     ptile=99.0,
@@ -1122,9 +1099,9 @@ def sbc_rank_ecdf(
 
     Parameters
     ----------
-    sbc_output : DataFrame
-        Output of bebi103.stan.sbc() containing results from an SBC
-        calculation.
+    inferential_calibration_output : DataFrame
+        Output of bebi103.stan.inferential_calibration() containing 
+        results from an inferential calibration calculation.
     parameters : list of str, or None (default)
         List of parameters to include in the SBC rank ECDF plot. If
         None, use all parameters. For multidimensional parameters, each
@@ -1197,8 +1174,8 @@ def sbc_rank_ecdf(
     if envelope_line_kwargs is None:
         envelope_line_kwargs = {}
 
-    if sbc_output is None:
-        raise RuntimeError("Argument `sbc_output` must be specified.")
+    if inferential_calibration_output is None:
+        raise RuntimeError("Argument `inferential_calibration_output` must be specified.")
 
     # Defaults
     if palette is None:
@@ -1224,7 +1201,7 @@ def sbc_rank_ecdf(
     if "line_color" not in envelope_line_kwargs:
         envelope_line_kwargs["line_color"] = "gray"
 
-    if "color" in "marker_kwargs" and color_by_warning_code:
+    if "color" in marker_kwargs and color_by_warning_code:
         raise RuntimeError(
             "Cannot specify marker color when `color_by_warning_code` is True."
         )
@@ -1232,16 +1209,16 @@ def sbc_rank_ecdf(
         raise RuntimeError("Cannot color by warning code for staircase ECDFs.")
 
     if parameters is None:
-        parameters = list(sbc_output["parameter"].unique())
+        parameters = list(inferential_calibration_output["parameter"].unique())
     elif type(parameters) not in [list, tuple]:
         parameters = [parameters]
 
-    if 'polars.dataframe.frame.DataFrame' in str(type(sbc_output)):
-        sbc_output = sbc_output.to_pandas()
+    if isinstance(inferential_calibration_output, pl.DataFrame):
+        inferential_calibration_output = inferential_calibration_output.to_pandas()
 
-    L = sbc_output["L"].iloc[0]
-    df = sbc_output.loc[
-        sbc_output["parameter"].isin(parameters),
+    L = inferential_calibration_output["L"].iloc[0]
+    df = inferential_calibration_output.loc[
+        inferential_calibration_output["parameter"].isin(parameters),
         ["parameter", "rank_statistic", "warning_code"],
     ]
     n = (df["parameter"] == df["parameter"].unique()[0]).sum()
@@ -1399,12 +1376,20 @@ def parcoord(
 
     Parameters
     ----------
-    samples : ArviZ InferenceData instance or xarray Dataset instance
-        Result of MCMC sampling.
+    samples : cmdstanpy.CmdStanMCMC instance, dict, or DataFrame
+        Result of MCMC sampling. May be a cmdstanpy.CmdStanMCMC
+        instance, a dictionary of two-dimensional arrays for each
+        expectand and HMC diagnostic as output by
+        `bebi103.stan.convert_samples()`, or a pandas.DataFrame or
+        polars.DataFrame with one row per draw and one column per
+        expectand, optionally with 'chain__', 'draw__', and
+        'divergent__' columns. If a data frame lacks 'chain__' and
+        'draw__' columns, the samples are treated as a single chain
+        with draws in row order.
     parameters : list of str, or None (default)
         Names of parameters to include in the plot. If None, use all
         parameters. For multidimensional parameters, each entry must be
-        given separately, e.g., `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
+        given separately, e.g., `['alpha[1]', 'alpha[2]', 'beta[1,1]']`.
         If a given entry is a 2-tuple, the first entry is the variable
         name, and the second entry is the label for the parameter in
         plots.
@@ -1494,20 +1479,9 @@ def parcoord(
     if not color_by_chain:
         palette = [color] * len(palette)
 
-    if type(samples) != az.data.inference_data.InferenceData:
-        raise RuntimeError("Input must be an ArviZ InferenceData instance.")
-
-    if not hasattr(samples, "posterior"):
-        raise RuntimeError("Input samples do not have 'posterior' group.")
-
-    if not (
-        hasattr(samples, "sample_stats") and hasattr(samples.sample_stats, "diverging")
-    ):
-        warnings.warn("No divergence information available.")
-
-    parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
+    parameters, df = _samples_to_df(samples, parameters, omit)
     parameters, labels = _parse_parameters(parameters)
-    df.rename(columns={param: label for param, label in zip(parameters, labels)})
+    df = df.rename(columns={param: label for param, label in zip(parameters, labels)})
 
     if transformation == "minmax":
         transformation = {
@@ -1527,7 +1501,7 @@ def parcoord(
 
     for col, trans in transformation.items():
         df[col] = trans(df[col])
-    df = df.melt(id_vars=["diverging__", "chain__", "draw__"])
+    df = df.melt(id_vars=["divergent__", "chain__", "draw__"])
 
     p = bokeh.plotting.figure(
         x_range=bokeh.models.FactorRange(*labels),
@@ -1539,7 +1513,9 @@ def parcoord(
     ys = np.array(
         [
             group["value"].values
-            for _, group in df.loc[~df["diverging__"]].groupby(["chain__", "draw__"])
+            for _, group in df.loc[df["divergent__"] == 0].groupby(
+                ["chain__", "draw__"]
+            )
         ]
     )
     if len(ys) > 0:
@@ -1560,7 +1536,9 @@ def parcoord(
     ys = np.array(
         [
             group["value"].values
-            for _, group in df.loc[df["diverging__"]].groupby(["chain__", "draw__"])
+            for _, group in df.loc[df["divergent__"] != 0].groupby(
+                ["chain__", "draw__"]
+            )
         ]
     )
     if len(ys) > 0:
@@ -1597,12 +1575,20 @@ def trace(
 
     Parameters
     ----------
-    samples : ArviZ InferenceData instance or xarray Dataset instance
-        Result of MCMC sampling.
+    samples : cmdstanpy.CmdStanMCMC instance, dict, or DataFrame
+        Result of MCMC sampling. May be a cmdstanpy.CmdStanMCMC
+        instance, a dictionary of two-dimensional arrays for each
+        expectand and HMC diagnostic as output by
+        `bebi103.stan.convert_samples()`, or a pandas.DataFrame or
+        polars.DataFrame with one row per draw and one column per
+        expectand, optionally with 'chain__', 'draw__', and
+        'divergent__' columns. If a data frame lacks 'chain__' and
+        'draw__' columns, the samples are treated as a single chain
+        with draws in row order.
     parameters : list of str, or None (default)
         Names of parameters to include in the plot. If None, use all
         parameters. For multidimensional parameters, each entry must be
-        given separately, e.g., `['alpha[0]', 'alpha[1]', 'beta[0,1]']`.
+        given separately, e.g., `['alpha[1]', 'alpha[2]', 'beta[1,1]']`.
         If a given entry is a 2-tuple, the first entry is the variable
         name, and the second entry is the label for the parameter in
         plots.
@@ -1642,13 +1628,7 @@ def trace(
 
     omit = _parse_omit(omit, include_ppc, include_log_lik)
 
-    if type(samples) != az.data.inference_data.InferenceData:
-        raise RuntimeError("Input must be an ArviZ InferenceData instance.")
-
-    if not hasattr(samples, "posterior"):
-        raise RuntimeError("Input samples do not have 'posterior' group.")
-
-    parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
+    parameters, df = _samples_to_df(samples, parameters, omit)
     parameters, labels = _parse_parameters(parameters)
 
     # Default properties
@@ -1819,7 +1799,6 @@ def corner(
     include_ppc=False,
     include_log_lik=False,
     max_plotted=10000,
-    datashade=False,
     frame_width=None,
     frame_height=None,
     plot_ecdf=False,
@@ -1840,6 +1819,7 @@ def corner(
     xtick_label_orientation="horizontal",
     min_border_left=80,
     min_border_bottom=None,
+    datashade=False,
 ):
     """
     Make a corner plot of sampling results. Heavily influenced by the
@@ -1847,24 +1827,26 @@ def corner(
 
     Parameters
     ----------
-    samples : dict, Numpy array, Polars DataFrame, Pandas DataFrame, or ArviZ InferenceData
-        Results of sampling. If a Numpy array, Polars DataFrame, Pandas 
-        DataFrame, each row is a sample and each column corresponds to a
-        variable.
+    samples : cmdstanpy.CmdStanMCMC instance, dict, DataFrame, or Numpy array
+        Results of sampling. May be a cmdstanpy.CmdStanMCMC instance, a
+        dictionary of two-dimensional arrays for each expectand and HMC
+        diagnostic as output by `bebi103.stan.convert_samples()`, a
+        pandas.DataFrame or polars.DataFrame with one row per draw and
+        one column per expectand (optionally with 'chain__', 'draw__',
+        and 'divergent__' columns; if 'chain__' and 'draw__' are absent,
+        the samples are treated as a single chain with draws in row
+        order), or a Numpy array in which each row is a sample and each
+        column corresponds to a variable.
     parameters : list
         List of variables as strings included in `samples` to construct
-        corner plot. If None, use all parameters. The entries correspond
-        to column headings if `samples` is in a Pandas DataFrame. If the
-        input is a Numpy array, `parameters` is a list of indices of
-        columns to use in the plot. If `samples` is an ArviZ
-        InferenceData instance, `parameters` contains the names of
-        parameters to include in the  plot. For multidimensional
-        parameters, each entry must be given separately, e.g.,
-        `['alpha[0]', 'alpha[1]', 'beta[0,1]']`. If a given entry is a
+        corner plot. If None, use all parameters. If the input is a Numpy
+        array, `parameters` is a list of indices of columns to use in the
+        plot. Otherwise, `parameters` contains the names of parameters to
+        include in the plot. For multidimensional parameters, each entry
+        must be given separately, e.g.,
+        `['alpha[1]', 'alpha[2]', 'beta[1,1]']`. If a given entry is a
         2-tuple, the first entry is the variable name, and the second
-        entry is the label for the parameter in plots. If an entry is a
-        2-tuple, the first entry is the parameter name and the second
-        entry is a string to be used for the parameter as axis labels.
+        entry is the label for the parameter in plots.
     palette : list of strings of hex colors, or single hex string
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
@@ -1885,9 +1867,6 @@ def corner(
         These denote log-likelihood contributions.
     max_plotted : int, default 10000
         Maximum number of points to be plotted.
-    datashade : bool, default False
-        Whether or not to convert sampled points to a raster image using
-        Datashader.
     frame_width : int or None, default None
         Width of each plot in the corner plot in pixels. Default is set
         based on number of parameters plotted. If None and
@@ -1904,8 +1883,7 @@ def corner(
         If True, plot the ECDF in "staircase" style. Otherwise, plot as
         dots. Ignored if `plot_ecdf` is False.
     cmap : str, default 'black'
-        Valid colormap string for DataShader or for coloring Bokeh
-        glyphs.
+        Valid colormap string for coloring Bokeh glyphs.
     color_by_chain : bool, default False
         If True, color the glyphs by chain index.
     divergence_color : str, default 'orange'
@@ -1968,12 +1946,21 @@ def corner(
         `min_border_bottom`. By default if `xtick_label_orientation` is
         'horizontal', the `min_border_bottom` is set to zero. Otherwise,
         unless specified by this keyword argument, it is set to 80.
+    datashade : bool, default False
+        Deprecated. DataShader is no longer supported. If True, a
+        `DeprecationWarning` is raised.
 
     Returns
     -------
     output : Bokeh layout
         Corner plot as a Bokeh layout.
     """
+    if datashade:
+        raise DeprecationWarning(
+            "DataShader is no longer supported; the `datashade` keyword argument "
+            "has been deprecated and must be False."
+        )
+
     if parameters is not None and omit is not None:
         raise RuntimeError("At least one of `parameters` and `omit` must be None.")
 
@@ -1995,44 +1982,29 @@ def corner(
         if cmap not in ["black", None]:
             warnings.warn("Ignoring cmap values to color by chain.")
 
-    if type(samples) == dict:
-        samples = pd.DataFrame(samples)
-    
-    if type(samples) == pd.core.frame.DataFrame:
-        df = samples
-        if parameters is None:
-            parameters = [
-                col
-                for col in df.columns
-                if stan._screen_param(col, omit) and (len(col) < 2 or col[-2:] != "__")
-            ]
-    elif 'polars.dataframe.frame.DataFrame' in str(type(samples)):
-        # Just convert to pandas for now
-        df = samples.to_pandas()
-        if parameters is None:
-            parameters = [
-                col
-                for col in df.columns
-                if stan._screen_param(col, omit) and (len(col) < 2 or col[-2:] != "__")
-            ]        
-    elif type(samples) == np.ndarray:
+    if type(samples) == np.ndarray:
         if parameters is None:
             parameters = list(range(samples.shape[1]))
         for param in parameters:
-            if (type(param) in [tuple, list] and type(param[0]) != int) or type(
-                param
-            ) != int:
+            if type(param) in [tuple, list]:
+                if len(param) != 2 or type(param[0]) != int:
+                    raise RuntimeError(
+                        "When `samples` is inputted as a Numpy array, `parameters`"
+                        " must be a list of indices or (index, label) 2-tuples."
+                    )
+            elif type(param) != int:
                 raise RuntimeError(
-                    "When `samples` is inputted as a Numpy array, `parameters` must be"
-                    " a list of indices."
+                    "When `samples` is inputted as a Numpy array, `parameters`"
+                    " must be a list of indices or (index, label) 2-tuples."
                 )
+        inds = [param if type(param) == int else param[0] for param in parameters]
         new_parameters = [
             str(param) if type(param) == int else param[1] for param in parameters
         ]
-        df = pd.DataFrame(samples[:, parameters], columns=new_parameters)
+        df = pd.DataFrame(samples[:, inds], columns=new_parameters)
         parameters = new_parameters
     else:
-        parameters, df = stan._samples_parameters_to_df(samples, parameters, omit)
+        parameters, df = _samples_to_df(samples, parameters, omit)
 
     parameters, labels = _parse_parameters(parameters)
 
@@ -2058,9 +2030,9 @@ def corner(
         cmap = bokeh.transform.factor_cmap("chain__", palette=palette, factors=factors)
 
     # Add dummy divergent column if no divergence information is given
-    if "diverging__" not in df.columns or divergence_color is None:
+    if "divergent__" not in df.columns or divergence_color is None:
         df = df.copy()
-        df["diverging__"] = 0
+        df["divergent__"] = 0
 
     # Add dummy chain column if no chain information is given
     if "chain__" not in df.columns:
@@ -2080,13 +2052,13 @@ def corner(
         for param in parameters:
             df[f"__ECDF_{param}"] = df[param].rank(method="first") / len(df)
 
-    n_nondivergent = np.sum(df["diverging__"] == 0)
+    n_nondivergent = np.sum(df["divergent__"] == 0)
     if n_nondivergent > max_plotted:
         inds = np.random.choice(
             np.arange(n_nondivergent), replace=False, size=max_plotted
         )
     else:
-        inds = np.arange(np.sum(df["diverging__"] == 0))
+        inds = np.arange(np.sum(df["divergent__"] == 0))
 
     if alpha is None:
         if len(inds) < 100:
@@ -2097,8 +2069,8 @@ def corner(
             alpha = np.exp(-(np.log10(len(inds)) - 2) / (-2 / np.log(0.02)))
 
     # Set up column data sources to allow linked brushing
-    cds = bokeh.models.ColumnDataSource(df.loc[df["diverging__"] == 0, :].iloc[inds, :])
-    cds_div = bokeh.models.ColumnDataSource(df.loc[df["diverging__"] == 1, :])
+    cds = bokeh.models.ColumnDataSource(df.loc[df["divergent__"] == 0, :].iloc[inds, :])
+    cds_div = bokeh.models.ColumnDataSource(df.loc[df["divergent__"] == 1, :])
 
     # Set up contour settings
     contour_lines_kwargs = dict(
@@ -2175,7 +2147,6 @@ def corner(
                 cds_div,
                 x,
                 y,
-                datashade,
                 alpha,
                 cmap,
                 show_contours,
@@ -2590,7 +2561,6 @@ def _corner_scatter(
     cds_div,
     x,
     y,
-    datashade,
     alpha,
     cmap,
     show_contours,
@@ -2599,44 +2569,29 @@ def _corner_scatter(
     contour_lines_kwargs,
     figure_kwargs,
 ):
-    """Create scatter plot for non-datashaded corner plot."""
-    if datashade:
-        cmap_arg = list(cmap) if type(cmap) == tuple else cmap
-        xlim = tuple(figure_kwargs.pop("x_range"))
-        ylim = tuple(figure_kwargs.pop("y_range"))
-        p = hv.render(
-            hv.operation.datashader.dynspread(
-                hv.operation.datashader.datashade(
-                    hv.Points(data=cds.data, kdims=[x, y]),
-                    cmap=cmap_arg,
-                    cnorm="linear",
-                )
-            ).opts(show_grid=True, align="end", xlim=xlim, ylim=ylim, **figure_kwargs),
-            backend="bokeh",
-        )
-    else:
-        p = bokeh.plotting.figure(align="end", **figure_kwargs)
+    """Create scatter plot for corner plot."""
+    p = bokeh.plotting.figure(align="end", **figure_kwargs)
 
-        p.scatter(
-            source=cds,
-            x=x,
-            y=y,
-            size=2,
-            alpha=alpha,
-            color=cmap,
-            nonselection_fill_alpha=0,
-            nonselection_line_alpha=0,
-        )
+    p.scatter(
+        source=cds,
+        x=x,
+        y=y,
+        size=2,
+        alpha=alpha,
+        color=cmap,
+        nonselection_fill_alpha=0,
+        nonselection_line_alpha=0,
+    )
 
-        p.scatter(
-            source=cds_div,
-            x=x,
-            y=y,
-            size=2,
-            color=divergence_color,
-            nonselection_fill_alpha=0,
-            nonselection_line_alpha=0,
-        )
+    p.scatter(
+        source=cds_div,
+        x=x,
+        y=y,
+        size=2,
+        color=divergence_color,
+        nonselection_fill_alpha=0,
+        nonselection_line_alpha=0,
+    )
 
     if show_contours:
         xs, ys = contour_lines_from_samples(
@@ -2866,6 +2821,67 @@ def _parse_parameters(params):
     return parameters, labels
 
 
+def _samples_to_df(samples, parameters, omit):
+    """Convert MCMC samples to a tidy DataFrame and resolve parameters.
+
+    Parameters
+    ----------
+    samples : cmdstanpy.CmdStanMCMC instance, dict, or DataFrame
+        MCMC samples, as a cmdstanpy.CmdStanMCMC instance, as a
+        dictionary of two-dimensional arrays for each expectand and HMC
+        diagnostic, as output by `bebi103.stan.convert_samples()`, or as
+        a pandas.DataFrame or polars.DataFrame with one row per draw and
+        one column per expectand. If the data frame lacks 'chain__' and
+        'draw__' columns, the samples are treated as a single chain with
+        draws in row order.
+    parameters : list or None
+        Names of parameters to include. Entries may be (name, label)
+        tuples. If None, all expectands not screened out by `omit` are
+        used.
+    omit : tuple
+        Screening specification as produced by `_parse_omit()`.
+
+    Returns
+    -------
+    parameters : list
+        Resolved list of parameters.
+    df : pandas.DataFrame
+        Tidy data frame with columns 'chain__', 'draw__', 'divergent__',
+        and one column per selected parameter. The 'chain__' and 'draw__'
+        columns are one-indexed.
+    """
+    samples_df = stan.convert_samples(samples, "pandas")
+
+    if "chain__" not in samples_df.columns or "draw__" not in samples_df.columns:
+        samples_df = samples_df.copy()
+        if "chain__" not in samples_df.columns:
+            samples_df["chain__"] = 1
+        if "draw__" not in samples_df.columns:
+            samples_df["draw__"] = np.arange(1, len(samples_df) + 1)
+
+    if parameters is None:
+        parameters = [
+            col
+            for col in samples_df.columns
+            if not col.endswith("__") and stan._screen_param(col, omit)
+        ]
+
+    names, _ = _parse_parameters(parameters)
+
+    for name in names:
+        if name not in samples_df.columns:
+            raise RuntimeError(f"Parameter '{name}' not found in samples.")
+
+    df = samples_df[["chain__", "draw__"] + names].copy()
+    df["divergent__"] = (
+        samples_df["divergent__"].values
+        if "divergent__" in samples_df.columns
+        else 0.0
+    )
+
+    return parameters, df
+
+
 @numba.jit(nopython=True)
 def _y_ecdf(data, x):
     y = np.arange(len(data) + 1) / len(data)
@@ -2981,26 +2997,6 @@ def _data_range(df, x, y, margin=0.02):
         [df[x].min() - x_range * margin, df[x].max() + x_range * margin],
         [df[y].min() - y_range * margin, df[y].max() + y_range * margin],
     )
-
-
-def _create_points_image(x_range, y_range, w, h, df, x, y, cmap):
-    import datashader as ds
-    cvs = ds.Canvas(
-        x_range=x_range, y_range=y_range, height=int(h), width=int(w)
-    )
-    agg = cvs.points(df, x, y, agg=ds.reductions.count())
-    return ds.transfer_functions.dynspread(
-        ds.transfer_functions.shade(agg, cmap=cmap, how="linear")
-    )
-
-
-def _create_line_image(x_range, y_range, w, h, df, x, y, cmap=None):
-    import datashader as ds
-    cvs = ds.Canvas(
-        x_range=x_range, y_range=y_range, height=int(h), width=int(w)
-    )
-    agg = cvs.line(df, x, y)
-    return ds.transfer_functions.dynspread(ds.transfer_functions.shade(agg, cmap=cmap))
 
 
 def _contour_lines(X, Y, Z, levels):

@@ -3,7 +3,9 @@ import warnings
 import numpy as np
 import pandas as pd
 
-import scipy.odr
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    import scipy.odr
 
 import numba
 

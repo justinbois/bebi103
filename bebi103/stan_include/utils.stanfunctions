@@ -33,6 +33,41 @@
     }
 
 
+        /**
+     * Return index in sorted array `x` where `y` would appear if inserted.
+     * In the case of ties, `y` is placed to the left.
+     * Uses binary search.
+     *
+     * @param x Sorted vector of reals.
+     * @param y Real value
+     * @return If x has n elements, integer index between 1 and n + 1 where 
+     *         y would appear if inserted into x.
+     */
+    int searchsorted(vector x, real y) {
+        int n = num_elements(x);
+
+        // Special cases
+        if (y <= x[1]) return 1;
+        if (y > x[n]) return n + 1;
+
+        int left = 1;
+        int right = n + 1;
+        int middle;
+
+        while (left < right) {
+            middle = (left + right) %/% 2;
+            if (x[middle] > y) {
+                right = middle;
+            }
+            else {
+                left = middle + 1;
+            }
+        }
+
+        return left;
+    }
+
+
     /**
      * Return index in sorted array `x` where `y` would appear if inserted.
      * In the case of ties, `y` is placed to the left.
@@ -68,17 +103,70 @@
     }
 
 
+        /**
+     * Compute log(-sum(exp(neg_terms)) + sum(exp(pos_terms))).
+     *
+     * @param neg_term Array of reals
+     * @param pos_terms Array of reals
+     * @return log(-exp(neg_term) + sum(exp(pos_terms)))
+     */
+    real log_sum_exp_neg(array[] real neg_terms, array[] real pos_terms) {
+        real log_sum_exp_pos = log_sum_exp(pos_terms);
+        real log_sum_exp_neg = log_sum_exp(neg_terms);
+
+        if (log_sum_exp_pos < log_sum_exp_neg) {
+            reject("Error encountered in logsumexp calculation with negative terms.");
+        }
+
+        return log_sum_exp_pos + log1m_exp(log_sum_exp_neg - log_sum_exp_pos);
+    }
+
 
     /**
      * Compute log(-exp(neg_term) + sum(exp(pos_terms))).
-     * Note that neg_terms and post_terms both are arrays with all 
-     * positive values.
      *
-     * @param neg_term Positive real number
-     * @param pos_terms Array of positive reals
+     * @param neg_term Real number
+     * @param pos_terms Array of reals
      * @return log(-exp(neg_term) + sum(exp(pos_terms)))
      */
     real log_sum_exp_neg(real neg_term, array[] real pos_terms) {
+        real log_sum_exp_pos = log_sum_exp(pos_terms);
+
+        if (log_sum_exp_pos < neg_term) {
+            reject("Error encountered in logsumexp calculation with negative terms.");
+        }
+
+        return log_sum_exp_pos + log1m_exp(neg_term - log_sum_exp_pos);
+    }
+
+
+    /**
+     * Compute log(-sum(exp(neg_terms)) + sum(exp(pos_terms))).
+     *
+     * @param neg_term Vector
+     * @param pos_terms Vector
+     * @return log(-exp(neg_term) + sum(exp(pos_terms)))
+     */
+    real log_sum_exp_neg(vector neg_terms, vector pos_terms) {
+        real log_sum_exp_pos = log_sum_exp(pos_terms);
+        real log_sum_exp_neg = log_sum_exp(neg_terms);
+
+        if (log_sum_exp_pos < log_sum_exp_neg) {
+            reject("Error encountered in logsumexp calculation with negative terms.");
+        }
+
+        return log_sum_exp_pos + log1m_exp(log_sum_exp_neg - log_sum_exp_pos);
+    }
+
+
+    /**
+     * Compute log(-exp(neg_term) + sum(exp(pos_terms))).
+     *
+     * @param neg_term Real number
+     * @param pos_terms Vector
+     * @return log(-exp(neg_term) + sum(exp(pos_terms)))
+     */
+    real log_sum_exp_neg(real neg_term, vector pos_terms) {
         real log_sum_exp_pos = log_sum_exp(pos_terms);
 
         if (log_sum_exp_pos < neg_term) {
