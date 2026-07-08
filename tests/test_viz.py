@@ -22,7 +22,7 @@ import bokeh.layouts
 import bokeh.models
 import bokeh.plotting
 
-import bebi103.stan
+import bebi103.hmc
 import bebi103.viz as viz
 
 
@@ -77,7 +77,7 @@ def samples_any_format(request, samples_dict):
     """Samples in every input format accepted by corner/parcoord/trace."""
     if request.param == "dict":
         return samples_dict
-    df = bebi103.stan.convert_samples(samples_dict, "pandas")
+    df = bebi103.hmc.convert_samples(samples_dict, "pandas")
     if request.param == "pandas":
         return df
     if request.param == "polars":
@@ -903,19 +903,19 @@ class TestMplCmapToColorMapper:
 class TestParseOmit:
     def test_default_screens_ppc_and_log_lik(self):
         omit = viz._parse_omit(None, include_ppc=False, include_log_lik=False)
-        assert not bebi103.stan._screen_param("y_ppc[1]", omit)
-        assert not bebi103.stan._screen_param("log_lik[1]", omit)
-        assert bebi103.stan._screen_param("mu", omit)
+        assert not bebi103.hmc._screen_param("y_ppc[1]", omit)
+        assert not bebi103.hmc._screen_param("log_lik[1]", omit)
+        assert bebi103.hmc._screen_param("mu", omit)
 
     def test_include_ppc(self):
         omit = viz._parse_omit(None, include_ppc=True, include_log_lik=False)
-        assert bebi103.stan._screen_param("y_ppc[1]", omit)
-        assert not bebi103.stan._screen_param("log_lik[1]", omit)
+        assert bebi103.hmc._screen_param("y_ppc[1]", omit)
+        assert not bebi103.hmc._screen_param("log_lik[1]", omit)
 
     def test_include_log_lik(self):
         omit = viz._parse_omit(None, include_ppc=False, include_log_lik=True)
-        assert not bebi103.stan._screen_param("y_ppc[1]", omit)
-        assert bebi103.stan._screen_param("log_lik[1]", omit)
+        assert not bebi103.hmc._screen_param("y_ppc[1]", omit)
+        assert bebi103.hmc._screen_param("log_lik[1]", omit)
 
     def test_string_and_regex_entries(self):
         # Patterns match against the base (non-indexed) variable name.
@@ -924,9 +924,9 @@ class TestParseOmit:
             include_ppc=True,
             include_log_lik=True,
         )
-        assert not bebi103.stan._screen_param("sigma", omit)
-        assert not bebi103.stan._screen_param("alpha[2]", omit)
-        assert bebi103.stan._screen_param("mu", omit)
+        assert not bebi103.hmc._screen_param("sigma", omit)
+        assert not bebi103.hmc._screen_param("alpha[2]", omit)
+        assert bebi103.hmc._screen_param("mu", omit)
 
     def test_input_not_mutated(self):
         omit_in = ["sigma"]
@@ -964,7 +964,7 @@ class TestSamplesToDf:
         assert df["chain__"].min() == 1 and df["draw__"].min() == 1
 
     def test_polars_input(self, samples_dict):
-        samples = bebi103.stan.convert_samples(samples_dict, "polars")
+        samples = bebi103.hmc.convert_samples(samples_dict, "polars")
         omit = viz._parse_omit(None, False, False)
         _, df = viz._samples_to_df(samples, None, omit)
         assert isinstance(df, pd.DataFrame)

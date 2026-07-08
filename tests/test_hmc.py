@@ -1,4 +1,4 @@
-"""Test suite for bebi103.stan.
+"""Test suite for bebi103.hmc.
 
 The inferential-calibration machinery is intentionally not covered yet
 (inferential_calibration, _multiprocessing_spawn_context,
@@ -17,7 +17,7 @@ import polars as pl
 import pytest
 import xarray
 
-import bebi103.stan as st
+import bebi103.hmc as st
 
 
 # ---------------------------------------------------------------------------
