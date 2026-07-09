@@ -57,6 +57,7 @@ setup(
     version=__version__,
     description=description,
     long_description=long_description,
+    long_description_content_type='text/markdown',
     url=url,
     download_url='https://github.com/justinbois/bebi103/tarball/' + __version__,
     license='BSD',
