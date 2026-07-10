@@ -410,8 +410,8 @@ def _make_two_arg_numba_func(func, func_args):
         func_numba = numba.jit(func, nopython=True)
 
         @numba.jit(nopython=True)
-        def f(x, args=()):
-            return func_numba(x, *args)
+        def f(x, y, args=()):
+            return func_numba(x, y, *args)
 
         # Attempt function call
         _ = f(np.array([1.0, 2.0]), np.array([1.0, 2.0]), func_args)

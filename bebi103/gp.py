@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 import numba
 import scipy.special
@@ -449,20 +447,6 @@ def cov_from_kernel(X1, X2, kernel, **kernel_params):
         for i in range(n):
             for j in range(m):
                 K[i, j] = kernel(X1[i, :], X2[j, :], **kernel_params)
-
-    return K
-
-
-@numba.njit
-def _se_covariance_matrix_sym(X, alpha, rho):
-    """Return covariance matrix for squared exponential kernel."""
-    n = X.shape[0]
-    K = np.empty((n, n))
-
-    for i in range(n):
-        for j in range(i, n):
-            K[i, j] = _se_kernel(X[i, :], X[j, :], alpha, rho)
-            K[j, i] = K[i, j]
 
     return K
 
@@ -1011,17 +995,18 @@ def _d1_d2_matern_kernel(x1, x2, alpha, rho, nu):
     x_diff = x1 - x2
     beta = np.sqrt(2 * nu * np.dot(x_diff, x_diff)) / rho
 
-    # Special case where x1 = x2
+    # Special case where x1 = x2. Using the identities
+    # (nu - 2) * gamma(nu - 2) = gamma(nu - 1) and
+    # gamma(nu) = (nu - 1) * gamma(nu - 1), the limit simplifies to
+    # alpha**2 * nu / (nu - 1) / rho**2, which is finite and pole-free for
+    # nu > 1 (unlike the gamma(nu - 2) form, which is nan at integer nu).
     if np.abs(beta) < 1e-8:
-        return (
-            alpha**2 * (nu - 2) * nu * scipy.special.gamma(nu - 2) 
-            / scipy.special.gamma(nu) / rho**2
-        )
+        return alpha**2 * nu / (nu - 1) / rho**2
 
     return (
         alpha ** 2 * 2 ** (2 - nu) * nu / scipy.special.gamma(nu) / rho ** 2
         * beta ** (nu - 1)
-        * scipy.special.kv(nu - 1, beta) - beta * scipy.special.kv(nu - 2, beta)
+        * (scipy.special.kv(nu - 1, beta) - beta * scipy.special.kv(nu - 2, beta))
     )
 
 
@@ -1177,7 +1162,8 @@ def _d1_se_covariance_matrix_sym(x, alpha, rho):
     for i in range(n):
         for j in range(i, n):
             K[i, j] = _d1_se_kernel(x[i], x[j], alpha, rho)
-            K[j, i] = K[i, j]
+            # The single-derivative cross-covariance is antisymmetric.
+            K[j, i] = -K[i, j]
 
     return K
 
@@ -1326,7 +1312,8 @@ def _d1_matern_covariance_matrix_sym(x, alpha, rho, nu):
     for i in range(n):
         for j in range(i, n):
             K[i, j] = _d1_matern_kernel(x[i], x[j], alpha, rho, nu)
-            K[j, i] = K[i, j]
+            # The single-derivative cross-covariance is antisymmetric.
+            K[j, i] = -K[i, j]
 
     return K
 
@@ -1370,7 +1357,8 @@ def _d1_matern_32_covariance_matrix_sym(x, alpha, rho):
     for i in range(n):
         for j in range(i, n):
             K[i, j] = _d1_matern_32_kernel(x[i], x[j], alpha, rho)
-            K[j, i] = K[i, j]
+            # The single-derivative cross-covariance is antisymmetric.
+            K[j, i] = -K[i, j]
 
     return K
 
@@ -1415,7 +1403,8 @@ def _d1_matern_52_covariance_matrix_sym(x, alpha, rho):
     for i in range(n):
         for j in range(i, n):
             K[i, j] = _d1_matern_52_kernel(x[i], x[j], alpha, rho)
-            K[j, i] = K[i, j]
+            # The single-derivative cross-covariance is antisymmetric.
+            K[j, i] = -K[i, j]
 
     return K
 
@@ -1662,6 +1651,9 @@ def posterior_mean_cov_deriv(
     Multidimensional x-values and other kernels will hopefully be
     implemented later.
     """
+    X = np.asarray(X)
+    Xstar = np.asarray(Xstar)
+
     if len(X.shape) > 1 or len(Xstar.shape) > 1:
         raise NotImplementedError("`X` and `Xstar` must be 1D.")
     if kernel not in (exp_quad_kernel, se_kernel, matern_kernel):

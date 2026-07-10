@@ -1,3 +1,4 @@
+import glob
 import warnings
 
 import numpy as np
@@ -196,10 +197,6 @@ def imshow(
 
     if "width" not in kwargs and "frame_width" not in kwargs:
         kwargs["frame_width"] = int(m / n * frame_height)
-    if colorbar:
-        toolbar_location = "above"
-    else:
-        toolbar_location = "right"
     p = bokeh.plotting.figure(**kwargs)
     if no_ticks:
         p.xaxis.major_label_text_font_size = "0pt"
@@ -693,14 +690,14 @@ def im_merge(
     if im_1_max > im_1_min:
         im_1 = (im_1 - im_1_min) / (im_1_max - im_1_min)
     else:
-        im_0 = (im_0 > 0).astype(float)
+        im_1 = (im_1 > 0).astype(float)
 
     if im_2 is None:
         im_2 = np.zeros_like(im_0)
     elif im_2_max > im_2_min:
         im_2 = (im_2 - im_2_min) / (im_2_max - im_2_min)
     else:
-        im_0 = (im_0 > 0).astype(float)
+        im_2 = (im_2 > 0).astype(float)
 
     # Convert images to RGB
     if cmy:
@@ -853,7 +850,7 @@ class SimpleImageCollection(object):
         Return selected image.
         """
         if self.conserve_memory:
-            return self.load_func(self.fnames[n], **self.load_func_kwargs)
+            return self.load_func(self.fnames[n], **self.kwargs)
         else:
             return self.ims[n]
 
@@ -939,10 +936,10 @@ def verts_to_roi(verts, size_i, size_j):
     in_roi = p.contains_points(pts)
 
     # Convert it to an image
-    roi = in_roi.reshape((size_i, size_j)).astype(np.bool)
+    roi = in_roi.reshape((size_i, size_j)).astype(bool)
 
     # Get bounding box of ROI
-    regions = skimage.measure.regionprops(roi.astype(np.int))
+    regions = skimage.measure.regionprops(roi.astype(int))
     bbox = regions[0].bbox
     roi_bbox = np.s_[bbox[0] : bbox[2] + 1, bbox[1] : bbox[3] + 1]
 

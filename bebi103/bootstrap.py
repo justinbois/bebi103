@@ -1,6 +1,6 @@
 try:
     import multiprocess
-except:
+except ImportError:
     import multiprocessing as multiprocess
 
 import warnings
@@ -29,10 +29,10 @@ def seed_rng(seed):
             np.random.seed(seed)
 
         _seed(seed)
-    except:
+    except Exception:
         warnings.warn(
             "Unable to seed Numba RNG. It is possible Numba is not"
-            " properly installed. If that is the case, you all bootstrap calculations"
+            " properly installed. If that is the case, all bootstrap calculations"
             " will use un-Numba'd random number generation that is properly seeded."
             " However, if Numba is installed and there is some other issue preventing"
             " proper seeding of the random number generator used in Numba'd code,"
@@ -159,7 +159,8 @@ def _draw_bs_reps_median(data, size=1):
 @numba.jit(nopython=True)
 def _draw_bs_reps_std(data, ddof=0, size=1):
     """
-    Generate bootstrap replicates of the median out of `data`.
+    Generate bootstrap replicates of the standard deviation out of
+    `data`.
 
     Parameters
     ----------
@@ -174,7 +175,8 @@ def _draw_bs_reps_std(data, ddof=0, size=1):
     Returns
     -------
     output : float
-        Bootstrap replicates of the median computed from `data`.
+        Bootstrap replicates of the standard deviation computed from
+        `data`.
     """
     # Set up output array
     bs_reps = np.empty(size)

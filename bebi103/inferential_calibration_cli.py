@@ -5,7 +5,7 @@ import tomllib
 
 import click
 
-from . import stan
+from . import hmc
 
 
 def parse_toml_config(toml_path):
@@ -90,7 +90,7 @@ def main(config_file):
         f"Results will be written to: {inferential_calibration_kwargs['output_csv']}\n"
     )
 
-    result_df = stan.inferential_calibration(**inferential_calibration_kwargs)
+    result_df = hmc.inferential_calibration(**inferential_calibration_kwargs)
 
     click.echo(
         f"\ninferential calibration analysis complete! Results saved to: {inferential_calibration_kwargs['output_csv']}"

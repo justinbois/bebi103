@@ -1,5 +1,3 @@
-import copy
-import re
 import warnings
 
 import numpy as np
@@ -25,10 +23,10 @@ from . import utils
 from . import image
 
 try:
-    from . import stan
+    from . import hmc
 except:
     warnings.warn(
-        "Could not import `stan` submodule. Perhaps ArviZ or cmdstanpy is not properly installed."
+        "Could not import `hmc` submodule. Perhaps ArviZ or cmdstanpy is not properly installed."
     )
 
 
@@ -1100,7 +1098,7 @@ def sbc_rank_ecdf(
     Parameters
     ----------
     inferential_calibration_output : DataFrame
-        Output of bebi103.stan.inferential_calibration() containing 
+        Output of bebi103.hmc.inferential_calibration() containing 
         results from an inferential calibration calculation.
     parameters : list of str, or None (default)
         List of parameters to include in the SBC rank ECDF plot. If
@@ -1360,8 +1358,9 @@ def parcoord(
     parameters=None,
     palette=None,
     omit=None,
-    include_ppc=False,
-    include_log_lik=False,
+    omit_array_entry=(),
+    include_ppc=None,
+    include_log_lik=None,
     transformation=None,
     color_by_chain=False,
     line_kwargs=None,
@@ -1380,7 +1379,7 @@ def parcoord(
         Result of MCMC sampling. May be a cmdstanpy.CmdStanMCMC
         instance, a dictionary of two-dimensional arrays for each
         expectand and HMC diagnostic as output by
-        `bebi103.stan.convert_samples()`, or a pandas.DataFrame or
+        `bebi103.hmc.convert_samples()`, or a pandas.DataFrame or
         polars.DataFrame with one row per draw and one column per
         expectand, optionally with 'chain__', 'draw__', and
         'divergent__' columns. If a data frame lacks 'chain__' and
@@ -1397,19 +1396,19 @@ def parcoord(
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         colorcet.b_glasbey_category10 from the colorcet package.
-    omit : str, re.Pattern, or list or tuple of str and re.Pattern
-        If `parameters` is not provided, all parameters are used in the
-        parallel coordinate plot. We often want to ignore samples of
-        some variables. For each string entry in `omit`, the variable
-        given by the string is omitted. For each entry that is a
-        compiled regular expression patters (`re.Pattern`), any variable
-        name matching the pattern is omitted.
-    include_ppc : bool, default False
-        If True, include variables ending in _ppc, which denotes
-        posterior predictive checks, in the plot.
-    include_log_lik: bool, default False
-        If True, include variables starting with log_lik or loglik.
-        These denote log-likelihood contributions.
+    omit : str, re.Pattern, or iterable thereof, default None
+        Variables to exclude when `parameters` is None. Each string entry
+        is a glob pattern matched against the base (non-indexed) variable
+        name; e.g. 'theta' omits 'theta' and every entry of 'theta[1]',
+        'theta[2]', .... A compiled `re.Pattern` entry is matched as a
+        regular expression against the base name. A single string or
+        pattern may be given instead of an iterable. Cannot be used
+        together with `parameters`.
+    omit_array_entry : str or iterable of str, default ()
+        Specific array entries to omit, e.g. 'y_pred[1]' or 'beta[1,2]'.
+        Each entry must include bracketed, comma-separated integer
+        indices. A single string may be given instead of an iterable.
+        Cannot be used together with `parameters`.
     transformation : function, str, or dict, default None
         A transformation to apply to each set of samples. The function
         must take a single array as input and return an array as the
@@ -1446,10 +1445,16 @@ def parcoord(
     if divergence_kwargs is None:
         divergence_kwargs = {}
 
-    if parameters is not None and omit is not None:
-        raise RuntimeError("At least one of `parameters` and `omit` must be None.")
+    _check_deprecated_include(include_ppc, include_log_lik)
 
-    omit = _parse_omit(omit, include_ppc, include_log_lik)
+    if parameters is not None and (omit is not None or omit_array_entry):
+        raise RuntimeError(
+            "`parameters` cannot be used together with `omit` or `omit_array_entry`."
+        )
+
+    if omit is None:
+        omit = ()
+    omit, omit_array_entry = hmc._parse_omit(omit, omit_array_entry)
 
     # Default properties
     if palette is None:
@@ -1479,7 +1484,7 @@ def parcoord(
     if not color_by_chain:
         palette = [color] * len(palette)
 
-    parameters, df = _samples_to_df(samples, parameters, omit)
+    parameters, df = _samples_to_df(samples, parameters, omit, omit_array_entry)
     parameters, labels = _parse_parameters(parameters)
     df = df.rename(columns={param: label for param, label in zip(parameters, labels)})
 
@@ -1565,8 +1570,9 @@ def trace(
     parameters=None,
     palette=None,
     omit=None,
-    include_ppc=False,
-    include_log_lik=False,
+    omit_array_entry=(),
+    include_ppc=None,
+    include_log_lik=None,
     line_kwargs=None,
     **kwargs,
 ):
@@ -1579,7 +1585,7 @@ def trace(
         Result of MCMC sampling. May be a cmdstanpy.CmdStanMCMC
         instance, a dictionary of two-dimensional arrays for each
         expectand and HMC diagnostic as output by
-        `bebi103.stan.convert_samples()`, or a pandas.DataFrame or
+        `bebi103.hmc.convert_samples()`, or a pandas.DataFrame or
         polars.DataFrame with one row per draw and one column per
         expectand, optionally with 'chain__', 'draw__', and
         'divergent__' columns. If a data frame lacks 'chain__' and
@@ -1596,19 +1602,19 @@ def trace(
         If a list, color palette to use. If a single string representing
         a hex color, all glyphs are colored with that color. Default is
         colorcet.b_glasbey_category10 from the colorcet package.
-    omit : str, re.Pattern, or list or tuple of str and re.Pattern
-        If `parameters` is not provided, all parameters are used in the
-        parallel coordinate plot. We often want to ignore samples of
-        some variables. For each string entry in `omit`, the variable
-        given by the string is omitted. For each entry that is a
-        compiled regular expression patters (`re.Pattern`), any variable
-        name matching the pattern is omitted.
-    include_ppc : bool, default False
-        If True, include variables ending in _ppc, which denotes
-        posterior predictive checks, in the plot.
-    include_log_lik: bool, default False
-        If True, include variables starting with log_lik or loglik.
-        These denote log-likelihood contributions.
+    omit : str, re.Pattern, or iterable thereof, default None
+        Variables to exclude when `parameters` is None. Each string entry
+        is a glob pattern matched against the base (non-indexed) variable
+        name; e.g. 'theta' omits 'theta' and every entry of 'theta[1]',
+        'theta[2]', .... A compiled `re.Pattern` entry is matched as a
+        regular expression against the base name. A single string or
+        pattern may be given instead of an iterable. Cannot be used
+        together with `parameters`.
+    omit_array_entry : str or iterable of str, default ()
+        Specific array entries to omit, e.g. 'y_pred[1]' or 'beta[1,2]'.
+        Each entry must include bracketed, comma-separated integer
+        indices. A single string may be given instead of an iterable.
+        Cannot be used together with `parameters`.
     line_kwargs: dict, default None
         Dictionary of kwargs to be passed to `p.multi_line()` in making
         the plot of non-divergent samples.
@@ -1623,12 +1629,18 @@ def trace(
     if line_kwargs is None:
         line_kwargs = {}
 
-    if parameters is not None and omit is not None:
-        raise RuntimeError("At least one of `parameters` and `omit` must be None.")
+    _check_deprecated_include(include_ppc, include_log_lik)
 
-    omit = _parse_omit(omit, include_ppc, include_log_lik)
+    if parameters is not None and (omit is not None or omit_array_entry):
+        raise RuntimeError(
+            "`parameters` cannot be used together with `omit` or `omit_array_entry`."
+        )
 
-    parameters, df = _samples_to_df(samples, parameters, omit)
+    if omit is None:
+        omit = ()
+    omit, omit_array_entry = hmc._parse_omit(omit, omit_array_entry)
+
+    parameters, df = _samples_to_df(samples, parameters, omit, omit_array_entry)
     parameters, labels = _parse_parameters(parameters)
 
     # Default properties
@@ -1796,8 +1808,9 @@ def corner(
     parameters=None,
     palette=None,
     omit=None,
-    include_ppc=False,
-    include_log_lik=False,
+    omit_array_entry=(),
+    include_ppc=None,
+    include_log_lik=None,
     max_plotted=10000,
     frame_width=None,
     frame_height=None,
@@ -1830,7 +1843,7 @@ def corner(
     samples : cmdstanpy.CmdStanMCMC instance, dict, DataFrame, or Numpy array
         Results of sampling. May be a cmdstanpy.CmdStanMCMC instance, a
         dictionary of two-dimensional arrays for each expectand and HMC
-        diagnostic as output by `bebi103.stan.convert_samples()`, a
+        diagnostic as output by `bebi103.hmc.convert_samples()`, a
         pandas.DataFrame or polars.DataFrame with one row per draw and
         one column per expectand (optionally with 'chain__', 'draw__',
         and 'divergent__' columns; if 'chain__' and 'draw__' are absent,
@@ -1852,19 +1865,19 @@ def corner(
         a hex color, all glyphs are colored with that color. Default is
         the default color cycle employed by Altair. Ignored is
         `color_by_chain` is False.
-    omit : str, re.Pattern, or list or tuple of str and re.Pattern
-        If `parameters` is not provided, all parameters are used in the
-        parallel coordinate plot. We often want to ignore samples of
-        some variables. For each string entry in `omit`, the variable
-        given by the string is omitted. For each entry that is a
-        compiled regular expression patters (`re.Pattern`), any variable
-        name matching the pattern is omitted.
-    include_ppc : bool, default False
-        If True, include variables ending in _ppc, which denotes
-        posterior predictive checks, in the plot.
-    include_log_lik: bool, default False
-        If True, include variables starting with log_lik or loglik.
-        These denote log-likelihood contributions.
+    omit : str, re.Pattern, or iterable thereof, default None
+        Variables to exclude when `parameters` is None. Each string entry
+        is a glob pattern matched against the base (non-indexed) variable
+        name; e.g. 'theta' omits 'theta' and every entry of 'theta[1]',
+        'theta[2]', .... A compiled `re.Pattern` entry is matched as a
+        regular expression against the base name. A single string or
+        pattern may be given instead of an iterable. Cannot be used
+        together with `parameters`.
+    omit_array_entry : str or iterable of str, default ()
+        Specific array entries to omit, e.g. 'y_pred[1]' or 'beta[1,2]'.
+        Each entry must include bracketed, comma-separated integer
+        indices. A single string may be given instead of an iterable.
+        Cannot be used together with `parameters`.
     max_plotted : int, default 10000
         Maximum number of points to be plotted.
     frame_width : int or None, default None
@@ -1961,10 +1974,16 @@ def corner(
             "has been deprecated and must be False."
         )
 
-    if parameters is not None and omit is not None:
-        raise RuntimeError("At least one of `parameters` and `omit` must be None.")
+    _check_deprecated_include(include_ppc, include_log_lik)
 
-    omit = _parse_omit(omit, include_ppc, include_log_lik)
+    if parameters is not None and (omit is not None or omit_array_entry):
+        raise RuntimeError(
+            "`parameters` cannot be used together with `omit` or `omit_array_entry`."
+        )
+
+    if omit is None:
+        omit = ()
+    omit, omit_array_entry = hmc._parse_omit(omit, omit_array_entry)
 
     # Default bottom minimum border
     if min_border_bottom is None:
@@ -2004,7 +2023,7 @@ def corner(
         df = pd.DataFrame(samples[:, inds], columns=new_parameters)
         parameters = new_parameters
     else:
-        parameters, df = _samples_to_df(samples, parameters, omit)
+        parameters, df = _samples_to_df(samples, parameters, omit, omit_array_entry)
 
     parameters, labels = _parse_parameters(parameters)
 
@@ -2779,28 +2798,14 @@ def q_to_color(
     return [color_select(i, x_val) for i, x_val in zip(inds, x)]
 
 
-def _parse_omit(omit, include_ppc, include_log_lik):
-    """Determine which variables to omit in plot."""
-    if omit is None:
-        omit = []
-
-    if type(omit) == tuple:
-        omit = list(omit)
-
-    if type(omit) != list:
-        omit = [omit]
-    else:
-        omit = copy.copy(omit)
-
-    if not include_ppc:
-        if not include_log_lik:
-            omit += [re.compile("(.*_ppc\\[?\\d*\\]?$)|(log_?lik.*\\[?\\d*\\]?$)")]
-        else:
-            omit += [re.compile("(.*_ppc\\[?\\d*\\]?$)")]
-    elif not include_log_lik:
-        omit += [re.compile("(log_?lik.*\\[?\\d*\\]?$)")]
-
-    return tuple(omit)
+def _check_deprecated_include(include_ppc, include_log_lik):
+    """Raise if the deprecated `include_ppc`/`include_log_lik` kwargs are used."""
+    if include_ppc is not None or include_log_lik is not None:
+        raise RuntimeError(
+            "The `include_ppc` and `include_log_lik` keyword arguments are "
+            "deprecated. Use the `omit` and `omit_array_entry` keyword arguments "
+            "instead to control which variables are shown."
+        )
 
 
 def _parse_parameters(params):
@@ -2821,7 +2826,7 @@ def _parse_parameters(params):
     return parameters, labels
 
 
-def _samples_to_df(samples, parameters, omit):
+def _samples_to_df(samples, parameters, omit, omit_array_entry):
     """Convert MCMC samples to a tidy DataFrame and resolve parameters.
 
     Parameters
@@ -2829,17 +2834,22 @@ def _samples_to_df(samples, parameters, omit):
     samples : cmdstanpy.CmdStanMCMC instance, dict, or DataFrame
         MCMC samples, as a cmdstanpy.CmdStanMCMC instance, as a
         dictionary of two-dimensional arrays for each expectand and HMC
-        diagnostic, as output by `bebi103.stan.convert_samples()`, or as
+        diagnostic, as output by `bebi103.hmc.convert_samples()`, or as
         a pandas.DataFrame or polars.DataFrame with one row per draw and
         one column per expectand. If the data frame lacks 'chain__' and
         'draw__' columns, the samples are treated as a single chain with
         draws in row order.
     parameters : list or None
         Names of parameters to include. Entries may be (name, label)
-        tuples. If None, all expectands not screened out by `omit` are
-        used.
+        tuples. If None, all expectands not screened out by `omit` and
+        `omit_array_entry` are used.
     omit : tuple
-        Screening specification as produced by `_parse_omit()`.
+        Normalized `omit` specification (as returned by
+        `bebi103.hmc._parse_omit()`) of glob patterns and compiled
+        regular expressions matched against base variable names.
+    omit_array_entry : tuple
+        Normalized `omit_array_entry` specification (as returned by
+        `bebi103.hmc._parse_omit()`) of specific array entries to omit.
 
     Returns
     -------
@@ -2850,7 +2860,7 @@ def _samples_to_df(samples, parameters, omit):
         and one column per selected parameter. The 'chain__' and 'draw__'
         columns are one-indexed.
     """
-    samples_df = stan.convert_samples(samples, "pandas")
+    samples_df = hmc.convert_samples(samples, "pandas")
 
     if "chain__" not in samples_df.columns or "draw__" not in samples_df.columns:
         samples_df = samples_df.copy()
@@ -2863,7 +2873,8 @@ def _samples_to_df(samples, parameters, omit):
         parameters = [
             col
             for col in samples_df.columns
-            if not col.endswith("__") and stan._screen_param(col, omit)
+            if not col.endswith("__")
+            and hmc._screen_param(col, omit, omit_array_entry)
         ]
 
     names, _ = _parse_parameters(parameters)

@@ -2,11 +2,6 @@ import bokeh.palettes
 import colorcet
 import holoviews as hv
 
-datashader_blues = bokeh.palettes.Blues9[:6][::-1]
-datashader_greys = bokeh.palettes.Greys9[:6][::-1]
-datashader_purples = bokeh.palettes.Purples9[:6][::-1]
-datashader_reds = bokeh.palettes.Reds9[:6][::-1]
-
 
 def no_xgrid_hook(plot, element):
     """Hook for disabling x-grid lines.
@@ -30,17 +25,22 @@ def no_ygrid_hook(plot, element):
     plot.handles["plot"].ygrid.grid_line_color = None
 
 
-default_categorical_cmap = colorcet.b_glasbey_category10
-default_sequential_cmap = list(bokeh.palettes.Viridis256)
-default_diverging_cmap = colorcet.b_diverging_bwr_20_95_c54
-
-
-def set_defaults():
+def set_defaults(
+        default_categorical_cmap=colorcet.b_glasbey_category10,
+        default_sequential_cmap=list(bokeh.palettes.Viridis256),
+    ):
     """
-    Set convenient HoloViews defaults
+    Set convenient HoloViews defaults.
 
     Called without arguments, sets default visual plotting options for
-    HoloViews.
+    HoloViews for an IPython or Jupyter notebook session. Note that
+    the HoloViews extension must be set before calling 
+    `set_defaults()`. A common use case:
+
+    import holoviews as hv
+    import bebi103
+    hv.extension('bokeh')
+    bebi103.hv.set_defaults()
     """
     hv.opts.defaults(
         hv.opts.Bars(

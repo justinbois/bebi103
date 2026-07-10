@@ -30,24 +30,12 @@ except:
     )
 
 from . import hv
-
 from . import viz
-
 from . import image
-
 from . import bootstrap
-
 from . import gp
-
 from . import utils
-
-try:
-    from . import stan
-except:
-    warnings.warn(
-        "Could not import `stan` submodule. Perhaps ArviZ or PyStan or CmdStanPy is/are"
-        " not properly installed."
-    )
+from . import hmc
 
 
 __author__ = """Justin Bois"""
