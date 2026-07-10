@@ -1,0 +1,84 @@
+# ============================================================
+# Stan files
+# ============================================================
+prior_predictive_stan_file = "sample_model_prior_predictive.stan"
+posterior_stan_file = "sample_model_noncentered.stan"
+
+
+# ============================================================
+# Data contents for prior predictive
+# ============================================================
+prior_predictive_model_data.N = 63
+prior_predictive_model_data.J_1 = 3
+prior_predictive_model_data.index_1 = [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+]
+
+
+# ============================================================
+# Data contents for posterior predictive
+# ============================================================
+posterior_model_data.N = 63
+posterior_model_data.J_1 = 3
+posterior_model_data.index_1 = [
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+]
+
+
+# ============================================================
+# Parameters of interest
+# ============================================================
+var_names = ["rho", "sigma", "tau", "theta"]
+ignored_var_names = ["*_prc", "log_lik"]
+
+
+# ============================================================
+# Which variables are "measured"
+# ============================================================
+measured_data = ["x", "y"]
+
+
+# ============================================================
+# Data types of measured variables
+# ============================================================
+measured_data_dtypes.x = "float"
+measured_data_dtypes.y = "float"
+
+
+# ============================================================
+# Inferential calibration settings
+# ============================================================
+N = 10
+cores = 8
+n_prior_draws_for_sd = 1000
+samples_dir = "inferential_calibration_samples"
+remove_sample_files = true
+progress_bar = true
+output_csv = "inferential_calibration_results_test.csv"
+overwrite = true
+
+
+# ============================================================
+# Sampling settings
+# ============================================================
+sampling_kwargs.chains = 4
+sampling_kwargs.iter_sampling = 1000
+sampling_kwargs.iter_warmup = 2000
+sampling_kwargs.adapt_delta = 0.95
+sampling_kwargs.max_treedepth = 10
+sampling_kwargs.thin = 1
+
+
+# ============================================================
+# Diagnostic kwargs
+# ============================================================
+diagnostic_check_kwargs.adapt_target = 0.801
+diagnostic_check_kwargs.adapt_target_fraction = 0.9
+diagnostic_check_kwargs.efmi_rule_of_thumb = 0.2
+diagnostic_check_kwargs.max_treedepth = 10
+diagnostic_check_kwargs.min_ess_hat_per_chain = 100
+diagnostic_check_kwargs.xi_hat_threshold = 0.25

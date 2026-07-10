@@ -73,18 +73,21 @@ model {
 
 
 generated quantities {
-  array[N] real x_ppc;
-  array[N] real y_ppc;
+  // Posterior retrodictive checks
+  array[N] real x_prc;
+  array[N] real y_prc;
+
+  // Log likelihood
   array[N] real log_lik;
 
   {
-    vector[2] xy_ppc;
+    vector[2] xy_prc;
 
     for (i in 1:N) {
-      xy_ppc = multi_normal_rng(theta_1[index_1[i]], Sigma);
-      log_lik[i] = multi_normal_lpdf(xy_ppc | theta_1[index_1[i]], Sigma);
-      x_ppc[i] = xy_ppc[1];
-      y_ppc[i] = xy_ppc[2];
+      xy_prc = multi_normal_rng(theta_1[index_1[i]], Sigma);
+      log_lik[i] = multi_normal_lpdf(xy_prc | theta_1[index_1[i]], Sigma);
+      x_prc[i] = xy_prc[1];
+      y_prc[i] = xy_prc[2];
     }
   }
 }

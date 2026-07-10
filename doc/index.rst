@@ -1,7 +1,7 @@
 bebi103: Utilities for Caltech BE/Bi 103 ab courses
 ===================================================
 
-The bebi103 package provides convenience functions for use in the `BE/Bi 103 ab courses <http://bebi103.caltech.edu/>`_ at `Caltech <http://caltech.edu/>`_.
+The bebi103 package provides convenience functions for use in the `BE/Bi 103 a courses <http://bebi103a.caltech.edu/>`_ and `BE/Bi 103 b <http://bebi103b.caltech.edu/>`_ courses at `Caltech <http://caltech.edu/>`_.
 
 
 .. toctree::
@@ -19,7 +19,7 @@ The bebi103 package provides convenience functions for use in the `BE/Bi 103 ab 
    user_guide/using_user_guide.ipynb
    user_guide/hv.ipynb
    user_guide/bootstrap.ipynb
-   user_guide/stan.ipynb
+   user_guide/hmc.ipynb
    user_guide/image.ipynb
    user_guide/api
 

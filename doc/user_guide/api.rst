@@ -4,19 +4,6 @@ API Reference
 =============
 
 
-HoloViews defaults
--------------------
-.. currentmodule:: bebi103.hv
-
-.. autosummary::
-   :toctree: generated/hv
-   :nosignatures:
-
-   set_defaults
-   no_xgrid_hook
-   no_ygrid_hook
-
-
 Visualization
 --------------------
 .. currentmodule:: bebi103.viz
@@ -38,6 +25,8 @@ Visualization
    contour_lines_from_samples
    cdf_to_staircase
    q_to_color
+   mpl_cmap_to_color_mapper
+   to_ColumnDataSource
 
 
 Bootstrap methods
@@ -58,26 +47,31 @@ Bootstrap methods
    pearson_r
 
 
-Stan utilities
---------------------
-.. currentmodule:: bebi103.stan
+Hamiltonian Monte Carlo utilities
+---------------------------------
+.. currentmodule:: bebi103.hmc
 
 .. autosummary::
-   :toctree: generated/stan
+   :toctree: generated/hmc
    :nosignatures:
 
+   install_cmdstan_colab
+   include_path
    clean_cmdstan
    cmdstan_version
    df_to_datadict_hier
-   arviz_to_dataframe
-   check_divergences
-   check_treedepth
-   check_energy
-   check_ess
-   check_rhat
+   convert_samples
+   extract_variable
+   check_hmc_diagnostics
+   check_expectand_diagnostics
    check_all_diagnostics
-   parse_warning_code
-   sbc
+   tau_hat
+   tail_xi_hat
+   ess_hat
+   split_rhat
+   check_variance
+   decode_warning_code
+   inferential_calibration
    disable_logging
 
 
@@ -93,23 +87,44 @@ Gaussian process utilities
    linear_kernel
    polynomial_kernel
    se_kernel
-   d1_exp_quad_kernel
-   d2_exp_quad_kernel
-   d1_d2_exp_quad_kernel
+   exp_quad_kernel
    matern_kernel
+   periodic_kernel
+   d1_se_kernel
+   d1_exp_quad_kernel
+   d2_se_kernel
+   d2_exp_quad_kernel
+   d1_d2_se_kernel
+   d1_d2_exp_quad_kernel
    d1_matern_kernel
    d2_matern_kernel
    d1_d2_matern_kernel
-   periodic_kernel
    cov_exp_quad
+   cov_se
    cov_d1_exp_quad
+   cov_d1_se
    cov_d1_d2_exp_quad
+   cov_d1_d2_se
    cov_matern
    cov_d1_matern
    cov_d1_d2_matern
    cov_periodic
    cov_from_kernel
    posterior_mean_cov
+   posterior_mean_cov_deriv
+
+
+HoloViews defaults
+------------------
+.. currentmodule:: bebi103.hv
+
+.. autosummary::
+   :toctree: generated/hv
+   :nosignatures:
+
+   set_defaults
+   no_xgrid_hook
+   no_ygrid_hook
 
 
 Image processing utilities
@@ -130,3 +145,14 @@ Image processing utilities
    simple_image_collection
    verts_to_roi
    costes_coloc
+
+
+General utilities
+-----------------
+.. currentmodule:: bebi103.utils
+
+.. autosummary::
+   :toctree: generated/utils
+   :nosignatures:
+
+   unpivot_csv

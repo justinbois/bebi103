@@ -13,7 +13,6 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-import recommonmark.parser
 
 # -- JUPYTER theme -----------------------------------------------------------
 # from jupyter_sphinx_theme import *
@@ -36,7 +35,7 @@ release = ''
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'recommonmark',
+    'myst_parser',
     'sphinx.ext.todo',
     'sphinx.ext.githubpages',
     'sphinx.ext.autosectionlabel',

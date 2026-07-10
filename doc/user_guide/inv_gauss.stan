@@ -28,8 +28,8 @@ model {
 
 
 generated quantities {
-    array[N] real y_pred;
+    array[N] real y_prc;
     for (i in 1:N) {
-        y_pred[i] = inv_gaussian_rng(mu, lambda);
+        y_prc[i] = inv_gaussian_rng(mu, lambda);
     }
 }
