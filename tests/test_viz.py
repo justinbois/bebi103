@@ -82,7 +82,9 @@ def samples_any_format(request, samples_dict):
         return df
     if request.param == "polars":
         return pl.from_pandas(df)
-    plain = df[["mu", "sigma", "alpha[1]", "alpha[2]"]].reset_index(drop=True)
+    plain = df[
+        ["mu", "sigma", "alpha[1]", "alpha[2]", "y_ppc[1]", "log_lik[1]"]
+    ].reset_index(drop=True)
     if request.param == "plain_pandas":
         return plain
     return pl.from_pandas(plain)
@@ -534,15 +536,27 @@ class TestParcoord:
         assert isinstance(p, bokeh.plotting.figure)
         assert len(glyphs(p, bokeh.models.MultiLine)) == 1
 
-    def test_default_screens_ppc_and_log_lik(self, samples_dict):
+    def test_default_includes_all_parameters(self, samples_dict):
         p = viz.parcoord(samples_dict)
+        factors = list(p.x_range.factors)
+        assert factors == [
+            "mu",
+            "sigma",
+            "alpha[1]",
+            "alpha[2]",
+            "y_ppc[1]",
+            "log_lik[1]",
+        ]
+
+    def test_omit_screens_variables(self, samples_dict):
+        p = viz.parcoord(samples_dict, omit=["y_ppc", "log_lik"])
         factors = list(p.x_range.factors)
         assert factors == ["mu", "sigma", "alpha[1]", "alpha[2]"]
 
-    def test_include_ppc_and_log_lik(self, samples_dict):
-        p = viz.parcoord(samples_dict, include_ppc=True, include_log_lik=True)
+    def test_omit_array_entry(self, samples_dict):
+        p = viz.parcoord(samples_dict, omit_array_entry="alpha[1]")
         factors = list(p.x_range.factors)
-        assert "y_ppc[1]" in factors and "log_lik[1]" in factors
+        assert "alpha[1]" not in factors and "alpha[2]" in factors
 
     def test_parameter_labels(self, samples_dict):
         p = viz.parcoord(samples_dict, parameters=[("mu", "µ"), "sigma"])
@@ -573,6 +587,11 @@ class TestParcoord:
         with pytest.raises(RuntimeError):
             viz.parcoord(samples_dict, parameters=["mu"], omit="sigma")
 
+    @pytest.mark.parametrize("kwarg", ["include_ppc", "include_log_lik"])
+    def test_deprecated_include_kwargs_raise(self, samples_dict, kwarg):
+        with pytest.raises(RuntimeError, match="deprecated"):
+            viz.parcoord(samples_dict, **{kwarg: True})
+
     def test_x_range_not_allowed(self, samples_dict):
         with pytest.raises(RuntimeError):
             viz.parcoord(samples_dict, x_range=[0, 1])
@@ -593,7 +612,8 @@ class TestTrace:
     def test_all_input_formats(self, samples_any_format):
         out = viz.trace(samples_any_format)
         figs = collect_figures(out)
-        assert len(figs) == 4  # mu, sigma, alpha[1], alpha[2]
+        # mu, sigma, alpha[1], alpha[2], y_ppc[1], log_lik[1]
+        assert len(figs) == 6
 
     def test_single_parameter_returns_figure(self, samples_dict):
         p = viz.trace(samples_dict, parameters=["mu"])
@@ -617,11 +637,17 @@ class TestTrace:
         # so 'alpha' screens out both alpha[1] and alpha[2].
         out = viz.trace(samples_dict, omit=[re.compile("alpha")])
         figs = collect_figures(out)
-        assert len(figs) == 2  # mu and sigma
+        # mu, sigma, y_ppc[1], log_lik[1] remain.
+        assert len(figs) == 4
 
     def test_parameters_and_omit_clash(self, samples_dict):
         with pytest.raises(RuntimeError):
             viz.trace(samples_dict, parameters=["mu"], omit="sigma")
+
+    @pytest.mark.parametrize("kwarg", ["include_ppc", "include_log_lik"])
+    def test_deprecated_include_kwargs_raise(self, samples_dict, kwarg):
+        with pytest.raises(RuntimeError, match="deprecated"):
+            viz.trace(samples_dict, **{kwarg: True})
 
     def test_y_axis_label_not_allowed(self, samples_dict):
         with pytest.raises(RuntimeError):
@@ -641,7 +667,7 @@ class TestCorner:
     def test_all_input_formats(self, samples_any_format):
         out = viz.corner(samples_any_format)
         figs = collect_figures(out)
-        assert len(figs) == 10  # lower triangle of 4 parameters
+        assert len(figs) == 21  # lower triangle (with diagonal) of 6 parameters
 
     def test_single_parameter_histogram(self, samples_dict):
         p = viz.corner(samples_dict, parameters=["mu"])
@@ -738,6 +764,11 @@ class TestCorner:
     def test_parameters_and_omit_clash(self, samples_dict):
         with pytest.raises(RuntimeError):
             viz.corner(samples_dict, parameters=["mu"], omit="sigma")
+
+    @pytest.mark.parametrize("kwarg", ["include_ppc", "include_log_lik"])
+    def test_deprecated_include_kwargs_raise(self, samples_dict, kwarg):
+        with pytest.raises(RuntimeError, match="deprecated"):
+            viz.corner(samples_dict, **{kwarg: True})
 
     def test_missing_parameter(self, samples_dict):
         with pytest.raises(RuntimeError):
@@ -900,40 +931,6 @@ class TestMplCmapToColorMapper:
 # ---------------------------------------------------------------------------
 
 
-class TestParseOmit:
-    def test_default_screens_ppc_and_log_lik(self):
-        omit = viz._parse_omit(None, include_ppc=False, include_log_lik=False)
-        assert not bebi103.hmc._screen_param("y_ppc[1]", omit)
-        assert not bebi103.hmc._screen_param("log_lik[1]", omit)
-        assert bebi103.hmc._screen_param("mu", omit)
-
-    def test_include_ppc(self):
-        omit = viz._parse_omit(None, include_ppc=True, include_log_lik=False)
-        assert bebi103.hmc._screen_param("y_ppc[1]", omit)
-        assert not bebi103.hmc._screen_param("log_lik[1]", omit)
-
-    def test_include_log_lik(self):
-        omit = viz._parse_omit(None, include_ppc=False, include_log_lik=True)
-        assert not bebi103.hmc._screen_param("y_ppc[1]", omit)
-        assert bebi103.hmc._screen_param("log_lik[1]", omit)
-
-    def test_string_and_regex_entries(self):
-        # Patterns match against the base (non-indexed) variable name.
-        omit = viz._parse_omit(
-            ["sigma", re.compile("alpha")],
-            include_ppc=True,
-            include_log_lik=True,
-        )
-        assert not bebi103.hmc._screen_param("sigma", omit)
-        assert not bebi103.hmc._screen_param("alpha[2]", omit)
-        assert bebi103.hmc._screen_param("mu", omit)
-
-    def test_input_not_mutated(self):
-        omit_in = ["sigma"]
-        viz._parse_omit(omit_in, include_ppc=False, include_log_lik=False)
-        assert omit_in == ["sigma"]
-
-
 class TestParseParameters:
     def test_strings(self):
         parameters, labels = viz._parse_parameters(["mu", "sigma"])
@@ -956,23 +953,33 @@ class TestParseParameters:
 
 class TestSamplesToDf:
     def test_dict_input(self, samples_dict):
-        omit = viz._parse_omit(None, False, False)
-        parameters, df = viz._samples_to_df(samples_dict, None, omit)
-        assert parameters == ["mu", "sigma", "alpha[1]", "alpha[2]"]
+        parameters, df = viz._samples_to_df(samples_dict, None, (), ())
+        assert parameters == [
+            "mu",
+            "sigma",
+            "alpha[1]",
+            "alpha[2]",
+            "y_ppc[1]",
+            "log_lik[1]",
+        ]
         assert set(["chain__", "draw__", "divergent__"]) <= set(df.columns)
         assert len(df) == N_CHAINS * N_DRAWS
         assert df["chain__"].min() == 1 and df["draw__"].min() == 1
 
+    def test_omit_and_array_entry_screening(self, samples_dict):
+        parameters, _ = viz._samples_to_df(
+            samples_dict, None, ("y_ppc", "log_lik"), ("alpha[1]",)
+        )
+        assert parameters == ["mu", "sigma", "alpha[2]"]
+
     def test_polars_input(self, samples_dict):
         samples = bebi103.hmc.convert_samples(samples_dict, "polars")
-        omit = viz._parse_omit(None, False, False)
-        _, df = viz._samples_to_df(samples, None, omit)
+        _, df = viz._samples_to_df(samples, None, (), ())
         assert isinstance(df, pd.DataFrame)
 
     def test_plain_dataframe_gets_chain_and_draw(self):
         plain = pd.DataFrame({"mu": np.arange(10.0), "sigma": np.arange(10.0)})
-        omit = viz._parse_omit(None, False, False)
-        _, df = viz._samples_to_df(plain, None, omit)
+        _, df = viz._samples_to_df(plain, None, (), ())
         assert np.all(df["chain__"] == 1)
         assert np.allclose(df["draw__"], np.arange(1, 11))
         assert np.all(df["divergent__"] == 0.0)
@@ -980,13 +987,11 @@ class TestSamplesToDf:
         assert "chain__" not in plain.columns
 
     def test_missing_parameter(self, samples_dict):
-        omit = viz._parse_omit(None, False, False)
         with pytest.raises(RuntimeError):
-            viz._samples_to_df(samples_dict, ["not_a_param"], omit)
+            viz._samples_to_df(samples_dict, ["not_a_param"], (), ())
 
     def test_explicit_parameters_with_labels(self, samples_dict):
-        omit = viz._parse_omit(None, False, False)
-        parameters, df = viz._samples_to_df(samples_dict, [("mu", "µ")], omit)
+        parameters, df = viz._samples_to_df(samples_dict, [("mu", "µ")], (), ())
         assert parameters == [("mu", "µ")]
         assert "mu" in df.columns
 

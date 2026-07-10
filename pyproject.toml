@@ -1,0 +1,116 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bebi103"
+version = "0.2.0"
+description = "Python utilities for the Caltech course BE/Bi 103: Data Analysis in the Biological Sciences."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "BSD-3-Clause"}
+authors = [
+    {name = "Justin Bois", email = "bois@caltech.edu"}
+]
+keywords = ["GitHub", "Python", "Instruction", "Biology"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "cmdstanpy>=1.0.0",
+    "contourpy",
+    "numpy",
+    "numba",
+    "xarray",
+    "scipy",
+    "pandas",
+    "polars",
+    "pyarrow",
+    "tqdm",
+    "multiprocess",
+    "bokeh>=3.9.0",
+    "matplotlib",
+    "arviz>=1.0.0",
+    "colorcet",
+    "holoviews",
+    "scikit-image",
+    "click>=8.0.0",
+]
+
+[project.scripts]
+infcal = "bebi103.inferential_calibration_cli:main"
+
+[project.urls]
+Homepage = "https://github.com/justinbois/bebi103"
+Repository = "https://github.com/justinbois/bebi103"
+Issues = "https://github.com/justinbois/bebi103/issues"
+Documentation = "http://bebi103.github.io/"
+
+[tool.setuptools.packages.find]
+exclude = ["docs", "tests*"]
+
+[tool.setuptools.package-data]
+bebi103 = ["stan_include/**/*"]
+
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64", "win-64"]
+
+[tool.pixi.pypi-dependencies]
+bebi103 = { path = ".", editable = true }
+
+[tool.pixi.dependencies]
+python = ">=3.11"
+cmdstanpy = ">=1.3.0,<2"
+contourpy = "*"
+numpy = "*"
+numba = "*"
+xarray = "*"
+scipy = "*"
+pandas = "*"
+polars = "*"
+pyarrow = "*"
+tqdm = "*"
+multiprocess = "*"
+bokeh = ">=3.9.0"
+matplotlib = "*"
+arviz = ">=1.0.0"
+colorcet = "*"
+holoviews = "*"
+scikit-image = "*"
+click = ">=8.0.0"
+pip = "*"
+twine = "*"
+
+[tool.pixi.feature.dev.dependencies]
+black = "*"
+pytest = "*"
+# Documentation build (Sphinx and extensions used in doc/conf.py)
+sphinx = "*"
+sphinx_rtd_theme = "*"
+sphinx-copybutton = "*"
+nbsphinx = "*"
+myst-parser = "*"
+ipykernel = "*"
+pandoc = "*"
+
+[tool.pixi.feature.dev.pypi-dependencies]
+jupyterlab = "*"
+iqplot = "*"
+jupyter-bokeh = "*"
+
+[tool.pixi.environments]
+default = {solve-group = "default"}
+dev = {features = ["dev"], solve-group = "default"}
+
+[feature.dev.activation.env]
+CC = "/usr/bin/clang"
+CXX = "/usr/bin/clang++"
+
+[tool.pixi.tasks]
+install = "pip install -e ."
+test = "pytest tests/"
+docs = "sphinx-build -b html doc doc/_build/html"
+build = "pip install build && python -m build"
