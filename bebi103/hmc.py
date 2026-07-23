@@ -1692,7 +1692,7 @@ def tail_xi_hat(samples, xi_hat_threshold=0.25, omit=(), omit_array_entry=()):
     Parameters
     ----------
     samples : cmdstanpy.CmdStanMCMC instance or dict
-        MCMC samples from which to compute ESShat, either as a
+        MCMC samples from which to compute xi_hat, either as a
         cmdstanpy.CmdStanMCMC instance or as a dictionary of
         two-dimensional arrays for each expectand. For the dictionary,
         the first dimension of each element indexes the Markov chains and
@@ -1775,7 +1775,7 @@ def ess_hat(samples, omit=(), omit_array_entry=()):
     Parameters
     ----------
     samples : cmdstanpy.CmdStanMCMC instance or dict
-        MCMC samples from which to compute ESShat, either as a
+        MCMC samples from which to compute ESS_hat, either as a
         cmdstanpy.CmdStanMCMC instance or as a dictionary of
         two-dimensional arrays for each expectand. For the dictionary,
         the first dimension of each element indexes the Markov chains and
@@ -2645,6 +2645,9 @@ def inferential_calibration(
             - tail_xi_hat_right : Right tail xi_hat for the parameter, computed over all chains pooled together.
             - inc_tau_hat : Incremental empirical integrated autocorrelation time for the parameter, computed over all chains pooled together.
             - variance : Empirical variance of the parameter's posterior samples, computed over all chains pooled together.
+            - ESS_hat : Total empirical effective sample size for the parameter, summed over all chains.
+            - ESS_hat_per_iter : `ESS_hat` divided by the total number of posterior samples (all chains and draws).
+            - ESS_hat_min_per_chain : Minimum per-chain empirical effective sample size for the parameter. This is the quantity the ESS_hat diagnostic warning is based on: a warning is raised (and the corresponding bit set in `warning_code`) when it falls below `min_ess_hat_per_chain`. Because `ESS_hat` is a sum over chains, it can be large even when this per-chain minimum, and hence the warning, indicates poor mixing in a single chain.
             - average_accept_proxy : Average proxy acceptance statistic for the trial, taken over all chains.
             - prior_predictive_seed : Random number seed used by Stan to generate the prior predictive data set for the trial.
             - posterior_seed : Random number seed used by Stan for the posterior MCMC sampling for the trial.
@@ -2819,7 +2822,7 @@ def inferential_calibration(
         f.write(f"#\n")
         # Write CSV header
         f.write(
-            "trial,parameter,ground_truth,rank_statistic,mean,sd,shrinkage,z_score,Rhat,ESS,ESS_per_iter,tail_xi_hat_left,tail_xi_hat_right,inc_tau_hat,variance,n_divergences,n_bad_ebfmi,n_max_treedepth,average_accept_proxy,warning_code,prior_predictive_seed,posterior_seed,L,prior_predictive_prefix,samples_prefix,error\n"
+            "trial,parameter,ground_truth,rank_statistic,mean,sd,shrinkage,z_score,Rhat,ESS_hat,ESS_hat_per_iter,ESS_hat_min_per_chain,tail_xi_hat_left,tail_xi_hat_right,inc_tau_hat,variance,n_divergences,n_bad_ebfmi,n_max_treedepth,average_accept_proxy,warning_code,prior_predictive_seed,posterior_seed,L,prior_predictive_prefix,samples_prefix,error\n"
         )
 
     def arg_input_generator():
@@ -3024,10 +3027,19 @@ def _perform_inferential_calibration(args):
             output[name + "_shrinkage"] = (
                 1 - (output[name + "_sd"] / prior_sd[name]) ** 2
             )
-            # ESS is the total effective sample size across chains.
-            ess = float(np.sum(diagnostics["ess_hat"][name]))
-            output[name + "_ESS"] = ess
-            output[name + "_ESS_per_iter"] = ess / posterior_expectands[name].size
+            # ESS_hat is the total empirical effective sample size across chains.
+            ess_hat = float(np.sum(diagnostics["ess_hat"][name]))
+            output[name + "_ESS_hat"] = ess_hat
+            output[name + "_ESS_hat_per_iter"] = (
+                ess_hat / posterior_expectands[name].size
+            )
+            # Minimum per-chain ESS_hat. This is the quantity the ESS_hat
+            # warning is based on (a warning is raised when it falls below
+            # `min_ess_hat_per_chain`), so it explains a fired ESS_hat flag
+            # even when the total ESS_hat is large.
+            output[name + "_ESS_hat_min_per_chain"] = float(
+                np.min(diagnostics["ess_hat"][name])
+            )
             output[name + "_Rhat"] = diagnostics["rhat"][name]
 
             # Left and right tail xi_hats over all chains.
@@ -3066,8 +3078,9 @@ def _perform_inferential_calibration(args):
             output[name + "_sd"] = np.nan
             output[name + "_z_score"] = np.nan
             output[name + "_shrinkage"] = np.nan
-            output[name + "_ESS"] = np.nan
-            output[name + "_ESS_per_iter"] = np.nan
+            output[name + "_ESS_hat"] = np.nan
+            output[name + "_ESS_hat_per_iter"] = np.nan
+            output[name + "_ESS_hat_min_per_chain"] = np.nan
             output[name + "_Rhat"] = np.nan
             output[name + "_tail_xi_hat_left"] = np.nan
             output[name + "_tail_xi_hat_right"] = np.nan
@@ -3185,8 +3198,9 @@ def _tidy_single_inferential_calibration_result(output_dict, trial_number):
         "shrinkage",
         "z_score",
         "Rhat",
-        "ESS",
-        "ESS_per_iter",
+        "ESS_hat",
+        "ESS_hat_per_iter",
+        "ESS_hat_min_per_chain",
         "tail_xi_hat_left",
         "tail_xi_hat_right",
         "inc_tau_hat",
@@ -3249,8 +3263,9 @@ def _tidy_inferential_calibration_output(inferential_calibration_output):
         "shrinkage",
         "z_score",
         "Rhat",
-        "ESS",
-        "ESS_per_iter",
+        "ESS_hat",
+        "ESS_hat_per_iter",
+        "ESS_hat_min_per_chain",
         "tail_xi_hat_left",
         "tail_xi_hat_right",
         "inc_tau_hat",
