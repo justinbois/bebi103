@@ -49,7 +49,7 @@ Issues = "https://github.com/justinbois/bebi103/issues"
 Documentation = "http://bebi103.github.io/"
 
 [tool.setuptools.packages.find]
-exclude = ["docs", "tests*"]
+exclude = ["docs", "tests*", "sandbox*"]
 
 [tool.setuptools.package-data]
 bebi103 = ["stan_include/**/*"]
@@ -81,12 +81,13 @@ colorcet = "*"
 holoviews = "*"
 scikit-image = "*"
 click = ">=8.0.0"
-pip = "*"
-twine = "*"
 
 [tool.pixi.feature.dev.dependencies]
 black = "*"
 pytest = "*"
+# Packaging and upload to PyPI (used by the build/publish tasks)
+pip = "*"
+twine = "*"
 # Documentation build (Sphinx and extensions used in doc/conf.py)
 sphinx = "*"
 sphinx_rtd_theme = "*"
@@ -109,8 +110,9 @@ dev = {features = ["dev"], solve-group = "default"}
 CC = "/usr/bin/clang"
 CXX = "/usr/bin/clang++"
 
-[tool.pixi.tasks]
+[tool.pixi.feature.dev.tasks]
 install = "pip install -e ."
 test = "pytest tests/"
 docs = "sphinx-build -b html doc doc/_build/html"
-build = "pip install build && python -m build"
+build = "rm -rf dist && pip install build && python -m build"
+publish = { cmd = "twine upload dist/*", depends-on = ["build"] }
