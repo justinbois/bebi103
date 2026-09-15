@@ -1,0 +1,255 @@
+/*
+  Special functions of Bessel type that are not built in to Stan.
+ */
+
+/**
+  * Return the modified Bessel function of the second kind, K_v(z), for
+  * real order v and positive real argument z.
+  *
+  * The order need not be an integer. Since K_{-v}(z) = K_v(z), the sign
+  * of v is immaterial. Integer and half-integer v are handled correctly
+  * as limiting cases, so the function is safe to call with, e.g.,
+  * v = 5.0 / 2.0 for a Matern kernel.
+  *
+  * The evaluation follows Temme's algorithm. The order is split as
+  * v = nl + mu with nl a nonnegative integer and mu in [-1/2, 1/2].
+  * K_mu and K_{mu+1} are computed directly, either from Temme's power
+  * series (z <= 2) or from a Steed continued fraction (z > 2), and the
+  * result is carried up to K_v by the upward recurrence
+  *
+  *     K_{w+1}(z) = K_{w-1}(z) + (2 w / z) K_w(z),
+  *
+  * which is stable in the upward direction. The seed values and the
+  * recurrence are carried in the exponentially scaled variables
+  * e^z K_w(z), so that the exp(-z) factor is applied only once, at the
+  * very end. This keeps the recurrence from being seeded with an
+  * underflowed zero when z is large but K_v(z) is still representable.
+  *
+  * @param v Order of the Bessel function. May be any real number.
+  * @param z Argument of the Bessel function. Must be positive.
+  * @return K_v(z)
+  */
+real modified_bessel_second_kind_noninteger(real v, real z) {
+  // Written as a negated comparison so that z = NaN is also rejected.
+  if (!(z > 0)) {
+    reject("modified_bessel_second_kind_noninteger: z must be positive, ",
+           "but z = ", z, ".");
+  }
+
+  int MAX_ITER = 10000;
+
+  // Relative convergence tolerance for the series and the continued
+  // fraction. Both terminate well inside MAX_ITER at this tolerance:
+  // the series needs O(10) terms, the continued fraction O(80) at its
+  // worst (z just above the split below) and fewer as z grows.
+  real EPS = 1e-16;
+
+  // Euler-Mascheroni constant, the mu -> 0 limit of -gam1 below.
+  real EULER = 0.57721566490153286;
+
+  // zeta(3)/3, zeta(5)/5, ..., zeta(17)/17 and zeta(2)/2, zeta(4)/4,
+  // ..., zeta(16)/16, for the log-gamma expansions used near mu = 0.
+  array[8] real ZETA_ODD = {
+    1.2020569031595943 / 3.0,  1.0369277551433699 / 5.0,
+    1.0083492773819228 / 7.0,  1.0020083928260822 / 9.0,
+    1.0004941886041195 / 11.0, 1.0001227133475785 / 13.0,
+    1.0000305882363070 / 15.0, 1.0000076371976379 / 17.0
+  };
+  array[8] real ZETA_EVEN = {
+    1.6449340668482264 / 2.0,  1.0823232337111382 / 4.0,
+    1.0173430619844491 / 6.0,  1.0040773561979443 / 8.0,
+    1.0009945751278181 / 10.0, 1.0002460865533080 / 12.0,
+    1.0000612481350587 / 14.0, 1.0000152822594086 / 16.0
+  };
+
+  real order = abs(v);
+
+  // Split the order: order = nl + mu, with mu in [-1/2, 1/2]. Note that
+  // nl is carried as a real, not an int, so that this function still
+  // compiles when v is a parameter (Stan cannot cast a non-data real to
+  // an int).
+  real nl = floor(order + 0.5);
+  real mu = order - nl;
+  real mu2 = mu * mu;
+
+  real xi = 1.0 / z;
+  real xi2 = 2.0 * xi;
+
+  // Seeds, held in exponentially scaled form: k_mu = e^z K_mu(z) and
+  // k_mu1 = e^z K_{mu+1}(z).
+  real k_mu;
+  real k_mu1;
+
+  int converged = 0;
+
+  if (z <= 2.0) {
+    // Temme's series. Converges rapidly for small z, where the
+    // continued fraction below would crawl.
+    real half_z = 0.5 * z;
+    real neg_log_half_z = -log(half_z);
+    real e = mu * neg_log_half_z;
+    real pimu = pi() * mu;
+
+    // pimu / sin(pimu) and sinh(e) / e, both with removable
+    // singularities at the origin.
+    real fact = abs(pimu) < EPS ? 1.0 : pimu / sin(pimu);
+    real sinhc_e = abs(e) < EPS ? 1.0 : sinh(e) / e;
+
+    // The even and odd parts of log Gamma(1 + mu),
+    //
+    //   half_sum  = (log Gamma(1 + mu) + log Gamma(1 - mu)) / 2,
+    //   half_diff = (log Gamma(1 + mu) - log Gamma(1 - mu)) / 2,
+    //
+    // with the odd part carried divided through by mu. Everything the
+    // series needs is built from these two.
+    real half_sum;
+    real diff_over_mu;      // half_diff / mu
+
+    if (abs(mu) <= 0.1) {
+      // Near mu = 0, lgamma(1 +- mu) is a tiny number formed as the log
+      // of something within roundoff of one, so it carries only absolute
+      // accuracy, not relative. That is harmless in an exponent but not
+      // after a division by mu. Use instead the Taylor series
+      //
+      //   log Gamma(1 + x) = -EULER x + sum_{k >= 2} (-1)^k zeta(k) x^k / k,
+      //
+      // whose even and odd parts are series in mu^2 that hold full
+      // relative accuracy right down to mu = 0. Truncated after
+      // zeta(17), the relative error at the mu = 0.1 switch is 1e-17.
+      real mu2_pow = 1.0;
+      half_sum = 0.0;
+      diff_over_mu = -EULER;
+      for (j in 1:8) {
+        mu2_pow *= mu2;
+        half_sum += ZETA_EVEN[j] * mu2_pow;
+        diff_over_mu -= ZETA_ODD[j] * mu2_pow;
+      }
+    } else {
+      real lg_plus = lgamma(1.0 + mu);
+      real lg_minus = lgamma(1.0 - mu);
+      half_sum = 0.5 * (lg_plus + lg_minus);
+      diff_over_mu = 0.5 * (lg_plus - lg_minus) / mu;
+    }
+
+    real half_diff = mu * diff_over_mu;
+    real gampl = exp(-(half_sum + half_diff));   // 1 / Gamma(1 + mu)
+    real gammi = exp(-(half_sum - half_diff));   // 1 / Gamma(1 - mu)
+
+    // gam2 is a sum of two positive numbers, so it may be formed
+    // directly.
+    real gam2 = 0.5 * (gammi + gampl);
+
+    // gam1 = (1 / Gamma(1 - mu) - 1 / Gamma(1 + mu)) / (2 mu) is the
+    // delicate one: both terms tend to one as mu -> 0, so forming that
+    // difference directly loses every significant digit for small mu.
+    // Writing the reciprocal gammas as exponentials and pulling out
+    // their geometric mean turns the difference into a sinh,
+    //
+    //   gam1 = exp(-half_sum) * sinh(half_diff) / mu,
+    //
+    // in which no cancellation occurs, and factoring mu out of half_diff
+    // removes the division by mu entirely, leaving a sinh cardinal whose
+    // mu -> 0 limit is finite. At mu = 0 this returns exactly -EULER.
+    real sinhc_hd = abs(half_diff) < EPS ? 1.0 : sinh(half_diff) / half_diff;
+    real gam1 = exp(-half_sum) * diff_over_mu * sinhc_hd;
+
+    real ff = fact * (gam1 * cosh(e) + gam2 * sinhc_e * neg_log_half_z);
+    real exp_e = exp(e);
+    real p = 0.5 * exp_e / gampl;
+    real q = 0.5 / (exp_e * gammi);
+    real c = 1.0;
+    real d = half_z * half_z;
+    real sum = ff;
+    real sum1 = p;
+
+    for (i in 1:MAX_ITER) {
+      real del;
+      ff = (i * ff + p + q) / (i * i - mu2);
+      c *= d / i;
+      p /= (i - mu);
+      q /= (i + mu);
+      del = c * ff;
+      sum += del;
+      sum1 += c * (p - i * ff);
+      if (abs(del) < abs(sum) * EPS) {
+        converged = 1;
+        break;
+      }
+    }
+
+    if (converged == 0) {
+      reject("modified_bessel_second_kind_noninteger: series failed to ",
+             "converge for v = ", v, ", z = ", z, ".");
+    }
+
+    // The series gives K itself; scale up to e^z K.
+    real scale = exp(z);
+    k_mu = sum * scale;
+    k_mu1 = sum1 * xi2 * scale;
+  } else {
+    // Steed's evaluation of the continued fraction for K_{mu+1}/K_mu
+    // together with the Bessel normalization sum. Converges rapidly for
+    // large z, where the series above would suffer cancellation.
+    real a1 = 0.25 - mu2;
+    real b = 2.0 * (1.0 + z);
+    real d = 1.0 / b;
+    real delh = d;
+    real h = d;
+    real q1 = 0.0;
+    real q2 = 1.0;
+    real a = -a1;
+    real c = a1;
+    real q = a1;
+    real s = 1.0 + q * delh;
+
+    for (i in 2:MAX_ITER) {
+      real qnew;
+      real dels;
+      // a is decremented before it is used as a divisor. Because
+      // a = -a1 - i (i - 1) with a1 in [0, 1/4], it is at most -7/4
+      // here, so this division is always safe.
+      a -= 2 * (i - 1);
+      c = -a * c / i;
+      qnew = (q1 - b * q2) / a;
+      q1 = q2;
+      q2 = qnew;
+      q += c * qnew;
+      b += 2.0;
+      d = 1.0 / (b + a * d);
+      delh = (b * d - 1.0) * delh;
+      h += delh;
+      dels = q * delh;
+      s += dels;
+      if (abs(dels / s) < EPS) {
+        converged = 1;
+        break;
+      }
+    }
+
+    if (converged == 0) {
+      reject("modified_bessel_second_kind_noninteger: continued fraction ",
+             "failed to converge for v = ", v, ", z = ", z, ".");
+    }
+
+    h = a1 * h;
+
+    // The continued fraction gives e^z K directly, the exp(-z) of the
+    // asymptotic prefactor having been left off.
+    k_mu = sqrt(pi() / (2.0 * z)) / s;
+    k_mu1 = k_mu * (mu + z + 0.5 - h) * xi;
+  }
+
+  // Recur upward from K_mu to K_v = K_{mu + nl}. The recurrence is
+  // linear, so it acts on the scaled values unchanged.
+  real k_prev = k_mu;
+  real k_curr = k_mu1;
+  real n = 1.0;
+  while (n <= nl) {
+    real k_next = (mu + n) * xi2 * k_curr + k_prev;
+    k_prev = k_curr;
+    k_curr = k_next;
+    n += 1.0;
+  }
+
+  return k_prev * exp(-z);
+}

@@ -1,10 +1,79 @@
 /*
   These functions are for GPs with univariate x. The functions 
   gp_posterior_mstar and gp_posterior_sigmastar_cholesky are general.
+  There is also a function for computing the covariange matrix for a
+  Matern kernel with nu = 7/2, gp_matern72_cov. We do not have a function
+  for general nu, since Stan does not have a built-in function for 
+  computing Bessel functions of the second kind of noninteger order.
+  A function written by Claude to compute modified Bessel functions of
+  the second kind of noninteger order is included in bessel.stanfunctions,
+  but we do not use it here.
+
   The remaining functions are useful for computing derivatives of
   GPs that use exponentiated quadratic (a.k.a. squared exponential or 
   radial basis function), Matern 3/2, and Matern 5/2 kernels.
  */
+
+/**
+  * UPDATE DOC
+  */
+matrix gp_matern72_cov(array[] real x, real sigma, real length_scale) {
+  int N = size(x);
+
+  // Coefficients for the kernel
+  real c1 = sqrt(7.0) / length_scale;
+  real c2 = 0.4 * c1^2;
+  real c3 = c1^3 / 15.0;
+
+  // Output, building diagonal first
+  matrix[N, N] K = identity_matrix(N);
+
+  // Build matrix entry by entry
+  if (N > 1) {
+    for (i in 1:N-1) {
+      for (j in i+1:N) {
+        // Compute two-norm of distance
+        real d = abs(x[i] - x[j]);
+        real d2 = d * d;
+        real d3 = d2 * d;
+        K[i, j] = (1.0 + c1 * d + c2 * d2 + c3 * d3) * exp(-c1 * d);
+        K[j, i] = K[i, j];
+      }
+    }
+  }
+
+  return sigma * sigma * K;
+}
+
+
+/**
+  * UPDATE DOC
+  */
+matrix gp_matern72_cov(array[] real x1, array[] real x2, real sigma, real length_scale) {
+  int N = size(x1);
+  int M = size(x2);
+
+  // Coefficients for the kernel
+  real c1 = sqrt(7.0) / length_scale;
+  real c2 = 0.4 * c1^2;
+  real c3 = c1^3 / 15.0;
+
+  // Output, populate with zeros
+  matrix[N, M] K = rep_matrix(0.0, N, M);;
+
+  // Build matrix entry by entry
+  for (i in 1:N) {
+    for (j in 1:M) {
+      // Compute two-norm of distance
+      real d = abs(x1[i] - x2[j]);
+      real d2 = d * d;
+      real d3 = d2 * d;
+      K[i, j] = (1.0 + c1 * d + c2 * d2 + c3 * d3) * exp(-c1 * d);
+    }
+  }
+
+  return sigma * sigma * K;
+}
 
 /**
   * Return posterior m* for a model with a Normal likelihood and GP

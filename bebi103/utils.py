@@ -440,3 +440,16 @@ def _seed_numba(seed):
     None
     """
     np.random.seed(seed)
+
+
+def _check_kwarg_vs_dict(in_dict, kwarg, kwarg_value):
+    """Check to see if an inputted kwarg is in a dictionary. If not in
+    dictionary, add it. Otherwise, check to make sure values in 
+    dictionary and inputted kwarg are consistent."""
+    if kwarg in in_dict:
+        if in_dict[kwarg] != kwarg_value:
+            raise RuntimeError(f"Disagreement between {kwarg} and kwarg dictionary.")
+    else:
+        in_dict[kwarg] = kwarg_value    
+
+    return in_dict
