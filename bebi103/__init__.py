@@ -40,4 +40,4 @@ from . import hmc
 
 __author__ = """Justin Bois"""
 __email__ = "bois@caltech.edu"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
