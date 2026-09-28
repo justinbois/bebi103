@@ -420,7 +420,7 @@ def cov_from_kernel(X1, X2, kernel, **kernel_params):
         points are one-dimensional. If a 2D array, assume the points are
         d-dimensional. If None, assume m = 0 in output.
     kernel : function
-        Function of the form kernel(x1, x2, **kernel_params) that
+        Function of the form ``kernel(x1, x2, **kernel_params)`` that
         returns as scalar value that is the kernel evaluated at points
         x1, x2.
 
@@ -543,7 +543,7 @@ def exp_quad_kernel(x1, x2, alpha, rho):
 
     Notes
     -----
-    .. This is an alias for `se_kernel`.
+    This is an alias for `se_kernel`.
     """
     return se_kernel(x1, x2, alpha, rho)
 
@@ -604,7 +604,7 @@ def d1_exp_quad_kernel(x1, x2, alpha, rho):
 
     Notes
     -----
-    .. This is an alias for `d1_se_kernel`.
+    This is an alias for `d1_se_kernel`.
     """
     return d1_se_kernel(x1, x2, alpha, rho)
 
@@ -661,7 +661,7 @@ def d2_exp_quad_kernel(x1, x2, alpha, rho):
 
     Notes
     -----
-    .. This is an alias for `d2_se_kernel`.
+    This is an alias for `d2_se_kernel`.
     """
     return d2_se_kernel(x1, x2, alpha, rho)
 
@@ -718,7 +718,7 @@ def d1_d2_exp_quad_kernel(x1, x2, alpha, rho):
 
     Notes
     -----
-    .. This is an alias for `d2_se_kernel`.
+    This is an alias for `d1_d2_se_kernel`.
 
     """
     return d1_d2_se_kernel(x1, x2, alpha, rho)
@@ -1552,7 +1552,7 @@ def posterior_mean_cov(
         be homoscedastic for all points.
     kernel : function, default se_kernel
         Kernel defining the Gaussian process. Must have call signature
-        kernel(x1, x2, **kernel_hyperparams).
+        ``kernel(x1, x2, **kernel_hyperparams)``.
     delta : float, default 1e-8
         Small number, used to add to the diagonal of covariance matrices
         to ensure numerical positive definiteness.
@@ -1624,7 +1624,7 @@ def posterior_mean_cov_deriv(
         be homoscedastic for all points.
     kernel : function, default se_kernel
         Kernel defining the Gaussian process. Must have call signature
-        kernel(x1, x2, **kernel_hyperparams).
+        ``kernel(x1, x2, **kernel_hyperparams)``.
     include_deriv : bool, default False
         If True, include first derivatives in mean vectors and
         covariances. If True, `X` and `Xstar` must both be 1D because
@@ -1647,7 +1647,7 @@ def posterior_mean_cov_deriv(
 
     Notes
     -----
-    .. X1 and Xstar must be 1D and a SE kernel must be used.
+    X1 and Xstar must be 1D and a SE kernel must be used.
     Multidimensional x-values and other kernels will hopefully be
     implemented later.
     """

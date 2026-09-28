@@ -1,12 +1,345 @@
 import os
-
-import multiprocessing
-import warnings
-
-import tqdm
+import typing
 
 import numpy as np
+import numpy.typing as npt
 import numba
+
+def array_to_dict(
+    input_array: npt.NDArray,
+    base_name: str, 
+    n_index_axes: int = 1,
+    one_indexed: bool = True,
+    dtype=None,
+) -> dict[str, typing.Any]:
+    """Given a Numpy array, convert to a dictionary with each key 
+    being of the form 'base_name[1]', 'base_name[1,2]', etc. The last
+    `n_index_axes` axes of `input_array` are the indices of the array
+    itself and become the indices in the keys. The leading axes,
+    typically those of the samples, are retained in the values. This is
+    the inverse of `dict_to_array()`.
+
+    Parameters
+    ----------
+    input_array : Numpy array
+        Numpy array to convert to dictionary.
+    base_name : str
+        Name of array represented to be represented in the dictionary.
+        The keys will be of the form `f'{base_name}[1]`.
+    n_index_axes : int, default 1
+        Number of trailing axes of `input_array` that index the array
+        itself. These become the indices in the keys of the outputted
+        dictionary, so the keys have `n_index_axes` indices each. The
+        remaining leading axes, in typical applications in MCMC the
+        chain ID and the draw, are retained in each value.
+    one_indexed : bool, default True
+        True if indexing of the array in the dictionary starts at 1,
+        as is the case with Stan, and False if indexing starts at 0.
+    dtype : int, float, or None
+        If not None, each entry is outputted as the specified dtype.
+    
+    Returns
+    -------
+    output : dict
+        Dictionary with entries like 'base_name[1]', 'base_name[2]',
+        etc. Each value is a Numpy array of shape
+        `input_array.shape[:-n_index_axes]`. If `n_index_axes` is the
+        dimensionality of `input_array`, no axes are left over and
+        each value is instead a scalar.
+
+    Raises
+    ------
+    ValueError
+        If `n_index_axes` is less than one or exceeds the
+        dimensionality of `input_array`.
+
+    Notes
+    -----
+    This is the inverse of `dict_to_array()`. For an array `a`, ::
+
+        dict_to_array(
+            array_to_dict(a, 'a', n_index_axes=k), 'a', squeeze=False
+        )
+
+    gives back `a`. With `squeeze=True`, `dict_to_array()` discards
+    axes of length one, so it is not in general invertible.
+
+    The values of the outputted dictionary are copies; they are not
+    views into `input_array`.
+
+    Examples
+    --------
+    >>> array_to_dict(np.array([1, 2, 3]), 'a')
+    {'a[1]': 1, 'a[2]': 2, 'a[3]': 3}
+
+    >>> array_to_dict(np.array([[1, 2], [3, 4], [5, 6]]), 'a', n_index_axes=2)
+    {'a[1,1]': 1, 'a[1,2]': 2, 'a[2,1]': 3, 'a[2,2]': 4, 'a[3,1]': 5, 'a[3,2]': 6}
+
+    >>> array_to_dict(np.array([[1, 2], [3, 4], [5, 6]]), 'a')
+    {'a[1]': array([1, 3, 5]), 'a[2]': array([2, 4, 6])}
+
+    >>> array_to_dict(np.array([1, 2, 3]), 'a', one_indexed=False)
+    {'a[0]': 1, 'a[1]': 2, 'a[2]': 3}
+    """
+    input_array = np.asarray(input_array)
+
+    if n_index_axes < 1:
+        raise ValueError(
+            f"`n_index_axes` must be at least one; got {n_index_axes}."
+        )
+
+    if n_index_axes > input_array.ndim:
+        raise ValueError(
+            f"`n_index_axes` is {n_index_axes}, but `input_array` has only "
+            f"{input_array.ndim} dimensions."
+        )
+
+    offset = int(one_indexed)
+
+    # Shape of the array itself; the leading axes belong to the samples.
+    index_shape = input_array.shape[input_array.ndim - n_index_axes :]
+
+    # With no leading axes left over, each value is a single number.
+    scalar_values = n_index_axes == input_array.ndim
+
+    output = {}
+    for inds in np.ndindex(*index_shape):
+        key = "{0}[{1}]".format(
+            base_name, ",".join(str(i + offset) for i in inds)
+        )
+
+        # `astype()` returns a copy; otherwise copy explicitly so that
+        # the output does not hold a view into `input_array`.
+        val = input_array[(Ellipsis,) + inds]
+        val = val.astype(dtype) if dtype is not None else val.copy()
+
+        output[key] = val.item() if scalar_values else val
+
+    return output
+
+
+def dict_to_array(
+    input_dict: dict, 
+    base_name: str, 
+    one_indexed: bool = True,
+    dtype=None,
+    squeeze: bool = False,
+    squeeze_to_scalar: bool = True,
+) -> npt.NDArray:
+    """Given a dictionary `input_dict` with keys 'base_name[1]',
+    'base_name[2]', etc., for a one-dimensional array, or 
+    'base_name[1,1]', 'base_name[1,2]', etc., for a multidimensional
+    array, where each value is a scalar, a 1D array, or a 2D array, 
+    as would be returned in a dictionary from MCMC sampling, convert 
+    to a NumPy array. If there are n indices in the keys, these 
+    become the last n indices of the outputted array.
+
+    Parameters
+    ----------
+    input_dict : dict
+        Dictionary with entries like 'base_name[1]', 'base_name[2]',
+        `base_name[1,1]`, etc. Whitespace around the indices is 
+        ignored, so `base_name[1, 1]` is also accepted. Each entry is a
+        1D array or 2D array, and all entries must have the same shape.
+        As an example, an input dictionary could be::
+
+            {'a[1]': np.array([[1, 2, 3, 4]]),
+             'a[2]': np.array([[3, 5, 6, 7]]),
+             'a[3]': np.array([[9, 10, 11, 12]])}
+    base_name : str
+        Name of array represented in the dictionary. In the above 
+        example, `base_name` is 'a'.
+    one_indexed : bool, default True
+        True if indexing of the array in the dictionary starts at 1,
+        as is the case with Stan, and False if indexing starts at 0.
+    dtype : data type or None
+        If not None, outputted array is returned as data type dtype.
+    squeeze : bool, default False
+        If True, dimensions of length 1 are removed from the arrays
+        in the output dictionary using `np.squeeze()`.
+    squeeze_to_scalar : bool, default True
+        If all dimensions are of length 1, `np.squeeze()` gives a 
+        0D array, not a scalar. If `squeeze_to_scalar` is True, then
+        0D arrays are converted to scalars.
+    
+    Returns
+    -------
+    output : Numpy array
+        Numpy array whose leading indices are those of the samples
+        (the shape of the entries of `input_dict`) and whose last n
+        indices are the n indices of the array in the keys of 
+        `input_dict`.
+
+    Raises
+    ------
+    ValueError
+        If `input_dict` has no array in it with name `base_name`; if
+        the keys for `base_name` do not all have the same number of
+        indices; if the entries of `input_dict` for `base_name` do not
+        all have the same shape; or if any element of the array is
+        missing from `input_dict`.
+
+    Notes
+    -----
+    Every element of the array must be present in `input_dict`; the
+    indices in the keys must cover a complete array. An exception is
+    raised otherwise.
+
+    In typical applications in MCMC, the first index of the outputted
+    Numpy array is the chain ID, the second is the draw, and the
+    remaining indices are the indices of the array.
+
+    This is the inverse of `array_to_dict()`. For an array `a`, ::
+
+        dict_to_array(
+            array_to_dict(a, 'a', n_index_axes=k), 'a', squeeze=False
+        )
+
+    gives back `a`. With `squeeze=True`, axes of length one are
+    discarded, so the conversion is not in general invertible.
+
+    Examples
+    --------
+    >>> dict_to_array(
+            {'a[1]': np.array([[1, 2, 3, 4]]),
+             'a[2]': np.array([[5, 6, 7, 8]]),
+             'a[3]': np.array([[9, 10, 11, 12]])},
+            'a',
+            squeeze=True,
+        )
+    array([[ 1,  5,  9],
+           [ 2,  6, 10],
+           [ 3,  7, 11],
+           [ 4,  8, 12]])
+
+    >>> dict_to_array(
+            {'a[1]': np.array([[1, 2, 3, 4]]),
+                'a[2]': np.array([[5, 6, 7, 8]]),
+                'a[3]': np.array([[9, 10, 11, 12]])},
+            'a',
+        )
+    array([[[ 1,  5,  9],
+            [ 2,  6, 10],
+            [ 3,  7, 11],
+            [ 4,  8, 12]]])
+
+    >>> dict_to_array(
+            {'a[1]': np.array([[1, 2, 3, 4],
+                               [1.1, 2.2, 3.3, 4.4]]),
+             'a[2]': np.array([[5, 6, 7, 8],
+                               [5.5, 6.6, 7.7, 8.8]]),
+             'a[3]': np.array([[9, 10, 11, 12],
+                               [9.9, 10.0, 11.1, 12.2]])},
+            'a',
+        )
+    array([[[ 1. ,  5. ,  9. ],
+            [ 2. ,  6. , 10. ],
+            [ 3. ,  7. , 11. ],
+            [ 4. ,  8. , 12. ]],
+
+           [[ 1.1,  5.5,  9.9],
+            [ 2.2,  6.6, 10. ],
+            [ 3.3,  7.7, 11.1],
+            [ 4.4,  8.8, 12.2]]]) 
+
+    >>> dict_to_array(
+            {'a[1,1]': np.array([[1, 2]]),
+             'a[1,2]': np.array([[3, 4]]),
+             'a[2,1]': np.array([[5, 6]]),
+             'a[2,2]': np.array([[7, 8]]),
+             'a[3,1]': np.array([[9, 10]]),
+             'a[3,2]': np.array([[11, 12]])},
+            'a',
+        )
+    array([[[ 1,  3],
+            [ 5,  7],
+            [ 9, 11]],
+
+           [[ 2,  4],
+            [ 6,  8],
+            [10, 12]]])
+    """
+    offset = int(one_indexed)
+
+    # Pull out the entries of the dictionary for `base_name`, keyed by
+    # their multi-index, shifted to be zero-indexed.
+    entries = {}
+    n_inds = None
+    for key, val in input_dict.items():
+        inds = _parse_indices(key, base_name)
+
+        if inds is None:
+            continue
+
+        if n_inds is None:
+            n_inds = len(inds)
+        elif len(inds) != n_inds:
+            raise ValueError(
+                f"Dimensionality mismatch for array '{base_name}' in the "
+                f"input dictionary; key '{key}' has {len(inds)} indices, "
+                f"but other keys have {n_inds}."
+            )
+
+        entries[tuple(i - offset for i in inds)] = np.asarray(val)
+
+    if not entries:
+        raise ValueError(
+            f"No array named '{base_name}' in the input dictionary."
+        )
+
+    # The samples for each element of the array must have matching shape
+    # for the output array to be feasible.
+    shapes = {val.shape for val in entries.values()}
+    if len(shapes) > 1:
+        raise ValueError(
+            f"Entries for array '{base_name}' in the input dictionary do "
+            f"not all have the same shape; found shapes "
+            f"{', '.join(str(shape) for shape in sorted(shapes))}."
+        )
+    sample_shape = shapes.pop()
+
+    if min(min(inds) for inds in entries) < 0:
+        raise ValueError(
+            f"Array '{base_name}' has an index less than {offset} in the "
+            f"input dictionary, but `one_indexed` is {one_indexed}."
+        )
+
+    # Shape of the array itself, inferred from the largest index along
+    # each of its dimensions.
+    index_shape = tuple(
+        max(inds[i] for inds in entries) + 1 for i in range(n_inds)
+    )
+
+    # Every element of the array must be present to fill the output.
+    missing = [inds for inds in np.ndindex(*index_shape) if inds not in entries]
+    if missing:
+        missing_keys = ", ".join(
+            "{0}[{1}]".format(base_name, ",".join(str(i + offset) for i in inds))
+            for inds in missing[:5]
+        )
+        raise ValueError(
+            f"Array '{base_name}' has shape {index_shape} in the input "
+            f"dictionary, but is missing {len(missing)} of its "
+            f"{len(missing) + len(entries)} elements, including: "
+            f"{missing_keys}."
+        )
+
+    # Stack the elements in C order along the leading axis, then move
+    # that axis to the end and unravel it into the array's own indices.
+    result = np.array([entries[inds] for inds in np.ndindex(*index_shape)])
+    result = np.moveaxis(result, 0, -1)
+    result = result.reshape(sample_shape + index_shape)
+
+    if dtype is not None:
+        result = result.astype(dtype)
+
+    if squeeze:
+        result = result.squeeze().copy()
+    if len(result.shape) == 0 and squeeze_to_scalar:
+        result = result.item()
+    
+    return result
+
 
 def unpivot_csv(
     input_file: str,
@@ -58,7 +391,10 @@ def unpivot_csv(
     include_comments : bool, default True
         If True, write comments from the input file in the output files.
     additional_comment : str or None, default None
-        Additional comment at top of output file.
+        Additional comment at top of output file. It is written above
+        any comments carried over from the input file. Each line of the
+        comment is prefixed with `comment_prefix` (or '#' if
+        `comment_prefix` is None) unless it already begins with it.
 
     Returns
     -------
@@ -84,7 +420,17 @@ def unpivot_csv(
     if len(header_names) != n_header_rows:
         raise RuntimeError("len(header_names) != n_header_rows")
 
+    # Prefix used for comments written to the output file
+    out_comment_prefix = "#" if comment_prefix is None else comment_prefix
+
     with open(input_file, "r") as f, open(output_file, "w") as fout:
+        # Write additional comment at top of output file
+        if additional_comment is not None:
+            for comment_line in str(additional_comment).splitlines():
+                if not comment_line.startswith(out_comment_prefix):
+                    comment_line = out_comment_prefix + " " + comment_line
+                fout.write(comment_line.rstrip() + "\n")
+
         # Read and write comments
         line = f.readline()
         while line != "" and line[0] == comment_prefix:
@@ -119,6 +465,35 @@ def unpivot_csv(
             row_index += 1
 
     return None
+
+
+def _parse_indices(key, base_name):
+    """Parse the indices out of a dictionary key such as 'a[1,3,2]'.
+
+    Parameters
+    ----------
+    key : str
+        Key from a dictionary of samples, e.g., 'a[1,3,2]'.
+    base_name : str
+        Name of the array of interest, e.g., 'a'.
+
+    Returns
+    -------
+    output : tuple of ints or None
+        The indices in the key, e.g., (1, 3, 2). If `key` is not an
+        entry of the array `base_name`, return None.
+    """
+    if not key.startswith(base_name + "[") or not key.endswith("]"):
+        return None
+
+    inds = [ind.strip() for ind in key[len(base_name) + 1 : -1].split(",")]
+
+    # Anything that is not a plain index means this is not an entry of
+    # the array `base_name`.
+    if any(not ind.isdigit() for ind in inds):
+        return None
+
+    return tuple(int(ind) for ind in inds)
 
 
 def _dummy_jit(*args, **kwargs):

@@ -49,7 +49,9 @@ import shutil
 import sys
 import tomllib
 import textwrap
-import urllib
+import tarfile
+import urllib.parse
+import urllib.request
 import warnings
 
 import multiprocessing
@@ -199,10 +201,18 @@ def install_cmdstan_colab(cmdstan_colab_url=None, quiet=False):
             "Unable to install CmdStan, most likely because the URL for the most recent version of CmdStan could not be found. Try finding at URL for a downloadable Colab-compatible version of CmdStan here: https://github.com/stan-dev/cmdstan/releases. Then call `install_cmdstan_colab(cmdstan_colab_url)`."
         )
     else:
+        # Name the local file after the end of the URL, e.g.
+        # 'colab-cmdstan-2.36.0.tgz'.
+        fname = os.path.basename(urllib.parse.urlparse(cmdstan_colab_url).path)
         try:
-            urllib.request.urlretrieve(cmdstan_colab_url)
+            urllib.request.urlretrieve(cmdstan_colab_url, fname)
             shutil.unpack_archive(fname)
-            os.environ["CMDSTAN"] = f"./cmdstan-{cmdstan_version}"
+
+            # The archive holds a single top-level directory (e.g.,
+            # 'cmdstan-2.36.0'), which is the CmdStan installation.
+            with tarfile.open(fname) as tf:
+                cmdstan_dir = os.path.normpath(tf.getnames()[0]).split(os.sep)[0]
+            os.environ["CMDSTAN"] = f"./{cmdstan_dir}"
 
             if not quiet:
                 print(
@@ -210,10 +220,10 @@ def install_cmdstan_colab(cmdstan_colab_url=None, quiet=False):
                 )
 
             return None
-        except:
+        except Exception as e:
             raise RuntimeError(
-                "Unable to install CmdStan, most likely because the inputted URL for CmdStan was invalid. You can run without providing a URL, and the latest version of CmdStan willbe installed; `install_cmdstan_colab()`."
-            )
+                "Unable to install CmdStan from the inputted URL. You can run without providing a URL, and the latest version of CmdStan will be installed; `install_cmdstan_colab()`."
+            ) from e
 
 
 def include_path():
@@ -257,7 +267,7 @@ def clean_cmdstan(path="./", prefix=None, delete_sampling_output=False):
     if prefix is None:
         prefix = ""
 
-    stan_files = glob.glob(os.path.join(path, prefix, "*.stan"))
+    stan_files = glob.glob(os.path.join(path, prefix + "*.stan"))
     prefixes = [fname[:-5] for fname in stan_files]
 
     hpp_files = [prefix + ".hpp" for prefix in prefixes]
@@ -550,7 +560,8 @@ def convert_samples(
         samples, 
         out_format, 
         inc_warmup=False,
-        arviz_kwargs=None
+        arviz_kwargs=None,
+        groups=None,
     ):
     """Converts samples to a new format.
 
@@ -560,6 +571,7 @@ def convert_samples(
         Results from an MCMC sampling to convert to desired format.
     out_format : str, one of 'dict', 'arviz', 'pandas', 'polars'
         The desired output format of the samples.
+
         - dict: Dictionary of expectands and HMC diagnostics. Each item
           is a 2D Numpy array. The first dimension indexes the Markov 
           chains and the second indexes the sequential states within 
@@ -575,6 +587,18 @@ def convert_samples(
         cmdstanpy.CmdStanMCMC instance.
     arviz_kwargs : dict, default None
         Keyword arguments to be passed to arviz_base.from_cmdstanpy().
+    groups : str or iterable of str, default None
+        Groups of an xarray.DataTree to use when converting to 'dict',
+        'pandas', or 'polars' format. Allowed groups are 'posterior',
+        'prior', 'posterior_predictive', 'prior_predictive',
+        'log_likelihood', and 'sample_stats'. If None, all allowed
+        groups present in `samples` are used. Prior-side groups
+        ('prior', 'prior_predictive') cannot be combined with
+        posterior-side groups ('posterior', 'posterior_predictive',
+        'log_likelihood', 'sample_stats') into a single output, so
+        `groups` must be specified if `samples` has groups from both
+        sides.
+        May only be given if `samples` is an xarray.DataTree.
 
     Returns
     -------
@@ -588,6 +612,10 @@ def convert_samples(
     # Only allow including warmup if from cmdstanpy.CmdStanMCMC instance
     if inc_warmup and not isinstance(samples, cmdstanpy.CmdStanMCMC):
         raise ValueError("`inc_warmup` may only be True if converting a cmdstanpy.CmdStanMCMC instance.")
+
+    # Only allow selecting groups if from an xarray.DataTree instance
+    if groups is not None and not isinstance(samples, xarray.DataTree):
+        raise ValueError("`groups` may only be given if converting an xarray.DataTree instance.")
 
     if arviz_kwargs is None:
         arviz_kwargs = {}
@@ -629,7 +657,7 @@ def convert_samples(
         elif samples_format == 'cmdstanpy':
             result = _dict_from_cmdstanpy(samples, inc_warmup=inc_warmup)
         elif samples_format == 'arviz':
-            result = _dict_from_arviz(samples, inc_warmup=inc_warmup)
+            result = _dict_from_arviz(samples, inc_warmup=inc_warmup, groups=groups)
         elif samples_format in ['polars', 'pandas']:
             result = _dataframe_to_dict(samples)
 
@@ -642,7 +670,7 @@ def convert_samples(
             )
         elif samples_format == 'arviz':
             result = _dict_to_dataframe(
-                _dict_from_arviz(samples, inc_warmup=inc_warmup), dataframe_package=out_format
+                _dict_from_arviz(samples, inc_warmup=inc_warmup, groups=groups), dataframe_package=out_format
             )
         elif samples_format == 'polars':
             result = samples.to_pandas() if out_format == 'pandas' else samples
@@ -669,11 +697,11 @@ def _dict_to_dataframe(samples_dict, dataframe_package='polars'):
     Returns
     -------
     output : polars.DataFrame or pandas.DataFrame
-        Tidy data frame with one row per draw. It has columns `chain__`
-        (one-indexed Markov chain) and `draw__` (one-indexed state within
+        Tidy data frame with one row per draw. It has columns ``chain__``
+        (one-indexed Markov chain) and ``draw__`` (one-indexed state within
         the chain), followed by one column per expectand and one column
         per HMC diagnostic. As with the diagnostics, the metadata columns
-        `chain__` and `draw__` end in a double underscore to signify that
+        ``chain__`` and ``draw__`` end in a double underscore to signify that
         they are not expectands.
     """
     _validate_dict(samples_dict)
@@ -704,9 +732,9 @@ def _dataframe_to_dict(df):
     ----------
     df : polars.DataFrame or pandas.DataFrame
         Tidy data frame, as returned by `_dict_to_dataframe()`. It must
-        have one-indexed `chain__` and `draw__` columns identifying each
+        have one-indexed ``chain__`` and ``draw__`` columns identifying each
         draw, followed by one column per expectand (names not ending in
-        '__') and one column per HMC diagnostic (names ending in '__').
+        ``__``) and one column per HMC diagnostic (names ending in ``__``).
 
     Returns
     -------
@@ -775,8 +803,8 @@ def _dict_from_cmdstanpy(samples, inc_warmup=False):
 
     Notes
     -----
-    .. Adopted from the extract_expectand_vals() function written by 
-       Michael Betancourt in his mcmc_diagnostics package.
+    Adapted from the extract_expectand_vals() function written by
+    Michael Betancourt in his mcmc_diagnostics package.
     """
     # Extract MCMC samples from the cmdstanpy.CmdStanMCMC instance
     # The draws() method returns a Numpy array with shape 
@@ -793,7 +821,7 @@ def _dict_from_cmdstanpy(samples, inc_warmup=False):
     return samples_and_diagnostics
 
 
-def _dict_from_arviz(samples, inc_warmup=False):
+def _dict_from_arviz(samples, inc_warmup=False, groups=None):
     """Extract samples of all expectands and HMC diagnostics from an
     ArviZ DataTree into a single dictionary.
 
@@ -807,6 +835,11 @@ def _dict_from_arviz(samples, inc_warmup=False):
         If True, include warmup draws in the output. They are only
         available for groups that have a corresponding `warmup_*` group
         (i.e., the samples were created with `save_warmup=True`).
+    groups : str or iterable of str, default None
+        Groups of `samples` to extract. Allowed groups are 'posterior',
+        'prior', 'posterior_predictive', 'prior_predictive',
+        'log_likelihood', and 'sample_stats'. If None, all allowed
+        groups present in `samples` are used.
 
     Returns
     -------
@@ -814,20 +847,33 @@ def _dict_from_arviz(samples, inc_warmup=False):
         A single dictionary of two-dimensional float64 arrays. Expectands
         are collected from the `posterior`, `prior`, `posterior_predictive`,
         `prior_predictive`, and `log_likelihood` groups (whichever are
-        present), and HMC diagnostics are collected from the
-        `sample_stats` group, keyed by the CmdStanPy diagnostic names that
-        end in '__' (e.g., 'divergent__', 'lp__'). The first dimension of
-        each element indexes the Markov chains and the second indexes the
-        sequential states within each Markov chain.
+        present and selected by `groups`), and HMC diagnostics are
+        collected from the `sample_stats` group, keyed by the CmdStanPy
+        diagnostic names that end in ``__`` (e.g., ``divergent__``, ``lp__``).
+        The first dimension of each element indexes the Markov chains and
+        the second indexes the sequential states within each Markov chain.
+
+    Raises
+    ------
+    ValueError
+        If `groups` contains a group that is not allowed or is not
+        present in `samples`, or if any prior-side group ('prior',
+        'prior_predictive') is to be extracted together with any
+        posterior-side group ('posterior', 'posterior_predictive',
+        'log_likelihood', 'sample_stats'). The two sides come from
+        different samplings; they may share variable names and in
+        general have different numbers of draws, so they cannot be
+        combined into a single dictionary.
 
     Notes
     -----
-    .. Multidimensional expectands have a separate entry in the output
-       dictionary for each element, with one-indexed names matching those
-       used by CmdStanPy. E.g., a two-dimensional variable `theta` has
-       names like `theta[1,1]`, `theta[1,2]`, etc.
-    .. Diagnostics are distinguished from expectands by keys ending in
-       '__'.
+    Multidimensional expectands have a separate entry in the output
+    dictionary for each element, with one-indexed names matching those
+    used by CmdStanPy. E.g., a two-dimensional variable `theta` has
+    names like `theta[1,1]`, `theta[1,2]`, etc.
+
+    Diagnostics are distinguished from expectands by keys ending in
+    ``__``.
     """
     # Groups holding expectands. Their variable names are used as-is.
     expectand_groups = [
@@ -837,6 +883,47 @@ def _dict_from_arviz(samples, inc_warmup=False):
         "prior_predictive",
         "log_likelihood",
     ]
+    allowed_groups = expectand_groups + ["sample_stats"]
+
+    # Determine which groups to extract.
+    if groups is None:
+        groups = [group for group in allowed_groups if group in samples.children]
+    else:
+        groups = [groups] if isinstance(groups, str) else list(groups)
+        for group in groups:
+            if group not in allowed_groups:
+                raise ValueError(
+                    f"Group '{group}' is not allowed. Allowed groups are "
+                    f"{', '.join(allowed_groups)}."
+                )
+            if group not in samples.children:
+                raise ValueError(f"Group '{group}' is not present in `samples`.")
+
+    # Prior-side groups come from a different sampling than posterior-side
+    # groups. They may share variable names and in general have different
+    # numbers of draws, so they cannot be combined.
+    prior_side = [group for group in ("prior", "prior_predictive") if group in groups]
+    posterior_side = [
+        group
+        for group in (
+            "posterior",
+            "posterior_predictive",
+            "log_likelihood",
+            "sample_stats",
+        )
+        if group in groups
+    ]
+    if prior_side and posterior_side:
+        raise ValueError(
+            "Prior-side groups ("
+            + ", ".join(f"'{group}'" for group in prior_side)
+            + ") and posterior-side groups ("
+            + ", ".join(f"'{group}'" for group in posterior_side)
+            + ") of `samples` cannot be combined into a single dictionary. "
+            "Use the `groups` kwarg to select one side, e.g., "
+            "groups=['posterior', 'posterior_predictive', 'sample_stats'] "
+            "or groups=['prior', 'prior_predictive']."
+        )
 
     # Map ArviZ `sample_stats` names to the CmdStanPy diagnostic names,
     # which end in '__'. Any other stat is suffixed with '__' so that it
@@ -902,13 +989,13 @@ def _dict_from_arviz(samples, inc_warmup=False):
                         .values.astype(np.float64),
                     )
 
-    # Collect expectands from each group that is present.
+    # Collect expectands from each selected group.
     for group in expectand_groups:
-        if group in samples.children:
+        if group in groups:
             _add_dataset(_group_dataset(group), lambda name: name)
 
-    # Collect HMC diagnostics from the sample_stats group, if present.
-    if "sample_stats" in samples.children:
+    # Collect HMC diagnostics from the sample_stats group, if selected.
+    if "sample_stats" in groups:
         _add_dataset(
             _group_dataset("sample_stats"),
             lambda name: diagnostic_name_map.get(
@@ -925,7 +1012,87 @@ def _dict_from_arviz(samples, inc_warmup=False):
     return result
 
 
-def extract_variable(samples, variable, inc_warmup=False):
+def parse_prior_predictive_samples(prior_pred_samples, measured_data):
+    """Given a dictionary of prior predictive samples, convert them to a
+    dictionary that can use used in inferential calibration analysis.
+
+    Parameters
+    ----------
+    prior_pred_samples : dict
+        Dictionary that has a prior predictive sample. Entries with
+        keys that are not in `measured_data` are assumed to be
+        variables drawn out of the prior distribution.
+    measured_data : dict
+        A dictionary where each key is the variable name of measured
+        data. The value of each entry in the `measured_data` dictionary
+        is the type of the corresponding data, almost always either 
+        `int` or `float`. Upon generation of a prior predictive data 
+        set, a new dictionary is created with keys given by the keys of
+        `measured_data` and value given by the generated prior 
+        predictive data set.
+
+    Returns
+    -------
+    output : dict
+        All variables (that is, those not in measured data) are broken
+        down into individual components (e.g., 'a[1]', 'a[2]', etc.).
+        Any entry that is in `measured_data` is given as a scalar or
+        Numpy array.
+    """
+    output = {}
+    for key in prior_pred_samples:
+        if '[' in key:
+            base_name = _get_var_name(key)
+            if base_name in measured_data:
+                if base_name not in output:
+                    data_ar = (
+                        utils.dict_to_array(
+                            prior_pred_samples, 
+                            base_name, 
+                            squeeze=False
+                        )
+                        .astype(measured_data[base_name])
+                    )
+                    output[base_name] = data_ar
+            else:
+                if np.isscalar(prior_pred_samples[key]):
+                    output[key] = prior_pred_samples[key]
+                elif np.array(prior_pred_samples[key]).ndim == 0:
+                    output[key] = np.array(prior_pred_samples[key]).item()
+                elif np.size(prior_pred_samples[key]) == 1:
+                    output[key] = np.array(prior_pred_samples[key]).item()
+                else:
+                    raise ValueError(
+                        f"Entry with key '{key}' in prior predictive samples "
+                        "must be scalar."
+                    )
+        else:
+            if key in measured_data:
+                if np.isscalar(prior_pred_samples[key]):
+                    output[key] = measured_data[key](prior_pred_samples[key])
+                else:
+                    output[key] = (
+                        np.asarray(prior_pred_samples[key])
+                        .astype(measured_data[key])
+                    )
+            else:
+                if np.isscalar(prior_pred_samples[key]):
+                    output[key] = prior_pred_samples[key]
+                elif np.array(prior_pred_samples[key]).ndim == 0:
+                    output[key] = np.array(prior_pred_samples[key]).item()
+                else:
+                    param_dict = utils.array_to_dict(
+                        np.array(prior_pred_samples[key]),
+                        key,
+                        n_index_axes=np.array(prior_pred_samples[key]).ndim,
+                        one_indexed=True,
+                    )
+                    output = {**output, **param_dict}
+
+    return output
+
+
+def extract_variable(samples, variable, inc_warmup=False, one_indexed=True):
     """Extracts sample of a variable as a Numpy array.
 
     Parameters
@@ -936,8 +1103,11 @@ def extract_variable(samples, variable, inc_warmup=False):
     variable : string
         The name of the variable to extract
     inc_warmup : bool, default False
-        If True, include warmup when extracting from a 
+        If True, include warmup when extracting from a
         cmdstanpy.CmdStanMCMC instance. Ignored if `samples` is a dict.
+    one_indexed : bool, default True
+        True if the bracketed indices in the keys of `samples` start
+        at 1, as is the case with Stan, and False if they start at 0.
 
     Returns
     -------
@@ -962,10 +1132,14 @@ def extract_variable(samples, variable, inc_warmup=False):
     if keys == [variable]:
         return samples[variable]
 
-    # Otherwise the variable is multidimensional. Parse the one-indexed
-    # bracketed indices to determine the shape of each element.
+    # Otherwise the variable is multidimensional. Parse the bracketed
+    # indices, shifted to be zero-indexed, to determine the shape of each
+    # element.
+    offset = int(one_indexed)
     index_tuples = {
-        key: tuple(int(i) for i in key[key.rfind("[") + 1 : -1].split(","))
+        key: tuple(
+            int(i) - offset for i in key[key.rfind("[") + 1 : -1].split(",")
+        )
         for key in keys
     }
 
@@ -976,12 +1150,20 @@ def extract_variable(samples, variable, inc_warmup=False):
             "indices."
         )
 
+    # A negative zero-indexed position would silently wrap around to the
+    # end of the output array, so forbid it.
+    if min(min(inds) for inds in index_tuples.values()) < 0:
+        raise ValueError(
+            f"Variable '{variable}' has an index less than {offset} in "
+            f"`samples`, but `one_indexed` is {one_indexed}."
+        )
+
     elem_shape = tuple(
-        max(inds[d] for inds in index_tuples.values()) for d in range(ndim)
+        max(inds[d] for inds in index_tuples.values()) + 1 for d in range(ndim)
     )
 
     # Every element of the multidimensional variable must be present. Since
-    # the keys are unique and within [1, max] along each axis, a matching
+    # the keys are unique and within [0, max] along each axis, a matching
     # count guarantees a complete, rectangular grid.
     n_expected = int(np.prod(elem_shape))
     if len(index_tuples) != n_expected:
@@ -994,10 +1176,7 @@ def extract_variable(samples, variable, inc_warmup=False):
     # The output has shape (n_chains, n_draws, *element dimensions).
     output = np.empty(samples[keys[0]].shape + elem_shape)
     for key, inds in index_tuples.items():
-        # Convert the one-indexed bracket indices to zero-indexed positions.
-        output[(slice(None), slice(None)) + tuple(i - 1 for i in inds)] = (
-            samples[key]
-        )
+        output[(slice(None), slice(None)) + inds] = samples[key]
 
     return output
 
@@ -1009,15 +1188,15 @@ def _split_dict(samples):
     ----------
     samples : dict
         Dictionary with string keys to split. Entries whose keys end in
-        '__' are taken to be HMC diagnostics; all others are taken to be
+        ``__`` are taken to be HMC diagnostics; all others are taken to be
         expectands.
 
     Returns
     -------
     expectands : dict
-        Entries of `samples` whose keys do not end in '__'.
+        Entries of `samples` whose keys do not end in ``__``.
     hmc_diagnostics : dict
-        Entries of `samples` whose keys end in '__'.
+        Entries of `samples` whose keys end in ``__``.
     """
     expectands = {}
     hmc_diagnostics = {}
@@ -1045,8 +1224,8 @@ def _validate_dict(result_dict, include_all_required_hmc_diagnostics=False):
         the sequential states within each chain.
     include_all_required_hmc_diagnostics : bool, default False
         If True, requires that the dictionary include keys 
-        "divergent__", "accept_stat__", "stepsize__", "treedepth__",
-        "n_leapfrog__", and "energy__".
+        ``divergent__``, ``accept_stat__``, ``stepsize__``, ``treedepth__``,
+        ``n_leapfrog__``, and ``energy__``.
 
     Returns
     -------
@@ -1121,7 +1300,8 @@ def _validate_dict_hmc_diagnostics(result_dict):
 
 
 def _render_diagnostic_report(
-    verbosity, no_warning, all_good_message, summary, detail, descriptions
+    verbosity, no_warning, all_good_message, summary, detail, descriptions,
+    notes=(),
 ):
     """Print a diagnostic report at the requested level of verbosity.
 
@@ -1144,12 +1324,19 @@ def _render_diagnostic_report(
     descriptions : list of str
         Explanatory descriptions of the triggered diagnostics, printed
         for verbosity 2 and 3.
+    notes : list of str, default ()
+        Per-chain messages that are not warnings, printed after
+        `all_good_message` for verbosity 3 when `no_warning` is True.
+        When there are warnings, these should also be included in
+        `detail`, where they are printed for verbosity 3.
     """
     if verbosity < 1:
         return
 
     if no_warning:
         blocks = [all_good_message]
+        if verbosity >= 3:
+            blocks = blocks + list(notes)
     elif verbosity == 1:
         blocks = summary
     elif verbosity == 2:
@@ -1230,8 +1417,8 @@ def check_hmc_diagnostics(
 
     Notes
     -----
-    .. Adapted from `check_all_hmc_diagnostics()` written by Michael
-       Betancourt in his mcmc_diagnostics package.
+    Adapted from `check_all_hmc_diagnostics()` written by Michael
+    Betancourt in his mcmc_diagnostics package.
     """
     # Obtain diagnostics in convenient format
     samples_dict = convert_samples(samples, 'dict')
@@ -1254,7 +1441,7 @@ def check_hmc_diagnostics(
     ).all()
 
     output['efmi'] = (
-        np.sum(np.diff(hmc_diagnostics['energy__'], axis=1) ** 2)
+        np.sum(np.diff(hmc_diagnostics['energy__'], axis=1) ** 2, axis=1)
         / (n_draws - 1) 
         / np.var(hmc_diagnostics['energy__'], axis=1)
     )
@@ -1557,7 +1744,7 @@ def tau_hat(samples, omit=(), omit_array_entry=()):
     return result    
 
 
-def _compute_xi_hat(vals, xi_hat_threshold=0.25):
+def _compute_xi_hat(vals):
     """Compute xi_hat, an estimate of the shape of a generalized Pareto
     distribution from a sample of positive values.
 
@@ -1565,10 +1752,6 @@ def _compute_xi_hat(vals, xi_hat_threshold=0.25):
     ----------
     vals : 1D array
         A one-dimensional array of positive values.
-    xi_hat_threshold : float, default 0.25
-        Quantile fraction used to set the scale of the heuristic Pareto
-        grid; the empirical quantile is taken at index
-        floor(xi_hat_threshold * N + 0.5) of the sorted values.
 
     Returns
     -------
@@ -1577,12 +1760,14 @@ def _compute_xi_hat(vals, xi_hat_threshold=0.25):
 
     Notes
     -----
-    .. Uses the method of Zhang and Stephens, "A New and Efficient
-       Estimation Method for the Generalized Pareto Distribution",
-       Technometrics, 2009, https://doi.org/10.1198/tech.2009.08017.
-    .. Within the generalized Pareto family all moments up to the mth
-       order are finite if and only if xi_hat < 1 / m.
+    Uses the method of Zhang and Stephens, "A New and Efficient
+    Estimation Method for the Generalized Pareto Distribution",
+    Technometrics, 2009, https://doi.org/10.1198/tech.2009.08017.
+
+    Within the generalized Pareto family all moments up to the mth
+    order are finite if and only if xi_hat < 1 / m.
     """
+    xi_hat_threshold = 0.25
     sorted_vals = np.sort(vals)
     N = len(sorted_vals)
 
@@ -1620,7 +1805,7 @@ def _compute_xi_hat(vals, xi_hat_threshold=0.25):
     return np.mean(np.log(1 - b_hat_avg * sorted_vals))
 
 
-def _compute_tail_xi_hats(vals, xi_hat_threshold=0.25):
+def _compute_tail_xi_hats(vals):
     """Compute the empirical generalized Pareto shape (xi_hat) for the
     upper and lower tails of a sample of expectand values, ignoring any
     autocorrelation between the values.
@@ -1629,9 +1814,6 @@ def _compute_tail_xi_hats(vals, xi_hat_threshold=0.25):
     ----------
     vals : 1D array
         A one-dimensional array of expectand values.
-    xi_hat_threshold : float, default 0.25
-        Quantile fraction passed through to `_compute_xi_hat()` for each
-        tail.
 
     Returns
     -------
@@ -1644,49 +1826,53 @@ def _compute_tail_xi_hats(vals, xi_hat_threshold=0.25):
 
     Notes
     -----
-    .. Uses the method of Zhang and Stephens, "A New and Efficient
-       Estimation Method for the Generalized Pareto Distribution",
-       Technometrics, 2009, https://doi.org/10.1198/tech.2009.08017.
-    .. Within the generalized Pareto family all moments up to the mth
-       order are finite if and only if xi_hat < 1 / m.        
+    Uses the method of Zhang and Stephens, "A New and Efficient
+    Estimation Method for the Generalized Pareto Distribution",
+    Technometrics, 2009, https://doi.org/10.1198/tech.2009.08017.
+
+    Within the generalized Pareto family all moments up to the mth
+    order are finite if and only if xi_hat < 1 / m.
     """
     vals = np.asarray(vals)
     v_center = np.median(vals)
 
     def _trim_tail(tail):
-        # The tail values are non-negative distances from the center, so
-        # sort ascending and drop the M least-extreme values, keeping the
-        # most extreme part of the tail.
+        # Keep the M most extreme distances as the tail, expressed as
+        # excesses over the threshold set by the next-largest distance, so
+        # that a generalized Pareto distribution starting at zero applies.
+        # The tail size M is that used in Pareto-smoothed importance
+        # sampling (Vehtari, et al.).
+        tail = np.sort(tail)
         N = len(tail)
-        M = int(min(0.2 * N, 9 * np.sqrt(N)))
-        return np.sort(tail)[M:]
+        M = int(min(0.2 * N, 3 * np.sqrt(N)))
+        if M == 0:
+            return tail[:0]
+        return tail[N - M :] - tail[N - M - 1]
 
     # Isolate the lower and upper tails as positive distances from the
-    # center; these can be adequately modeled by a generalized Pareto
-    # shape for sufficiently well-behaved distributions.
+    # center. Excesses over a high threshold in each tail can be adequately
+    # modeled by a generalized Pareto shape for sufficiently well-behaved
+    # distributions.
     vals_left = _trim_tail(np.abs(vals[vals <= v_center] - v_center))
     vals_right = _trim_tail(vals[vals > v_center] - v_center)
 
     # Default to NaN if a tail is ill-defined (too few values).
     xi_hat_left = np.nan
     if len(vals_left) > 40:
-        xi_hat_left = _compute_xi_hat(
-            vals_left, xi_hat_threshold=xi_hat_threshold
-        )
+        xi_hat_left = _compute_xi_hat(vals_left)
 
     xi_hat_right = np.nan
     if len(vals_right) > 40:
-        xi_hat_right = _compute_xi_hat(
-            vals_right, xi_hat_threshold=xi_hat_threshold
-        )
+        xi_hat_right = _compute_xi_hat(vals_right)
 
     return xi_hat_left, xi_hat_right
 
 
-def tail_xi_hat(samples, xi_hat_threshold=0.25, omit=(), omit_array_entry=()):
+def tail_xi_hat(samples, omit=(), omit_array_entry=()):
     """Compute the empirical generalized Pareto shape (xi_hat) for the
     upper and lower tails of a sample of expectand values, ignoring any
-    autocorrelation between the values.
+    autocorrelation between the values. The draws from all chains are
+    pooled together.
 
     Parameters
     ----------
@@ -1697,9 +1883,6 @@ def tail_xi_hat(samples, xi_hat_threshold=0.25, omit=(), omit_array_entry=()):
         the first dimension of each element indexes the Markov chains and
         the second dimension indexes the sequential states within each
         Markov chain.
-    xi_hat_threshold : float, default 0.25
-        Quantile fraction passed through to `_compute_xi_hat()` for each
-        tail.
     omit : str, re.Pattern, or iterable thereof
         Glob pattern(s) matched against the base (non-indexed) name of
         each variable. Any variable whose base name matches an entry is
@@ -1716,19 +1899,20 @@ def tail_xi_hat(samples, xi_hat_threshold=0.25, omit=(), omit_array_entry=()):
     Returns
     -------
     output : dict
-        Each value in the dictionary is the shape estimate for lower
-        and upper tail for each expandand for each chain for each
-        chain for each expectand. Each value is a Numpy array of shape
-        (n_chains, 2), where the first index indexes the chain and the
-        second index gives the shape index of the lower and upper tail.
+        Each key is an expectand, and each value is a Numpy array of
+        shape (2,) holding the shape estimates for the lower and upper
+        tails, in that order, computed from the draws of all chains
+        pooled together. An entry is NaN if there were too few draws to
+        estimate the shape of that tail.
 
     Notes
     -----
-    .. Uses the method of Zhang and Stephens, "A New and Efficient
-       Estimation Method for the Generalized Pareto Distribution",
-       Technometrics, 2009, https://doi.org/10.1198/tech.2009.08017.
-    .. Within the generalized Pareto family all moments up to the mth
-       order are finite if and only if xi_hat < 1 / m.                
+    Uses the method of Zhang and Stephens, "A New and Efficient
+    Estimation Method for the Generalized Pareto Distribution",
+    Technometrics, 2009, https://doi.org/10.1198/tech.2009.08017.
+
+    Within the generalized Pareto family all moments up to the mth
+    order are finite if and only if xi_hat < 1 / m.
     """
     samples = convert_samples(samples, 'dict')
     expectands, _ = _split_dict(samples)
@@ -1736,11 +1920,11 @@ def tail_xi_hat(samples, xi_hat_threshold=0.25, omit=(), omit_array_entry=()):
     _validate_dict(expectands, include_all_required_hmc_diagnostics=False)
 
     omit, omit_array_entry = _parse_omit(omit, omit_array_entry)
+    # The tail shape is a property of the target distribution, not of an
+    # individual chain, so pool the draws from all chains (disagreement
+    # between chains is diagnosed by split Rhat).
     result = {
-        key: np.array([
-            _compute_tail_xi_hats(vals, xi_hat_threshold=xi_hat_threshold) 
-            for vals in expectand_samples
-        ])
+        key: np.array(_compute_tail_xi_hats(expectand_samples.ravel()))
         for key, expectand_samples in expectands.items()
         if _screen_param(key, omit, omit_array_entry)
     }
@@ -1929,7 +2113,7 @@ def check_variance(samples, epsilon=1e-10, omit=(), omit_array_entry=()):
     omit, omit_array_entry = _parse_omit(omit, omit_array_entry)
     result = {
         key: np.array([
-            _compute_variance_check(val_chain)
+            _compute_variance_check(val_chain, epsilon=epsilon)
             for val_chain in val
         ])
         for key, val in expectands.items()
@@ -1942,7 +2126,6 @@ def check_variance(samples, epsilon=1e-10, omit=(), omit_array_entry=()):
 def check_expectand_diagnostics(
     samples,
     min_ess_hat_per_chain=100,
-    xi_hat_threshold=0.25,
     omit=(),
     omit_array_entry=(),
     verbosity=2,
@@ -1964,10 +2147,6 @@ def check_expectand_diagnostics(
     min_ess_hat_per_chain : float, default 100
         The minimum empirical effective sample size per chain below which
         a warning is flagged.
-    xi_hat_threshold : float, default 0.25
-        Tail xi_hats at or above this value are flagged as warnings. Also
-        passed through to `tail_xi_hat()` when computing the tail
-        xi_hats.
     omit : str, re.Pattern, or iterable thereof
         Glob pattern(s) matched against the base (non-indexed) name of
         each variable. Any variable whose base name matches an entry is
@@ -2001,9 +2180,10 @@ def check_expectand_diagnostics(
 
     Notes
     -----
-    .. Adapted from `check_all_expectand_diagnostics()` written by Michael
-       Betancourt in his mcmc_diagnostics package.
+    Adapted from `check_all_expectand_diagnostics()` written by Michael
+    Betancourt in his mcmc_diagnostics package.
     """
+    xi_hat_threshold = 0.25
     samples = convert_samples(samples, 'dict')
     expectands, _ = _split_dict(samples)
     _validate_dict(expectands, include_all_required_hmc_diagnostics=False)
@@ -2014,7 +2194,6 @@ def check_expectand_diagnostics(
     output = {
         'xi_hat': tail_xi_hat(
             samples,
-            xi_hat_threshold=xi_hat_threshold,
             omit=omit,
             omit_array_entry=omit_array_entry,
         ),
@@ -2042,6 +2221,7 @@ def check_expectand_diagnostics(
     no_ess_hat_warning = True
 
     detail = []
+    notes = []
     xi_hat_summary = []
     zvar_summary = []
     rhat_summary = []
@@ -2058,57 +2238,70 @@ def check_expectand_diagnostics(
 
         xi_hats = output['xi_hat'][name]
         nonzero_variance = output['variance'][name]
-        n_chains = len(xi_hats)
+        n_chains = len(nonzero_variance)
 
-        xi_hat_count = 0
         zvar_count = 0
         inc_tau_count = 0
         ess_count = 0
 
+        # Check tail xi_hats, computed with all chains pooled together.
+        xi_hat_left, xi_hat_right = xi_hats
+
+        # A NaN xi_hat means there were too few draws in that tail to
+        # estimate it. This is reported in the detail, but it is not a
+        # warning. Only tails with an estimate are checked against the
+        # threshold.
+        nan_tails = [
+            side
+            for side, val in (("left", xi_hat_left), ("right", xi_hat_right))
+            if np.isnan(val)
+        ]
+        if nan_tails:
+            note = (
+                f"{name}: Not enough draws to judge the "
+                f"{' and '.join(nan_tails)} tail"
+                f"{'s' if len(nan_tails) == 2 else ''}; xi_hat not "
+                "computed."
+            )
+            detail.append(note)
+            notes.append(note)
+            if np.isnan(xi_hat_left):
+                xi_hat_left = -np.inf
+            if np.isnan(xi_hat_right):
+                xi_hat_right = -np.inf
+
+        xi_hat_triggered = True
+
+        if (
+            xi_hat_left >= xi_hat_threshold
+            and xi_hat_right >= xi_hat_threshold
+        ):
+            detail.append(
+                f"{name}: Both left and right tail xi_hats "
+                f"({xi_hat_left:.3f}, {xi_hat_right:.3f}) exceed "
+                f"{xi_hat_threshold}."
+            )
+        elif xi_hat_right >= xi_hat_threshold:
+            detail.append(
+                f"{name}: Right tail xi_hat ({xi_hat_right:.3f}) exceeds "
+                f"{xi_hat_threshold}."
+            )
+        elif xi_hat_left >= xi_hat_threshold:
+            detail.append(
+                f"{name}: Left tail xi_hat ({xi_hat_left:.3f}) exceeds "
+                f"{xi_hat_threshold}."
+            )
+        else:
+            xi_hat_triggered = False
+
+        if xi_hat_triggered:
+            no_xi_hat_warning = False
+            xi_hat_summary.append(
+                f"Parameter {name} triggered a tail xi_hat warning."
+            )
+            xi_hat_failed.append(name)
+
         for c in range(n_chains):
-            # Check tail xi_hats in each Markov chain.
-            xi_hat_left, xi_hat_right = xi_hats[c]
-            xi_hat_triggered = True
-
-            if np.isnan(xi_hat_left) and np.isnan(xi_hat_right):
-                detail.append(
-                    f"{name}, chain {c + 1}: Both left and right tail "
-                    "xi_hats are NaN."
-                )
-            elif np.isnan(xi_hat_left):
-                detail.append(
-                    f"{name}, chain {c + 1}: Left tail xi_hat is NaN."
-                )
-            elif np.isnan(xi_hat_right):
-                detail.append(
-                    f"{name}, chain {c + 1}: Right tail xi_hat is NaN."
-                )
-            elif (
-                xi_hat_left >= xi_hat_threshold
-                and xi_hat_right >= xi_hat_threshold
-            ):
-                detail.append(
-                    f"{name}, chain {c + 1}: Both left and right tail "
-                    f"xi_hats ({xi_hat_left:.3f}, {xi_hat_right:.3f}) "
-                    f"exceed {xi_hat_threshold}."
-                )
-            elif xi_hat_right >= xi_hat_threshold:
-                detail.append(
-                    f"{name}, chain {c + 1}: Right tail xi_hat "
-                    f"({xi_hat_right:.3f}) exceeds {xi_hat_threshold}."
-                )
-            elif xi_hat_left >= xi_hat_threshold:
-                detail.append(
-                    f"{name}, chain {c + 1}: Left tail xi_hat "
-                    f"({xi_hat_left:.3f}) exceeds {xi_hat_threshold}."
-                )
-            else:
-                xi_hat_triggered = False
-
-            if xi_hat_triggered:
-                no_xi_hat_warning = False
-                xi_hat_count += 1
-
             # Check empirical variance in each Markov chain.
             if not nonzero_variance[c]:
                 no_zvar_warning = False
@@ -2118,12 +2311,6 @@ def check_expectand_diagnostics(
                     "vanishing empirical variance."
                 )
 
-        if xi_hat_count:
-            xi_hat_summary.append(
-                f"Parameter {name} triggered a tail xi_hat warning in "
-                f"{xi_hat_count} of {n_chains} chains."
-            )
-            xi_hat_failed.append(name)
         if zvar_count:
             zvar_summary.append(
                 f"Parameter {name} has vanishing empirical variance in "
@@ -2134,7 +2321,9 @@ def check_expectand_diagnostics(
         # Check split Rhat across Markov chains.
         rhat = output['rhat'][name]
         if np.isnan(rhat):
-            detail.append(f"{name}: Split Rhat is ill-defined.")
+            note = f"{name}: Split Rhat is ill-defined."
+            detail.append(note)
+            notes.append(note)
         elif rhat > 1.1:
             no_rhat_warning = False
             detail.append(f"{name}: Split Rhat ({rhat:.3f}) exceeds 1.1.")
@@ -2270,6 +2459,7 @@ def check_expectand_diagnostics(
         summary,
         detail,
         descriptions,
+        notes=notes,
     )
 
     return output
@@ -2282,7 +2472,6 @@ def check_all_diagnostics(
     efmi_rule_of_thumb=0.2,
     max_treedepth=10,
     min_ess_hat_per_chain=100,
-    xi_hat_threshold=0.25,
     omit=(),
     omit_array_entry=(),
     verbosity=2,
@@ -2314,9 +2503,6 @@ def check_all_diagnostics(
     min_ess_hat_per_chain : float, default 100
         The minimum empirical effective sample size per chain below which
         a warning is flagged.
-    xi_hat_threshold : float, default 0.25
-        Tail xi_hats at or above this value are flagged as warnings. Also
-        passed through to `check_expectand_diagnostics()`.
     omit : str, re.Pattern, or iterable thereof
         Glob pattern(s) matched against the base (non-indexed) name of
         each variable. Any variable whose base name matches an entry is
@@ -2381,7 +2567,6 @@ def check_all_diagnostics(
     expectand_diagnostics = check_expectand_diagnostics(
         samples_dict,
         min_ess_hat_per_chain=min_ess_hat_per_chain,
-        xi_hat_threshold=xi_hat_threshold,
         omit=omit,
         omit_array_entry=omit_array_entry,
         verbosity=verbosity,
@@ -2452,8 +2637,8 @@ def decode_warning_code(warning_code, quiet=False, return_dict=False):
 
     Notes
     -----
-    .. Adapted from `decode_warning_code()` written by Michael Betancourt
-       in his mcmc_diagnostics package.
+    Adapted from `decode_warning_code()` written by Michael Betancourt
+    in his mcmc_diagnostics package.
     """
     if quiet and not return_dict:
         raise RuntimeError(
@@ -2527,77 +2712,11 @@ def _multiprocessing_spawn_context():
         return multiprocessing.get_context()
 
 
-def cmdstanpy_prior_sds(
-):
-    """Compute standard deviations of marginal priors for each 
-    parameter using a prior predictive Stan file.
-    """
-
-
-def cmdstanpy_prior_sds(
-    seed=None,
-    stan_file=None,
-    sample_kwargs={},
-    var_names=(),
-    n_prior_draws=1000,
-    no_logging=True,
-):
-    """Compute standard deviations of prior parameters.
-
-    Parameters
-    ----------
-    seed : int, default None
-        Seed for Stan's random number generator.
-    stan_file : str
-        Name of file containing stan code.
-    sample_kwargs : dict, default {}
-        Arguments to be passed to stan_model.sample(), where stan_model
-        is compiled from `stan_file`.
-    var_names : list or tuple of strings
-        Name of variables that have prior distributions.
-    n_prior_draws : int, default 1000
-        Number of draws from prior predictive distribution to use to
-        compute standard deviations.
-    no_logging : bool, default False
-        If True, disable logging from Stan.
-
-    Returns
-    -------
-    samples : dict
-        Dictionary containing standard deviations of the marginal prior
-        distributions of all parameters.
-    """
-    sample_kwargs = _check_kwarg_vs_dict(sample_kwargs, 'iter_sampling', n_prior_draws)
-
-    prior_samples_cmdstanpy = sample_cmdstanpy_prior_predictive(
-        seed,
-        stan_file,
-        sample_kwargs,
-        no_logging=no_logging,
-    )
-
-    prior_samples = convert_samples(prior_samples_cmdstanpy, 'dict')
-
-    # We always remove sample files here because we don't need them.
-    # Prior SDs are all precomputed before we generate any prior predictive
-    # data sets and are used only in shrinkage calculations.
-    _remove_sampling_files(prior_samples_cmdstanpy.runset)
-
-    # Compute prior sd's over all draws for the parameters of interest.
-    expectands, _ = _split_dict(prior_samples)
-    prior_sd = {
-        name: np.std(val)
-        for name, val in expectands.items()
-        if name in var_names or _base_name(name) in var_names
-    }
-
-    return prior_sd
-
-
 def sample_cmdstanpy_prior_predictive(
     seed=None,
     stan_file=None,
-    sample_kwargs={},
+    sample_kwargs=None,
+    measured_data=None,
     remove_sample_files=True, 
     no_logging=True,
 ):
@@ -2614,6 +2733,14 @@ def sample_cmdstanpy_prior_predictive(
     sample_kwargs : dict, default {}
         Arguments to be passed to stan_model.sample(), where stan_model
         is compiled from `stan_file`.
+    measured_data : dict, must be supplied
+        A dictionary where each key is the variable name of measured
+        data. The value of each entry in the `measured_data` dictionary
+        is the type of the corresponding data, almost always either 
+        `int` or `float`. Upon generation of a prior predictive data 
+        set, a new dictionary is created with keys given by the keys of
+        `measured_data` and value given by the generated prior 
+        predictive data set.
     remove_sample_files : bool, default True
         If True, remove CSV files of samples generated by CmdStan.
     no_logging : bool, default False
@@ -2624,10 +2751,16 @@ def sample_cmdstanpy_prior_predictive(
     samples : dict
         Dictionary containing prior predictive data.
     """
+    if sample_kwargs is None:
+        sample_kwargs = {}
+
+    if measured_data is None:
+        raise ValueError("`measured_data` must be supplied.")
+
     sample_kwargs['seed'] = seed
 
     if 'fixed_param' in sample_kwargs and not sample_kwargs['fixed_param']:
-        raise RuntimeError("sample_kwargs['fixed_param'] must be unspecified or False.")
+        raise RuntimeError("sample_kwargs['fixed_param'] must be unspecified or True.")
     sample_kwargs['fixed_param'] = True
 
     if 'show_progress' in sample_kwargs and sample_kwargs['show_progress']:
@@ -2641,11 +2774,25 @@ def sample_cmdstanpy_prior_predictive(
         raise RuntimeError("sample_kwargs['chains'] must be unspecified or 1.")
     sample_kwargs['chains'] = 1
 
-    return sample_cmdstanpy(
+    if 'iter_sampling' in sample_kwargs and sample_kwargs['iter_sampling'] != 1:
+        raise RuntimeError("sample_kwargs['iter_sampling'] must be unspecified or 1.")
+    sample_kwargs['iter_sampling'] = 1
+
+    samples =  sample_cmdstanpy(
         stan_file=stan_file,
         sample_kwargs=sample_kwargs,
         remove_sample_files=remove_sample_files,
         no_logging=no_logging,
+    )
+
+    # With a single chain and a single draw, each entry is a (1, 1) array;
+    # pull out the single value so the entries match those returned by a
+    # NumPy-based prior predictive function.
+    expectands, _ = _split_dict(samples)
+
+    return parse_prior_predictive_samples(
+        {key: val[0, 0] for key, val in expectands.items()},
+        measured_data=measured_data,
     )
 
 
@@ -2679,21 +2826,21 @@ def sample_cmdstanpy(
 
     Notes
     -----
-    .. We only pass in a Stan file and not a cmdstanpy.CmdStanModel 
-       instance because cmdstanpy will check for a compiled executable
-       by default and will not recompile. So, when doing 
-       multiprocessing, we can pass strings denoting Stan files, which
-       are far easier to pickle than cmdstanpy.CmdStanModel instances.
+    We only pass in a Stan file and not a cmdstanpy.CmdStanModel
+    instance because cmdstanpy will check for a compiled executable
+    by default and will not recompile. So, when doing
+    multiprocessing, we can pass strings denoting Stan files, which
+    are far easier to pickle than cmdstanpy.CmdStanModel instances.
     """
     if stan_file is None:
         raise RuntimeError("stan_file must be specified.")
     
     if no_logging:
         with disable_logging():
-            stan_model = cmdstanpy.CmdStanModel(stan_file)
+            stan_model = cmdstanpy.CmdStanModel(stan_file=stan_file)
             samples_cmdstanpy = stan_model.sample(**sample_kwargs)
     else:
-        stan_model = cmdstanpy.CmdStanModel(stan_file)
+        stan_model = cmdstanpy.CmdStanModel(stan_file=stan_file)
         samples_cmdstanpy = stan_model.sample(**sample_kwargs)
 
     return_dict = convert_samples(samples_cmdstanpy, 'dict')
@@ -2704,78 +2851,18 @@ def sample_cmdstanpy(
     return return_dict
 
 
-def inferential_calibration(**kwargs):
+def sbc(**kwargs):
     """DEPRECATED."""
     raise RuntimeError(
-        "`inferential_calibration()` is deprecated. Use `inferential_calibration_cmdstanpy()`."
+        "`sbc()` is deprecated. Use `bebi103.stan.inferential_calibration_cmdstanpy()` to use cmdstanpy for inferential calibration."
     )
 
 
-def write_prior_predictive_samples_to_csv(samples, csv_file):
-    """Write samples to a CSV file in CmdStan format.
-
-    Parameters
-    ----------
-    samples : dict
-        Dictionary of prior predictive samples. Each key is the
-        variable name and each value is either a scalar or a 1D array
-        of data. Arrays are unpacked to separate columns with dot
-        notation for indices (e.g., 'b[1,2]' becomes 'b.1.2' for the
-        second element).
-    csv_file : str
-        Name of a CSV file to write samples.
-
-    Notes
-    -----
-    The output follows CmdStan's CSV format specification at
-    https://mc-stan.org/docs/cmdstan-guide/stan_csv_apdx.html
-    """
-    if not isinstance(samples, dict):
-        raise ValueError("`samples` must be a dictionary.")
-
-    if not samples:
-        raise ValueError("`samples` dictionary cannot be empty.")
-
-    def _convert_to_dot_notation(key):
-        """Convert bracket notation to dot notation for Stan CSV format."""
-        # Replace '[' with '.', remove ']', and replace ',' with '.'
-        # e.g., 'c[1,2]' -> 'c.1.2', 'b[1]' -> 'b.1'
-        result = key.replace('[', '.').replace(']', '').replace(',', '.')
-        return result
-
-    # Build list of (column_name, value) tuples
-    columns = []
-    for key in sorted(samples.keys()):
-        value = samples[key]
-        arr = np.asarray(value).astype(np.float64)
-
-        if arr.ndim == 0:
-            # Scalar value
-            col_name = _convert_to_dot_notation(key)
-            columns.append((col_name, arr.item()))
-        elif arr.ndim == 1:
-            # 1D array - unpack to separate columns
-            base_name = _convert_to_dot_notation(key)
-            for i, val in enumerate(arr, start=1):
-                col_name = f"{base_name}.{i}"
-                columns.append((col_name, val))
-        else:
-            raise ValueError(
-                f"Sample values must be scalar or 1D array, got {arr.ndim}D array for key '{key}'."
-            )
-
-    # Write CSV file with Stan format header
-    with open(csv_file, "w") as f:
-        timestamp = datetime.datetime.now().isoformat()
-        f.write(f"# {timestamp}\n")
-
-        # Write column names
-        column_names = [name for name, _ in columns]
-        f.write(",".join(column_names) + "\n")
-
-        # Write single data row
-        row_values = [str(val) for _, val in columns]
-        f.write(",".join(row_values) + "\n")
+def inferential_calibration(**kwargs):
+    """DEPRECATED."""
+    raise RuntimeError(
+        "`inferential_calibration()` is deprecated. Use `inferential_calibration_cmdstanpy()` to use cmdstanpy for inferential calibration. `inferential_calibration_numpyro()` and others are planned for future releases."
+    )
 
 
 def inferential_calibration_cmdstanpy(
@@ -2805,39 +2892,39 @@ def inferential_calibration_cmdstanpy(
     Parameters
     ----------
     prior_predictive_fun : function
-        Function with call signature 
-        prior_predictive_fun(seed=None, **prior_predictive_kwargs).
+        Function with call signature
+        ``prior_predictive_fun(seed=None, **prior_predictive_kwargs)``.
         This function is used to draw prior predictive samples of
         data sets from the posterior. The function need not necessarily
         use a provided seed, but must have a keyword argument allowing
         for seed specification. The function must still run, even if
         `seed` is None. The function must return a dictionary
-        of samples, where each key is the variable name and each
-        value is either a parameter drawn from the prior or a data
-        set drawn from the prior predictive distribution. Note that
-        any parameter must be a scalar. E.g., for a matrix-valued
-        parameter A, the keys must be 'A[1,1]', 'A[1,2]', and so on.
-        Note the 1-indexing.
+        of a single prior predictive sample. Each key is the variable
+        name and each value is either a parameter drawn from the prior 
+        or a data set drawn from the prior predictive distribution.
+        Both variables and data sets may be entered in the dictionary
+        as Numpy arrays/scalars or as individual elements of Numpy 
+        arrays (e.g., with keys 'my_var[1]', 'my_var[2]', etc.)
     prior_predictive_kwargs : dict, default {}
         Kwargs to be passed to prior_predictive_fun().
-    prior_sds_fun : function
-        Function with call signature 
-        prior_sds_fun(**prior_sds_kwargs).
+    prior_sds_fun : function, default None
+        Function with call signature ``prior_sds_fun(**prior_sds_kwargs)``.
         This function is used to compute the standard deviations of
-        the marginal prior for each parameter. The function need not 
-        necessarily use a provided seed, but must have a keyword 
-        argument allowing for seed specification. The function must 
+        the marginal prior for each parameter. The function must 
         return a dictionary where each key is the variable
         name and each value is the standard deviation of the 
         corresponding marginal prior distribution. Note that
         any parameter must be a scalar. E.g., for a matrix-valued
         parameter A, the keys must be 'A[1,1]', 'A[1,2]', and so on.
-        Note the 1-indexing.
+        Note the 1-indexing. If None, then `prior_predictive_fun()` is
+        used to draw samples out of the priors and then standard 
+        deviations are estimated from the samples.
     prior_sds_kwargs : dict, default {}
-        Kwargs to be passed to prior_sds_fun().
-    posterior_model : str
+        Kwargs to be passed to prior_sds_fun(). Ignored if 
+        `prior_sds_fun` is None.
+    posterior_stan_file : str
         Stan file for the posterior that allows sampling.
-    measured_data : dictionary
+    measured_data : dict
         A dictionary where each key is the variable name of measured
         data. The value of each entry in the `measured_data` dictionary
         is the type of the corresponding data, almost always either 
@@ -2877,10 +2964,6 @@ def inferential_calibration_cmdstanpy(
         Number of cores to use in the inferential calibration calculation.
     N : int, 400
         Number of simulations to run.
-    n_prior_draws_for_sd : int, default 1000
-        Number of prior draws to compute the prior standard deviation
-        for a parameter in the prior distribution. This standard
-        deviation is used in the shrinkage calculation.
     samples_dir : str, default "inferential_calibration_samples"
         Path to directory to store .csv and .txt files generated by
         CmdStan. The directory specified here will NOT be destroyed
@@ -2907,41 +2990,60 @@ def inferential_calibration_cmdstanpy(
     -------
     output : Polars or Pandas DataFrame
         Data frame with the output of the inferential calibration analysis. It has
-        the following columns.
+        one row per scalar parameter per trial and the following columns.
+        If a trial fails, its per-parameter statistics and its HMC
+        diagnostic summaries are null (Polars output) or np.nan (Pandas
+        output), and the `error` column holds the error message.
 
             - trial : Unique trial number for the simulation.
-            - warning_code : Warning code based on diagnostic checks outputted by `check_all_diagnostics()`.
-            - parameter: The name of the scalar parameter.
-            - prior: Value of the parameter used in the simulation. This value was drawn out of the prior distribution.
+            - parameter : The name of the scalar parameter.
+            - ground_truth : Value of the parameter used in the simulation. This value was drawn out of the prior distribution.
+            - rank_statistic : Value of the rank statistic for the parameter for the trial.
             - mean : mean parameter value based on sampling out of the posterior in the simulation.
             - sd : standard deviation of the parameter value based on sampling out of the posterior in the simulation.
-            - L : The number of bins used in computing the rank statistic. The rank statistic should be uniform on the integers [0, L].
-            - rank_statistic : Value of the rank statistic for the parameter for the trial.
-            - shrinkage : The shrinkage for the parameter for the given trial. This is computed as 1 - sd / sd_prior, where sd_prior is the standard deviation of the parameters as determined from drawing out of the prior.
-            - z_score : The z-score for the parameter for the given trial. This is computed as abs(mean - prior) / sd.
+            - shrinkage : The shrinkage for the parameter for the given trial. This is computed as 1 - (sd / sd_prior)**2, where sd_prior is the standard deviation of the parameter's marginal prior distribution.
+            - z_score : The z-score for the parameter for the given trial. This is computed as (mean - ground_truth) / sd, so it is signed.
+            - Rhat : Split Rhat for the parameter, computed across all chains.
+            - ESS_hat : Total empirical effective sample size for the parameter, summed over all chains.
+            - ESS_hat_per_iter : `ESS_hat` divided by the total number of posterior samples (all chains and draws).
+            - ESS_hat_min_per_chain : Minimum per-chain empirical effective sample size for the parameter. This is the quantity the ESS_hat diagnostic warning is based on: a warning is raised (and the corresponding bit set in `warning_code`) when it falls below `min_ess_hat_per_chain`. Because `ESS_hat` is a sum over chains, it can be large even when this per-chain minimum, and hence the warning, indicates poor mixing in a single chain.
             - tail_xi_hat_left : Left tail xi_hat for the parameter, computed over all chains pooled together.
             - tail_xi_hat_right : Right tail xi_hat for the parameter, computed over all chains pooled together.
             - inc_tau_hat : Incremental empirical integrated autocorrelation time for the parameter, computed over all chains pooled together.
             - variance : Empirical variance of the parameter's posterior samples, computed over all chains pooled together.
-            - ESS_hat : Total empirical effective sample size for the parameter, summed over all chains.
-            - ESS_hat_per_iter : `ESS_hat` divided by the total number of posterior samples (all chains and draws).
-            - ESS_hat_min_per_chain : Minimum per-chain empirical effective sample size for the parameter. This is the quantity the ESS_hat diagnostic warning is based on: a warning is raised (and the corresponding bit set in `warning_code`) when it falls below `min_ess_hat_per_chain`. Because `ESS_hat` is a sum over chains, it can be large even when this per-chain minimum, and hence the warning, indicates poor mixing in a single chain.
+            - n_divergences : Total number of divergent transitions in the trial, summed over all chains.
+            - n_bad_ebfmi : Number of chains in the trial whose E-BFMI is below `efmi_rule_of_thumb`.
+            - n_max_treedepth : Total number of transitions in the trial that hit the maximum tree depth, summed over all chains.
             - average_accept_proxy : Average proxy acceptance statistic for the trial, taken over all chains.
-            - prior_predictive_seed : Random number seed used by Stan to generate the prior predictive data set for the trial.
+            - warning_code : Warning code based on diagnostic checks outputted by `check_all_diagnostics()`.
+            - prior_predictive_seed : Random number seed passed to `prior_predictive_fun()` to generate the prior predictive sample for the trial.
             - posterior_seed : Random number seed used by Stan for the posterior MCMC sampling for the trial.
-            - prior_predictive_prefix : Full-path prefix of the sampling files (.csv and .txt) generated by Stan when drawing the prior predictive data set for the trial. If `remove_sample_files` is True (so the files are deleted), every entry is null (Polars output) or np.nan (Pandas output).
+            - L : The number of posterior draws used in computing the rank statistic. The rank statistic should be uniform on the integers [0, L].
             - samples_prefix : Full-path prefix of the sampling files (.csv and .txt) generated by Stan for the posterior MCMC sampling for the trial. If `remove_sample_files` is True (so the files are deleted), every entry is null (Polars output) or np.nan (Pandas output).
+            - error : 'no error' if the trial succeeded; otherwise the error message raised during the trial.
 
     Notes
     -----
-    .. Each simulation is done by sampling a parameter set out of the
+    Each simulation is done by sampling a parameter set out of the
     prior distribution, using those parameters to generate data from
     the likelihood, and then performing posterior sampling based on
     the generated data. A rank statistic for each simulation is
     computed. This rank statistic should be uniformly distributed
     over its L possible values. See https://arxiv.org/abs/1804.06788,
     by Talts, et al., for details.
+
+    Prior predictive samples are not stored. The assumption is that
+    prior predictive samples can be drawn very quickly. The seed used
+    to generated the prior predictive sample and other kwargs passed to
+    `prior_predictive_fun` are stored for each trial, so it is easy to
+    regenerated prior predictive samples as desired.
     """
+    if isinstance(var_names, str):
+        var_names = (var_names,)
+
+    if isinstance(ignored_var_names, str):
+        ignored_names = (ignored_names,)
+
     if N > 100_000_000:
         raise RuntimeError("Maximum number of simulations is 100 million.")
 
@@ -2953,14 +3055,10 @@ def inferential_calibration_cmdstanpy(
 
     if prior_predictive_fun is None:
         raise RuntimeError("`prior_predictive_fun` must be specified.")
-    if prior_sds_fun is None:
-        raise RuntimeError("`prior_sds_fun` must be specified.")
     if posterior_stan_file is None:
         raise RuntimeError("`posterior_stan_file` must be specified.")
     if measured_data is None:
         raise RuntimeError("`measured_data` must be specified.")
-    if measured_data_dtypes is None:
-        raise RuntimeError("`measured_data_dtypes` must be specified.")
 
     if "output_dir" in sample_kwargs:
         raise RuntimeError(
@@ -2982,7 +3080,7 @@ def inferential_calibration_cmdstanpy(
     if "max_treedepth" in diagnostic_check_kwargs:
         if (
             "max_treedepth" in sample_kwargs 
-            and sample_kwargs["max_treedepth"] != sample_kwargs["max_treedepth"]
+            and sample_kwargs["max_treedepth"] != diagnostic_check_kwargs["max_treedepth"]
         ):
             raise RuntimeError(
                 "Disagreeing values of 'max_treedepth' in `sample_kwargs"
@@ -3009,23 +3107,28 @@ def inferential_calibration_cmdstanpy(
 
     # Take a prior sample to check to make sure all variables in 
     # `measured_data` are produced by `prior_predictive_fun()`
-    prior_sample = prior_predictive_fun(**prior_predictive_kwargs)
-    prior_expectands, _ = _split_dict(prior_sample)
+    prior_sample = prior_predictive_fun(seed=3252, **prior_predictive_kwargs)
+    prior_sample, _ = _split_dict(prior_sample)
 
-    # Make sure we can extract all pertinent measured data
-    for data in measured_data:
-        try:
-            _ = np.squeeze(extract_variable(prior_sample, data))
-        except:
-            raise RuntimeError(
-                f"Unable to extract data for {data} from prior predictive sample."
-            )
+    # Make sure we can parse result
+    try:
+        prior_sample = parse_prior_predictive_samples(
+            prior_pred_samples=prior_sample, 
+            measured_data=measured_data
+        )
+    except:
+        raise RuntimeError(
+            "Unable to parse samples generated by the supplied "
+            "`prior_predictive_fun()`. Many issues could cause this. "
+            "A common, though certainly not only, cause is the `measured_data` "
+            "dictionary is being inconsistent. ")
+
 
     # Parameter names are the unique base names of the expectands that are
-    # not measured data. Array-valued parameters (e.g. 'beta[1]',
-    # 'beta[2]') collapse to a single base name ('beta').
+    # not measured data. Array-valued parameters (e.g. 'alpha[1]',
+    # 'alpha[2]') collapse to a single base name ('alpha').
     prior_param_names = []
-    for key in prior_expectands:
+    for key in prior_sample:
         name = _get_var_name(key)
         if name not in measured_data and name not in prior_param_names:
             prior_param_names.append(name)
@@ -3044,6 +3147,16 @@ def inferential_calibration_cmdstanpy(
     var_names = [name for name in var_names if name not in ignored_var_names]
 
     # Determine prior SDs for parameters of interest
+    if prior_sds_fun is None:
+        prior_sds_kwargs = dict(
+            prior_predictive_fun=prior_predictive_fun,
+            prior_predictive_kwargs=prior_predictive_kwargs,
+            var_names=var_names,
+            measured_data=measured_data,
+            n_prior_draws_for_sd=1000,
+        )
+        prior_sds_fun = _get_prior_sds
+
     prior_sd = prior_sds_fun(**prior_sds_kwargs)
 
     # Determine number of iterations
@@ -3053,7 +3166,7 @@ def inferential_calibration_cmdstanpy(
         iter_sampling = sample_kwargs["iter_sampling"]
     else:
         iter_sampling = 1000
-    L = iter_sampling * chains // thin
+    L = chains * int(np.ceil(iter_sampling / thin))
 
     # Check if output file exists and handle overwrite
     if os.path.exists(output_csv) and not overwrite:
@@ -3062,9 +3175,9 @@ def inferential_calibration_cmdstanpy(
             "Set overwrite=True to overwrite the existing file."
         )
 
-    # Create manager for shared lock
-    manager = multiprocessing.Manager()
-    write_lock = manager.Lock()
+    # Compile the model ahead of setting up workers
+    with disable_logging():
+        _ = cmdstanpy.CmdStanModel(stan_file=posterior_stan_file)
 
     # Initialize CSV file with metadata comments
     start_time = datetime.datetime.now()
@@ -3075,10 +3188,15 @@ def inferential_calibration_cmdstanpy(
         f.write(f"# Parameters:\n")
         f.write(f"#    N: {N}\n")
         f.write(f"#    cores: {cores}\n")
-        f.write(f"#    prior_predictive_fun name: {prior_predictive_fun.__name__}\n")
+        fun_name = getattr(prior_predictive_fun, "__name__", repr(prior_predictive_fun))
+        f.write(f"#    prior_predictive_fun name: {fun_name}\n")
         f.write("#    prior_predictive_fun source:\n")
-        for line in inspect.getsourcelines(prior_predictive_fun)[0]:
-            f.write(f"#        {line}\n")
+        try:
+            source_lines = inspect.getsourcelines(prior_predictive_fun)[0]
+        except (OSError, TypeError):
+            source_lines = ["(source unavailable)"]
+        for line in source_lines:
+            f.write(f"#        {line.rstrip(chr(10))}\n")
         f.write(f"#   posterior_stan_file: {posterior_stan_file}\n")
         f.write(f"#   var_names: {var_names}\n")
         f.write(f"#   measured_data: {measured_data}\n")
@@ -3089,15 +3207,29 @@ def inferential_calibration_cmdstanpy(
         f.write(f"#\n")
         # Write CSV header
         f.write(
-            "trial,parameter,ground_truth,rank_statistic,mean,sd,shrinkage,z_score,Rhat,ESS_hat,ESS_hat_per_iter,ESS_hat_min_per_chain,tail_xi_hat_left,tail_xi_hat_right,inc_tau_hat,variance,n_divergences,n_bad_ebfmi,n_max_treedepth,average_accept_proxy,warning_code,prior_predictive_seed,posterior_seed,L,prior_predictive_prefix,samples_prefix,error\n"
+            "trial,parameter,ground_truth,rank_statistic,mean,sd,shrinkage,z_score,Rhat,ESS_hat,ESS_hat_per_iter,ESS_hat_min_per_chain,tail_xi_hat_left,tail_xi_hat_right,inc_tau_hat,variance,n_divergences,n_bad_ebfmi,n_max_treedepth,average_accept_proxy,warning_code,prior_predictive_seed,posterior_seed,L,samples_prefix,error\n"
         )
 
-    def arg_input_generator():
+    # Generate prior predictive samples
+    prior_predictive_seeds = (
+        np.random.default_rng().integers(1, 2**31 - 1, size=N).astype(int)
+    )
+    prior_samples = [
+        parse_prior_predictive_samples(
+            _split_dict(
+                prior_predictive_fun(seed=pseed, **prior_predictive_kwargs),
+            )[0],
+            measured_data=measured_data,
+        )
+        for pseed in prior_predictive_seeds
+    ]
+
+    def arg_input_generator(write_lock):
         counter = 0
         while counter < N:
             yield (
-                prior_predictive_fun,
-                prior_predictive_kwargs,
+                prior_samples[counter],
+                prior_predictive_seeds[counter],
                 posterior_stan_file,
                 measured_data,
                 additional_posterior_model_data,
@@ -3114,11 +3246,20 @@ def inferential_calibration_cmdstanpy(
             )
             counter += 1
 
-    # Use multiprocessing with spawn context
+    # Use multiprocessing with spawn context. The manager provides the lock
+    # workers share for writing to the CSV file; using it as a context
+    # manager shuts down its server process when the calculation finishes.
+    # `write_lock` must stay referenced here for the whole calculation. If
+    # the generator held the only reference, the lock would be released
+    # when the generator finished, deleting it on the manager's side before
+    # workers had unpickled their tasks.
     mp_context = _multiprocessing_spawn_context()
-    with mp_context.Pool(cores) as pool:
+    with mp_context.Manager() as manager, mp_context.Pool(cores) as pool:
+        write_lock = manager.Lock()
         iterator = pool.imap_unordered(
-            _perform_inferential_calibration, arg_input_generator(), chunksize=1
+            _perform_inferential_calibration,
+            arg_input_generator(write_lock),
+            chunksize=1,
         )
 
         # Consume the iterator (results written to CSV by workers)
@@ -3135,7 +3276,7 @@ def inferential_calibration_cmdstanpy(
             raise RuntimeError("Invalid `progress_bar`.")
 
     # Read back the CSV and return as DataFrame
-    if type(df_package) == str and df_package.lower() == "polars":
+    if isinstance(df_package, str) and df_package.lower() == "polars":
         return pl.read_csv(output_csv, comment_prefix="#")
     else:
         return pd.read_csv(output_csv, comment="#")
@@ -3144,8 +3285,8 @@ def inferential_calibration_cmdstanpy(
 def _perform_inferential_calibration(args):
     """Perform an inferential calibration analysis"""
     (
-        prior_predictive_fun,
-        prior_predictive_kwargs,
+        prior_sample,
+        prior_predictive_seed,
         posterior_stan_file,
         measured_data,
         additional_posterior_model_data,
@@ -3164,60 +3305,40 @@ def _perform_inferential_calibration(args):
     posterior_model_data = copy.deepcopy(additional_posterior_model_data)
     output_prefix = _get_output_prefix(trial)
 
-    # Seeds for the prior predictive draw and the posterior sampling. If a
-    # seed was supplied in `sample_kwargs` it is used for the posterior
-    # sampling; otherwise a random seed is drawn. Both seeds are recorded in
-    # the output so that each trial can be reproduced.
-    prior_predictive_seed = int(np.random.default_rng().integers(1, 2**31 - 1))
+    # Seeds for posterior sampling. If a seed was supplied in `sample_kwargs` 
+    # it is used for the posterior sampling; otherwise a random seed is drawn. 
     posterior_seed = sample_kwargs.get(
         "seed", int(np.random.default_rng().integers(1, 2**31 - 1))
     )
 
-    with disable_logging():
-        output_dir = os.path.join(samples_dir, output_prefix + '-prior_pred')
-
-        # Build model locally within worker (should default to pre-build exe file)
-        posterior_model = cmdstanpy.CmdStanModel(stan_file=posterior_stan_file)
-
-        prior_sample = prior_predictive_fun(
-            seed=prior_predictive_seed, 
-            **prior_predictive_kwargs
-        )
-
-    prior_sample = convert_samples(prior_sample, 'dict')
-    prior_expectands, _ = _split_dict(prior_sample)
-
-    # Record the full-path prefix of the sampling files (.csv and .txt)
-    # generated by Stan for the prior predictive draw. If the files are
-    # removed, there is nothing to point to, so the prefix is recorded as
-    # NaN (which becomes null in Polars output and np.nan in Pandas output).
-    if remove_sample_files:
-        prior_predictive_prefix = np.nan
-    else:
-        prior_predictive_prefix = prior_sample_cmdstanpy.runset.file_path("")
+    # Pull out expectands
+    prior_sample, _ = _split_dict(prior_sample)
 
     # Default samples prefix; set below if posterior sampling succeeds and
     # the sampling files are retained.
     samples_prefix = np.nan
 
-    # Extract data generated from the prior predictive calculation
-    for data in measured_data:
-        ar = np.squeeze(extract_variable(prior_sample, data))
-        if ar.ndim == 0:
-            posterior_model_data[data] = ar.astype(measured_data_dtypes[data]).item()
-        else:
-            posterior_model_data[data] = ar.astype(measured_data_dtypes[data])
-
     # Store what the parameters were to generate prior predictive data. There
     # is a single prior draw, so each entry is a single value.
     param_priors = {
-        name: val.item()
-        for name, val in prior_expectands.items()
+        name: val
+        for name, val in prior_sample.items()
         if _get_var_name(name) not in measured_data
     }
 
-    # Generate posterior samples
+    # Everything that can fail for a single trial is inside the try block so
+    # that a failure is recorded as a row with an error message instead of
+    # aborting the entire calculation.
     try:
+        with disable_logging():
+            # Build model locally within worker (should default to pre-built exe file)
+            posterior_model = cmdstanpy.CmdStanModel(stan_file=posterior_stan_file)
+
+        # Extract data generated from the prior predictive calculation
+        for data in measured_data:
+            posterior_model_data[data] = prior_sample[data]
+
+        # Generate posterior samples
         with disable_logging():
             output_dir = os.path.join(samples_dir, output_prefix + '-posterior')
             posterior_samples_cmdstanpy = posterior_model.sample(
@@ -3241,16 +3362,7 @@ def _perform_inferential_calibration(args):
         warning_code, diagnostics = check_all_diagnostics(
             posterior_samples, **diagnostic_check_kwargs
         )
-        err_str = "no error"
-        success = True
 
-
-    except Exception as exception:
-        err_str = exception.__str__()
-        warnings.warn(f"Trial failure with error message: {err_str}")
-        success = False
-
-    if success:
         # Extract posterior draws for the parameters of interest as flat
         # arrays (all chains and draws combined).
         posterior_expectands, _ = _split_dict(posterior_samples)
@@ -3316,11 +3428,15 @@ def _perform_inferential_calibration(args):
         output["n_divergences"] = int(np.sum(diagnostics["divergences"]))
         output["n_max_treedepth"] = int(np.sum(diagnostics["treedepth"]))
         output["warning_code"] = warning_code
-    else:
+        err_str = "no error"
+    except Exception as exception:
+        err_str = exception.__str__()
+        warnings.warn(f"Trial failure with error message: {err_str}")
+
         # Parameters of interest, from the prior draw.
         names = [
             name
-            for name in prior_expectands
+            for name in prior_sample
             if _get_var_name(name) in var_names
         ]
 
@@ -3353,7 +3469,6 @@ def _perform_inferential_calibration(args):
     output["posterior_seed"] = posterior_seed
     output["error"] = err_str
     output["L"] = L
-    output["prior_predictive_prefix"] = prior_predictive_prefix
     output["samples_prefix"] = samples_prefix
 
     # Convert output dict to tidied format (multiple rows, one per parameter)
@@ -3371,54 +3486,44 @@ def _get_prior_sds(
     prior_predictive_fun,
     prior_predictive_kwargs,
     var_names,
+    measured_data,
     n_prior_draws_for_sd,
 ):
     """Compute standard deviations of prior parameters."""
     # Draw a sample
-    prior_sample = prior_predictive_fun(
-        seed=int(np.random.default_rng().integers(1, 2**31 - 1)), 
-        **prior_predictive_kwargs
+    prior_sample = parse_prior_predictive_samples(
+        _split_dict(
+            prior_predictive_fun(
+                seed=int(np.random.default_rng().integers(1, 2**31 - 1)), 
+                **prior_predictive_kwargs
+            )
+        )[0],
+        measured_data=measured_data,
     )
 
     # Initialize dictionary of parameter samples
     param_samples = {
         name: [val] + [None for _ in range(n_prior_draws_for_sd - 1)] 
         for name, val in prior_sample.items()
-        if name in var_names or _base_name(name) in var_names
+        if name in var_names or _get_var_name(name) in var_names
     }
 
     # Get many samples
     for i in range(1, n_prior_draws_for_sd):
-        prior_sample = prior_predictive_fun(
-            seed=int(np.random.default_rng().integers(1, 2**31 - 1)), 
-            **prior_predictive_kwargs
-        ) 
+        prior_sample = parse_prior_predictive_samples(
+            _split_dict(
+                prior_predictive_fun(
+                    seed=int(np.random.default_rng().integers(1, 2**31 - 1)), 
+                    **prior_predictive_kwargs
+                )
+            )[0],
+            measured_data=measured_data,
+        )
         for name in param_samples:
             param_samples[name][i] = prior_sample[name]
 
     # Compute standard deviation of all
     return {name: np.std(x) for name, x in param_samples.items()}
-
-
-def _base_name(name):
-    if "[" not in name or name[-1] != "]":
-        return name
-
-    ind = name.rfind("[")
-    comma_inds = [ind + i for i, char in enumerate(name[ind:]) if char == ","]
-
-    if len(comma_inds) == 0:
-        if ind == len(name) - 2 or not name[ind + 1 : -1].isnumeric():
-            return name
-        else:
-            return name[:ind]
-    elif comma_inds[0] == ind + 1 or comma_inds[-1] == len(name) - 2:
-        return name
-    else:
-        if name[ind + 1 : -1].replace(",", "").isnumeric():
-            return name[:ind]
-        else:
-            return name
 
 
 def _tidy_single_inferential_calibration_result(output_dict, trial_number):
@@ -3466,7 +3571,6 @@ def _tidy_single_inferential_calibration_result(output_dict, trial_number):
         "prior_predictive_seed",
         "posterior_seed",
         "L",
-        "prior_predictive_prefix",
         "samples_prefix",
         "error",
     ]
@@ -3531,7 +3635,6 @@ def _tidy_inferential_calibration_output(inferential_calibration_output):
         "prior_predictive_seed",
         "posterior_seed",
         "L",
-        "prior_predictive_prefix",
         "samples_prefix",
         "trial",
         "error",
@@ -3547,15 +3650,15 @@ def _tidy_inferential_calibration_output(inferential_calibration_output):
     return pd.concat(dfs, ignore_index=True)
 
 
-def _efmi(energy):
-    """Compute energy-fraction of missing information"""
-    return np.sum(np.diff(energy) ** 2) / (len(energy) - 1) / np.var(energy)
-
-
 def _get_var_name(parameter):
     """Convert a parameter name to a var_name. Example: 'alpha[1,2]'
-    returns 'alpha'.
+    returns 'alpha'. Spaces within the brackets are ignored, so
+    'alpha[ 1, 2 ]' also returns 'alpha'. Raises a ValueError if
+    `parameter` is an empty string or has empty brackets, e.g. 'alpha[]'.
     """
+    if len(parameter) == 0:
+        raise ValueError("Parameter name cannot be an empty string.")
+
     if parameter[-1] != "]":
         return parameter
 
@@ -3563,9 +3666,12 @@ def _get_var_name(parameter):
     if ind == 0 or ind == len(parameter) - 1:
         return parameter
 
-    substr = parameter[ind + 1 : -1]
+    # Ignore spaces within the brackets, e.g. 'alpha[1, 2]'.
+    substr = parameter[ind + 1 : -1].replace(" ", "")
     if len(substr) == 0:
-        return parameter
+        raise ValueError(
+            f"Parameter name '{parameter}' has empty brackets."
+        )
 
     if not substr[0].isdigit():
         return parameter

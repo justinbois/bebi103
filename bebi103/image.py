@@ -645,7 +645,7 @@ def im_merge(
 
     Returns
     -------
-    output : array_like, dtype float, shape (*im_0.shape, 3)
+    output : array_like, dtype float, shape (im_0.shape[0], im_0.shape[1], 3)
         RGB image.
     """
 
@@ -999,18 +999,19 @@ def costes_coloc(
 
     Returns
     -------
-    output: A CostesColocalization instance.
+    output : CostesColocalization instance
         The CostesColocalization instance has the following attributes.
-            im_1, im_2, psf_width, n_scramble, thresh_r, roi,
-                roi_method: As in the input parameters.
-            a: slope of the regression line I_2 = a * I_1 + b
-            b: intercept of regression line I_2 = a * I_1 + b
-            M_1: Manders coefficient for image 1
-            M_2: Manders coefficient for image 2
-            pearson_r: Pearson coerrelaction coefficient of the pixels
-                in the two images.
-            p_coloc: The probability of colocalization being present
-                in the two images.
+
+        - im_1, im_2, psf_width, n_scramble, thresh_r, roi,
+          roi_method: As in the input parameters.
+        - a: slope of the regression line I_2 = a * I_1 + b
+        - b: intercept of regression line I_2 = a * I_1 + b
+        - M_1: Manders coefficient for image 1
+        - M_2: Manders coefficient for image 2
+        - pearson_r: Pearson correlation coefficient of the pixels
+          in the two images.
+        - p_coloc: The probability of colocalization being present
+          in the two images.
 
     """
 
@@ -1214,11 +1215,15 @@ def _find_thresh(im_1, im_2, a, b, thresh_r=0.0):
     -----
     To determine which pixels are colocalized in two images, we
     do the following:
-        1. Perform a regression based on all points of to give I_2 = a * I_1 + b.
-        2. Define T = I_1.max().
-        3. Compute the Pearson r value considering all pixels with I_1 < T and I_2 < a * T + b.
-        4. If r <= thresh_r decrement T and goto 3.  Otherwise, save $T_1 = T$ and $T_2 = a * T + b.
-        5. Pixels with I_2 > T_2 and I_1 > T_1 are colocalized.
+
+    1. Perform a regression based on all points of to give
+       I_2 = a * I_1 + b.
+    2. Define T = I_1.max().
+    3. Compute the Pearson r value considering all pixels with
+       I_1 < T and I_2 < a * T + b.
+    4. If r <= thresh_r decrement T and goto 3. Otherwise, save
+       T_1 = T and T_2 = a * T + b.
+    5. Pixels with I_2 > T_2 and I_1 > T_1 are colocalized.
 
     This function returns T.
     """

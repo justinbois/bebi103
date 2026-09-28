@@ -1381,9 +1381,9 @@ def parcoord(
         expectand and HMC diagnostic as output by
         `bebi103.hmc.convert_samples()`, or a pandas.DataFrame or
         polars.DataFrame with one row per draw and one column per
-        expectand, optionally with 'chain__', 'draw__', and
-        'divergent__' columns. If a data frame lacks 'chain__' and
-        'draw__' columns, the samples are treated as a single chain
+        expectand, optionally with ``chain__``, ``draw__``, and
+        ``divergent__`` columns. If a data frame lacks ``chain__`` and
+        ``draw__`` columns, the samples are treated as a single chain
         with draws in row order.
     parameters : list of str, or None (default)
         Names of parameters to include in the plot. If None, use all
@@ -1587,9 +1587,9 @@ def trace(
         expectand and HMC diagnostic as output by
         `bebi103.hmc.convert_samples()`, or a pandas.DataFrame or
         polars.DataFrame with one row per draw and one column per
-        expectand, optionally with 'chain__', 'draw__', and
-        'divergent__' columns. If a data frame lacks 'chain__' and
-        'draw__' columns, the samples are treated as a single chain
+        expectand, optionally with ``chain__``, ``draw__``, and
+        ``divergent__`` columns. If a data frame lacks ``chain__`` and
+        ``draw__`` columns, the samples are treated as a single chain
         with draws in row order.
     parameters : list of str, or None (default)
         Names of parameters to include in the plot. If None, use all
@@ -1845,8 +1845,8 @@ def corner(
         dictionary of two-dimensional arrays for each expectand and HMC
         diagnostic as output by `bebi103.hmc.convert_samples()`, a
         pandas.DataFrame or polars.DataFrame with one row per draw and
-        one column per expectand (optionally with 'chain__', 'draw__',
-        and 'divergent__' columns; if 'chain__' and 'draw__' are absent,
+        one column per expectand (optionally with ``chain__``, ``draw__``,
+        and ``divergent__`` columns; if ``chain__`` and ``draw__`` are absent,
         the samples are treated as a single chain with draws in row
         order), or a Numpy array in which each row is a sample and each
         column corresponds to a variable.
@@ -2836,8 +2836,8 @@ def _samples_to_df(samples, parameters, omit, omit_array_entry):
         dictionary of two-dimensional arrays for each expectand and HMC
         diagnostic, as output by `bebi103.hmc.convert_samples()`, or as
         a pandas.DataFrame or polars.DataFrame with one row per draw and
-        one column per expectand. If the data frame lacks 'chain__' and
-        'draw__' columns, the samples are treated as a single chain with
+        one column per expectand. If the data frame lacks ``chain__`` and
+        ``draw__`` columns, the samples are treated as a single chain with
         draws in row order.
     parameters : list or None
         Names of parameters to include. Entries may be (name, label)
@@ -2856,8 +2856,8 @@ def _samples_to_df(samples, parameters, omit, omit_array_entry):
     parameters : list
         Resolved list of parameters.
     df : pandas.DataFrame
-        Tidy data frame with columns 'chain__', 'draw__', 'divergent__',
-        and one column per selected parameter. The 'chain__' and 'draw__'
+        Tidy data frame with columns ``chain__``, ``draw__``, ``divergent__``,
+        and one column per selected parameter. The ``chain__`` and ``draw__``
         columns are one-indexed.
     """
     samples_df = hmc.convert_samples(samples, "pandas")
