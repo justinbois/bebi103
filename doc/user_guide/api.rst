@@ -71,8 +71,11 @@ Hamiltonian Monte Carlo utilities
    split_rhat
    check_variance
    decode_warning_code
-   inferential_calibration
    disable_logging
+   sample_cmdstanpy
+   sample_cmdstanpy_prior_predictive
+   parse_prior_predictive_samples
+   inferential_calibration_cmdstanpy
 
 
 Gaussian process utilities
@@ -155,4 +158,6 @@ General utilities
    :toctree: generated/utils
    :nosignatures:
 
+   array_to_dict
+   dict_to_array
    unpivot_csv
