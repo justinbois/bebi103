@@ -106,7 +106,7 @@ jupyter-bokeh = "*"
 default = {solve-group = "default"}
 dev = {features = ["dev"], solve-group = "default"}
 
-[feature.dev.activation.env]
+[tool.pixi.feature.dev.activation.env]
 CC = "/usr/bin/clang"
 CXX = "/usr/bin/clang++"
 
@@ -116,3 +116,4 @@ test = "pytest tests/"
 docs = "sphinx-build -b html doc doc/_build/html"
 build = "rm -rf dist && pip install build && python -m build"
 publish = { cmd = "twine upload dist/*", depends-on = ["build"] }
+install_cmdstan = { cmd = 'python -c "import cmdstanpy; cmdstanpy.install_cmdstan()"', env = { CC = "/usr/bin/clang", CXX = "/usr/bin/clang++", CFLAGS = "", CXXFLAGS = "", CPPFLAGS = "", LDFLAGS = "", LDFLAGS_LD = "" } }
